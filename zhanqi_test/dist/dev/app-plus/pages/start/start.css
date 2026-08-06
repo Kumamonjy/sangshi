@@ -1,0 +1,190 @@
+.container[data-v-ccccf83a] {
+  min-height: 100vh;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  padding: 1.875rem;
+}
+.logo-section[data-v-ccccf83a] {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-bottom: 3.75rem;
+}
+.logo[data-v-ccccf83a] {
+  width: 6.25rem;
+  height: 6.25rem;
+  border-radius: 1.25rem;
+  margin-bottom: 1.25rem;
+  background: rgba(255, 255, 255, 0.2);
+}
+.title[data-v-ccccf83a] {
+  font-size: 2.25rem;
+  font-weight: bold;
+  color: #ffffff;
+  margin-bottom: 0.5rem;
+  text-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.2);
+}
+.subtitle[data-v-ccccf83a] {
+  font-size: 1.125rem;
+  color: rgba(255, 255, 255, 0.8);
+}
+.menu-section[data-v-ccccf83a] {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  width: 100%;
+  max-width: 18.75rem;
+}
+.menu-btn[data-v-ccccf83a] {
+  width: 100%;
+  height: 4.375rem;
+  background: rgba(255, 255, 255, 0.95);
+  border-radius: 0.75rem;
+  display: flex;
+  flex-direction: row;
+  justify-content: center;
+  align-items: center;
+  box-shadow: 0 0.25rem 1rem rgba(0, 0, 0, 0.15);
+  border: none;
+}
+.new-game-btn[data-v-ccccf83a] {
+  background: linear-gradient(135deg, #ffd700 0%, #ff9500 100%);
+}
+.load-game-btn[data-v-ccccf83a] {
+  background: rgba(255, 255, 255, 0.95);
+}
+.btn-icon[data-v-ccccf83a] {
+  font-size: 1.75rem;
+  margin-right: 0.75rem;
+}
+.btn-text[data-v-ccccf83a] {
+  font-size: 1.375rem;
+  font-weight: bold;
+  color: #333;
+}
+.version[data-v-ccccf83a] {
+  position: absolute;
+  bottom: 1.875rem;
+}
+.version-text[data-v-ccccf83a] {
+  font-size: 0.875rem;
+  color: rgba(255, 255, 255, 0.6);
+}
+.modal-mask[data-v-ccccf83a] {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+.modal-content[data-v-ccccf83a] {
+  width: 90%;
+  max-width: 18.75rem;
+  background: #fff;
+  border-radius: 0.75rem;
+  overflow: hidden;
+}
+.modal-header[data-v-ccccf83a] {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1.25rem;
+  border-bottom: 0.03125rem solid #eee;
+}
+.modal-title[data-v-ccccf83a] {
+  font-size: 1.375rem;
+  font-weight: bold;
+  color: #333;
+}
+.close-btn[data-v-ccccf83a] {
+  width: 1.875rem;
+  height: 1.875rem;
+  background: #f0f0f0;
+  border-radius: 50%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  border: none;
+  font-size: 1rem;
+  color: #666;
+}
+.modal-body[data-v-ccccf83a] {
+  padding: 1.25rem;
+  max-height: 60vh;
+  overflow-y: auto;
+}
+.empty-state[data-v-ccccf83a] {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 1.875rem 0;
+}
+.empty-icon[data-v-ccccf83a] {
+  font-size: 2.5rem;
+  margin-bottom: 0.625rem;
+}
+.empty-text[data-v-ccccf83a] {
+  font-size: 1.125rem;
+  color: #999;
+}
+.save-list[data-v-ccccf83a] {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+.save-item[data-v-ccccf83a] {
+  background: #f8f9fa;
+  border-radius: 0.5rem;
+  padding: 0.75rem;
+  display: flex;
+  flex-direction: column;
+}
+.save-info[data-v-ccccf83a] {
+  margin-bottom: 0.5rem;
+}
+.save-name[data-v-ccccf83a] {
+  font-size: 1.125rem;
+  font-weight: bold;
+  color: #333;
+  display: block;
+  margin-bottom: 0.25rem;
+}
+.save-time[data-v-ccccf83a] {
+  font-size: 0.875rem;
+  color: #666;
+  display: block;
+  margin-bottom: 0.25rem;
+}
+.save-gold[data-v-ccccf83a] {
+  font-size: 1rem;
+  color: #ffd700;
+  font-weight: bold;
+}
+.save-actions[data-v-ccccf83a] {
+  display: flex;
+  gap: 0.625rem;
+}
+.action-btn[data-v-ccccf83a] {
+  flex: 1;
+  height: 2.5rem;
+  border-radius: 0.375rem;
+  border: none;
+  font-size: 1rem;
+  font-weight: bold;
+}
+.load-btn[data-v-ccccf83a] {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: #fff;
+}
+.delete-btn[data-v-ccccf83a] {
+  background: #ff6b6b;
+  color: #fff;
+}

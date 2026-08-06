@@ -1,0 +1,16 @@
+{
+  "pages": [
+    "pages/index/index",
+    "pages/character/character",
+    "pages/hire/hire",
+    "pages/select/select",
+    "pages/battle/battle"
+  ],
+  "window": {
+    "navigationBarTextStyle": "black",
+    "navigationBarTitleText": "养成战棋",
+    "navigationBarBackgroundColor": "#f5f5f5",
+    "backgroundColor": "#f5f5f5"
+  },
+  "usingComponents": {}
+}

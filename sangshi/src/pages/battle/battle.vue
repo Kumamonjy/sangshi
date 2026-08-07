@@ -3750,7 +3750,7 @@ function collectCollectible() {
 }
 
 .char-avatar-image.rank-2 {
-  border: 2rpx solid rgba(74, 222, 128, 0.8);
+  border: 2rpx solid rgba(34, 197, 94, 0.8);
 }
 
 .char-avatar-image.rank-3 {
@@ -3761,12 +3761,18 @@ function collectCollectible() {
   border: 2rpx solid rgba(168, 85, 247, 0.8);
 }
 
-.char-avatar-image.rank-5,
-.char-avatar-image.rank-6,
+.char-avatar-image.rank-5 {
+  border: 2rpx solid rgba(236, 72, 153, 0.8);
+}
+
+.char-avatar-image.rank-6 {
+  border: 2rpx solid rgba(239, 68, 68, 0.8);
+}
+
 .char-avatar-image.rank-7,
 .char-avatar-image.rank-8,
 .char-avatar-image.rank-9 {
-  border: 2rpx solid rgba(244, 114, 182, 0.8);
+  border: 2rpx solid rgba(251, 191, 36, 0.8);
 }
 
 .hp-indicator {

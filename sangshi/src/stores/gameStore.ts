@@ -4659,6 +4659,14 @@ export const useGameStore = defineStore('game', () => {
       showFloatingText(attacker.row, attacker.col, healAmount, 'heal')
       battleLog.value.push(`自身恢复${healAmount}点生命值`)
 
+      // 自身法力治疗百分比
+      if (skill.selfMpHealPct) {
+        const mpHealAmount = Math.floor(attacker.maxMp * skill.selfMpHealPct)
+        attacker.mp = Math.min(attacker.mp + mpHealAmount, attacker.maxMp)
+        showFloatingText(attacker.row, attacker.col, mpHealAmount, 'mp')
+        battleLog.value.push(`自身恢复${mpHealAmount}点法力值`)
+      }
+
       if (skill.dispelAllDebuffs) {
         // 驱散所有负面状态
         const dispelledStatuses: string[] = []
@@ -4865,6 +4873,17 @@ export const useGameStore = defineStore('game', () => {
         if (!healedNames.includes(charTemplate?.name || attacker.characterId)) {
           healedNames.push(charTemplate?.name || attacker.characterId)
         }
+      }
+    }
+
+    // 自身法力治疗百分比（如红盖迷踪恢复10%法力）
+    if (skill.selfMpHealPct && attacker.mp < attacker.maxMp) {
+      const selfMpHealAmount = Math.floor(attacker.maxMp * skill.selfMpHealPct)
+      const oldMp = attacker.mp
+      attacker.mp = Math.min(attacker.mp + selfMpHealAmount, attacker.maxMp)
+      const actualMpHeal = attacker.mp - oldMp
+      if (actualMpHeal > 0) {
+        showFloatingText(attacker.row, attacker.col, actualMpHeal, 'mp')
       }
     }
 

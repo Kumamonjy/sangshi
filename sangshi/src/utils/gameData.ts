@@ -4,7 +4,7 @@ export type Rarity = 'common' | 'rare' | 'exceptional' | 'treasure' | 'celestial
 export type ItemSubtype = 'weapon' | 'armor' | 'helmet' | 'shoes' | 'accessory' | 'book' | 'consumable' | 'chest'
 export type TerrainType = 'empty' | 'river' | 'obstacle' | 'snow'
 export type WeatherType = 'normal' | 'light_snow' | 'medium_snow' | 'heavy_snow' | 'mountain_fire' | 'sky_fire'
-export type Attribute = 'normal' | 'metal' | 'wood' | 'water' | 'fire' | 'earth' | 'ice' | 'wind' | 'dark' | 'yang' | 'light'
+export type Attribute = 'normal' | 'metal' | 'wood' | 'water' | 'fire' | 'earth' | 'ice' | 'wind' | 'dark' | 'yang' | 'light' | 'yin'
 
 // 状态系统类型
 export type StatusType = 'poison' | 'burning' | 'silenced' | 'bleeding' | 'cold' | 'disorder' | 'stun' | 'resolute' | 'undying' | 'fury' | 'strong' | 'fierce' | 'swift' | 'lame' | 'weak' | 'heal' | 'regen' | 'tune' | 'meditate' | 'fear' | 'fragile' | 'crumble' | 'weakened' | 'imprison' | 'mili' | 'xinluan' | 'eagle_eye' | 'zhangmu'
@@ -695,10 +695,11 @@ export const JOB_CONFIG: Record<string, { name: string; rank: number }> = {
   神兽: { name: '神兽', rank: 5 },
   人皇: { name: '人皇', rank: 5 },
   魔神: { name: '魔神', rank: 5 },
+  血色嫁衣: { name: '血色嫁衣', rank: 5 },
 }
 
 export const ATTRIBUTE_CONFIG: Record<Attribute, { name: string; color: string }> = {
-  normal: { name: '普通', color: '#eaeaea' },
+  normal: { name: '普', color: '#eaeaea' },
   metal: { name: '金', color: '#f59e0b' },
   wood: { name: '木', color: '#53c552' },
   water: { name: '水', color: '#3b82f6' },
@@ -709,6 +710,18 @@ export const ATTRIBUTE_CONFIG: Record<Attribute, { name: string; color: string }
   dark: { name: '暗', color: '#A21CAF' },
   yang: { name: '阳', color: '#FEF08A' },
   light: { name: '光', color: '#FDE68A' },
+  yin: { name: '阴', color: '#8B5CF6' },
+}
+
+// 阶数颜色配置：1阶白色，2阶绿色，3阶蓝色，4阶紫色，5阶粉色，6阶红色，6阶以上金色
+export const getRankColor = (rank: number): string => {
+  if (rank <= 1) return '#ffffff'
+  if (rank === 2) return '#22c55e'
+  if (rank === 3) return '#3b82f6'
+  if (rank === 4) return '#a855f7'
+  if (rank === 5) return '#ec4899'
+  if (rank === 6) return '#ef4444'
+  return '#fbbf24' // 6阶以上金色
 }
 
 export const RARITY_CONFIG: Record<Rarity, { name: string; color: string; bonus: number }> = {
@@ -1239,6 +1252,7 @@ export const SKILL_TEMPLATES: Record<string, Omit<Skill, 'currentCooldown'>> = {
   tian_di_sui: { id: 'tian_di_sui', name: '天地碎裂', mpCost: 75, type: 'attack', power: 150, cooldown: 3, range: 0, areaRange: 2, description: '以自身为中心，对2格菱形范围内的所有敌方目标造成150%的伤害', effectType: 'light', attribute: 'light', category: 'aoe', skillTypeTag: '攻击', rangeTag: '2格', targetCountTag: 'AOE', rangeType: 'diamond' },
   tian_ming_huang_quan: { id: 'tian_ming_huang_quan', name: '天命皇权', mpCost: 100, type: 'summon', power: 0, cooldown: 5, range: 3, targetCount: 3, description: '选择3格菱形范围内的3个空地，召唤出3个【动员兵】，并使自身获得【刚毅】和【愈合】状态，持续3回合', effectType: 'light', attribute: 'light', category: 'summon', skillTypeTag: '召唤', rangeTag: '3格', targetCountTag: '3个', summonCharacter: 'dongyuan_bing', selfStatusEffects: ['resolute', 'heal'], selfStatusEffectsDurations: [3, 3], reikiCost: 30, rangeType: 'diamond' },
   man_zhu_sha_hua: { id: 'man_zhu_sha_hua', name: '曼珠沙华', mpCost: 100, type: 'attack', power: 50, cooldown: 5, range: 0, areaRange: 3, description: '以自身为中心，对3格菱形范围内的所有敌方目标造成50%的伤害，并且陷入【中毒】状态，并恢复自身15%的生命值', effectType: 'dark', attribute: 'dark', category: 'aoe', skillTypeTag: '攻击', rangeTag: '3格', targetCountTag: 'AOE', rangeType: 'diamond', statusEffect: 'poison', selfHealPct: 0.15, shaQiCost: 60 },
+  xi: { id: 'xi', name: '囍', mpCost: 100, type: 'attack', power: 66, cooldown: 4, range: 0, areaRange: 3, description: '以自身为中心，对3格菱形范围内的所有敌方目标造成66%攻击力的伤害，并使目标陷入【虚弱】状态，持续时间2回合', effectType: 'dark', attribute: 'yin', category: 'aoe', skillTypeTag: '攻击', rangeTag: '3格', targetCountTag: 'AOE', rangeType: 'diamond', statusEffect: 'weak', statusEffectDuration: 2, shaQiCost: 60 },
   ji_shu_huo_jian: { id: 'ji_shu_huo_jian', name: '集束火箭', mpCost: 100, type: 'attack', power: 140, cooldown: 4, range: 3, description: '选择上下左右中的一个方向，对该方向上3格范围内的所有敌方单位，造成140%攻击力的伤害，并使目标陷入【燃烧】状态', effectType: 'fire', attribute: 'fire', category: '直线', skillTypeTag: '攻击', rangeTag: '3格', targetCountTag: '直线', statusEffect: 'burning' },
   ji_qiang_sao_she: { id: 'ji_qiang_sao_she', name: '机枪扫射', mpCost: 80, type: 'attack', power: 120, cooldown: 3, range: 4, description: '选择上下左右中的一个方向，对该方向上4格范围内的所有敌方单位，造成120%攻击力的伤害', effectType: 'fire', attribute: 'fire', category: '直线', skillTypeTag: '攻击', rangeTag: '4格', targetCountTag: '直线' },
   feng_ren_san: { id: 'feng_ren_san', name: '风刃散', mpCost: 70, type: 'attack', power: 40, cooldown: 3, range: 3, sweepLength: 3, sweepWidth: 3, description: '选择上下左右某一方向为目标，对该方向上长3宽3范围内的所有敌方目标，造成40%攻击力的伤害', effectType: 'wind', attribute: 'wind', category: '横扫', skillTypeTag: '攻击', rangeTag: '3格', targetCountTag: '3x3' },
@@ -1250,6 +1264,10 @@ export const SKILL_TEMPLATES: Record<string, Omit<Skill, 'currentCooldown'>> = {
   di_shui_chuan_shi: { id: 'di_shui_chuan_shi', name: '滴水穿石', mpCost: 50, type: 'attack', power: 60, cooldown: 2, range: 4, description: '选择上下左右中的一个方向，对该方向上4格范围内的所有敌方单位，造成60%攻击力的伤害', effectType: 'water', attribute: 'water', category: '直线', skillTypeTag: '攻击', rangeTag: '4格', targetCountTag: '直线' },
   di_mai_xuan_dun: { id: 'di_mai_xuan_dun', name: '地脉玄盾', mpCost: 70, type: 'heal', power: 0, cooldown: 3, range: 0, areaRange: 2, description: '以自身为中心，对2格菱形范围内的所有友方目标（包括自己），恢复生命，恢复量为玄武生命值上限的9%，并且玄武获得【刚毅】状态，持续时间2回合', effectType: 'water', attribute: 'water', category: 'heal', skillTypeTag: '治疗', rangeTag: '2格', targetCountTag: 'AOE', rangeType: 'diamond', selfHealMaxHpPct: 0.09, selfStatusEffects: ['resolute'], statusEffectDuration: 2 },
   wan_gu_jie_jie: { id: 'wan_gu_jie_jie', name: '万古结界', mpCost: 80, type: 'heal', power: 0, cooldown: 5, range: 1, description: '选择自身为目标，恢复自身15%的生命值，驱散所有负面状态，并且获得【不灭】状态，持续时间2回合', effectType: 'water', attribute: 'water', category: 'heal', skillTypeTag: '治疗', rangeTag: '1格', targetCountTag: '1个', reikiCost: 30, selfHealPct: 0.15, dispelAllDebuffs: true, selfStatusEffects: ['undying'], statusEffectDuration: 2 },
+  // 红鸾技能
+  ling_luo_shi_hun: { id: 'ling_luo_shi_hun', name: '绫罗噬魂', mpCost: 80, type: 'attack', power: 80, cooldown: 3, range: 4, targetCount: 2, description: '选择4格范围内的2个敌方目标，造成80%攻击力的伤害，并使目标陷入【紊乱】状态', attribute: 'yin', category: '指定', skillTypeTag: '攻击', rangeTag: '4格', targetCountTag: '2个', statusEffect: 'disorder' },
+  shi_li_hong_xiao: { id: 'shi_li_hong_xiao', name: '十里红绡', mpCost: 80, type: 'attack', power: 60, cooldown: 3, range: 5, description: '选择上下左右中的一个方向，对该方向上5格范围内的所有敌方单位，造成60%攻击力的伤害，并使目标陷入【禁锢】状态', attribute: 'yin', category: '直线', skillTypeTag: '攻击', rangeTag: '5格', targetCountTag: '直线', statusEffect: 'imprison' },
+  hong_gai_mi_zong: { id: 'hong_gai_mi_zong', name: '红盖迷踪', mpCost: 40, type: 'heal', power: 0, cooldown: 4, range: 1, description: '选择自身为目标，恢复自身10%生命值和10%法力值，驱散随机1个负面状态', attribute: 'yin', category: 'heal', skillTypeTag: '治疗', rangeTag: '1格', targetCountTag: '1个', selfHealPct: 0.10, selfMpHealPct: 0.10, dispelRandomDebuffs: 1 },
 }
 
 export interface CharacterGrowth {
@@ -1341,6 +1359,7 @@ export const CHARACTER_GROWTH: Record<string, CharacterGrowth> = {
   zhengjia: { maxHp: 85, maxMp: 25, attack: 25, defense: 15 },
   mengsike: { maxHp: 125, maxMp: 40, attack: 30, defense: 25 },
   longwu: { maxHp: 110, maxMp: 50, attack: 45, defense: 20 },
+  hongluan: { maxHp: 130, maxMp: 50, attack: 45, defense: 15 },
 }
 
 // 角色-技能关联表：角色 characterId -> 技能 id 列表
@@ -1427,6 +1446,7 @@ export const CHARACTER_SKILLS: Record<string, string[]> = {
   zhengjia: ['suo_hun', 'qiu_ling'],
   mengsike: ['fu_she_an_ji', 'tian_di_sui', 'tian_ming_huang_quan'],
   longwu: ['long_zhan_yu_ye', 'you_long_bai_wei', 'cang_hai_long_yin', 'man_zhu_sha_hua'],
+  hongluan: ['ling_luo_shi_hun', 'shi_li_hong_xiao', 'hong_gai_mi_zong', 'xi'],
 }
 
 /**
@@ -3270,6 +3290,29 @@ export const HIREABLE_CHARACTERS: Omit<Character, 'equipment' | 'avatar' | 'isPl
     attribute: 'fire',
     avatar: '/static/avatars/demon/longwu.png',
   },
+  {
+    id: 'hongluan',
+    name: '红鸾',
+    job: '血色嫁衣',
+    faction: 'ghost',
+    level: 1,
+    exp: 0,
+    baseMaxHp: 520,
+    maxHp: 520,
+    baseMaxMp: 320,
+    maxMp: 320,
+    baseAttack: 115,
+    attack: 115,
+    baseDefense: 30,
+    defense: 30,
+    baseMoveRange: 4,
+    moveRange: 4,
+    baseAttackRange: 4,
+    attackRange: 4,
+    skills: buildSkillsForCharacterId('hongluan'),
+    attribute: 'yin',
+    avatar: '/static/avatars/ghost/hongluan.png',
+  },
 ]
 
 export const EQUIPMENT_TEMPLATES: {
@@ -3501,6 +3544,7 @@ export function getAvatarPath(charId: string, faction: string = 'human'): string
     'zhengjia': '/static/avatars/ghost/zhenjia.png',
     'mengsike': '/static/avatars/human/mengsike.png',
     'longwu': '/static/avatars/demon/longwu.png',
+    'hongluan': '/static/avatars/ghost/hongluan.png',
   }
   return avatarPathMap[charId] || FACTION_CONFIG[faction as keyof typeof FACTION_CONFIG].icon
 }

@@ -71,8 +71,8 @@
                 </text>
               </view>
               <view class="job-level-row">
-                <text class="char-job">{{ JOB_CONFIG[currentCharacter?.job || 'warrior']?.name || currentCharacter?.job || '未知' }}</text>
-                <text class="char-rank">【{{ JOB_CONFIG[currentCharacter?.job || 'warrior']?.rank || 1 }}阶】</text>
+                <text class="char-job" :style="{ color: getRankColor(JOB_CONFIG[currentCharacter?.job || 'warrior']?.rank || 1) }">{{ JOB_CONFIG[currentCharacter?.job || 'warrior']?.name || currentCharacter?.job || '未知' }}</text>
+                <text class="char-rank" :style="{ color: getRankColor(JOB_CONFIG[currentCharacter?.job || 'warrior']?.rank || 1) }">【{{ JOB_CONFIG[currentCharacter?.job || 'warrior']?.rank || 1 }}阶】</text>
                 <text class="char-level">Lv.{{ currentCharacter?.level }}</text>
               </view>
               <view class="exp-row">
@@ -293,6 +293,12 @@
                   <view class="skill-info-row">
                     <text class="skill-info">消耗法力 {{ skill.mpCost }}</text>
                   </view>
+                  <view v-if="skill.reikiCost" class="skill-info-row">
+                    <text class="skill-info" style="color: #4ade80;">消耗阵营灵气 {{ skill.reikiCost }}</text>
+                  </view>
+                  <view v-if="skill.shaQiCost" class="skill-info-row">
+                    <text class="skill-info" style="color: #9333ea;">消耗阵营煞气 {{ skill.shaQiCost }}</text>
+                  </view>
                   <view class="skill-info-row">
                     <text class="skill-info">冷却 {{ skill.cooldown }} 回合</text>
                   </view>
@@ -345,8 +351,8 @@
                 </text>
               </view>
               <view class="hire-job-row">
-                <text class="hire-job">{{ JOB_CONFIG[char.job]?.name || char.job }}</text>
-                <text class="hire-rank">【{{ JOB_CONFIG[char.job]?.rank || 1 }}阶】</text>
+                <text class="hire-job" :style="{ color: getRankColor(JOB_CONFIG[char.job]?.rank || 1) }">{{ JOB_CONFIG[char.job]?.name || char.job }}</text>
+                <text class="hire-rank" :style="{ color: getRankColor(JOB_CONFIG[char.job]?.rank || 1) }">【{{ JOB_CONFIG[char.job]?.rank || 1 }}阶】</text>
               </view>
               <text class="hire-level">Lv.{{ char.level }}</text>
             </view>
@@ -426,7 +432,7 @@
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
 import { useGameStore } from '../../stores/gameStore'
-import { FACTION_CONFIG, JOB_CONFIG, HIREABLE_CHARACTERS, getExpRequired, getEquipmentStats, RARITY_CONFIG, getAvatarPath, ATTRIBUTE_CONFIG, getSkillTags, calculateSetBonus, type Character, type Skill, type Item, type Equipment, type Faction } from '../../utils/gameData'
+import { FACTION_CONFIG, JOB_CONFIG, HIREABLE_CHARACTERS, getExpRequired, getEquipmentStats, RARITY_CONFIG, getAvatarPath, ATTRIBUTE_CONFIG, getSkillTags, calculateSetBonus, getRankColor, type Character, type Skill, type Item, type Equipment, type Faction } from '../../utils/gameData'
 
 const gameStore = useGameStore()
 const activeTab = ref<'my' | 'hire'>('my')

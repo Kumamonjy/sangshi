@@ -48,8 +48,8 @@
                 </text>
               </view>
               <view class="job-row">
-                <text class="char-job">{{ getJobName(char.job) }}</text>
-                <text class="char-rank">【{{ JOB_CONFIG[char.job]?.rank || 1 }}阶】</text>
+                <text class="char-job" :style="{ color: getRankColor(JOB_CONFIG[char.job]?.rank || 1) }">{{ getJobName(char.job) }}</text>
+                <text class="char-rank" :style="{ color: getRankColor(JOB_CONFIG[char.job]?.rank || 1) }">【{{ JOB_CONFIG[char.job]?.rank || 1 }}阶】</text>
               </view>
             </view>
 
@@ -130,6 +130,12 @@
                   <view class="skill-info-right">
                     <view class="skill-info-row">
                       <text class="skill-info">消耗法力 {{ skill.mpCost }}</text>
+                    </view>
+                    <view v-if="skill.reikiCost" class="skill-info-row">
+                      <text class="skill-info" style="color: #4ade80;">消耗阵营灵气 {{ skill.reikiCost }}</text>
+                    </view>
+                    <view v-if="skill.shaQiCost" class="skill-info-row">
+                      <text class="skill-info" style="color: #9333ea;">消耗阵营煞气 {{ skill.shaQiCost }}</text>
                     </view>
                     <view class="skill-info-row">
                       <text class="skill-info">冷却 {{ skill.cooldown }} 回合</text>
@@ -254,6 +260,7 @@ import {
   STATUS_CONFIG,
   getAvatarPath,
   getSkillTags,
+  getRankColor,
   type Faction,
   type Character,
 } from '../../utils/gameData'

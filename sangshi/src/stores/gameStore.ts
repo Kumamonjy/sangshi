@@ -4746,8 +4746,8 @@ export const useGameStore = defineStore('game', () => {
       hpHealAmount = Math.floor((charTemplate.maxHp || 100) * 0.1)
       mpHealAmount = Math.floor((charTemplate.maxMp || 100) * 0.1)
     } else if (skill.id === 'miao_shou') {
-      // 妙手：恢复当前生命值的30%
-      hpHealAmount = Math.floor(attacker.hp * 0.3)
+      // 妙手：恢复100%攻击力的生命值
+      hpHealAmount = Math.floor(attackPower * (skill.power / 100))
       mpHealAmount = 0
     } else if (skill.id === 'tian_ya_qing_qing') {
       // 天雅倾情：恢复自身10%生命值和法力值上限
@@ -4792,13 +4792,9 @@ export const useGameStore = defineStore('game', () => {
       const targetMaxHp = targetTemplate?.maxHp || target.maxHp || 100
       const targetMaxMp = targetTemplate?.maxMp || target.maxMp || 100
 
-      // 妙手：恢复目标当前生命值的30%（每个目标独立计算）
+      // 妙手：恢复100%攻击力的生命值（每个目标独立计算）
       let currentHpHealAmount = hpHealAmount
       let currentMpHealAmount = mpHealAmount
-      if (skill.id === 'miao_shou') {
-        currentHpHealAmount = Math.floor(target.hp * 0.3)
-        currentMpHealAmount = 0
-      }
 
       // 治疗HP
       if (currentHpHealAmount > 0) {
@@ -7153,7 +7149,7 @@ export const useGameStore = defineStore('game', () => {
     }
     // 特殊处理【碎星】技能
     else if (skillId === 'sui_xing') {
-      // 选择4格菱形范围内的1个敌方单位，造成100%攻击力+50%当前生命值的伤害，并使目标陷入【流血】状态
+      // 选择4格范围内的1个敌方单位，造成200%攻击力的伤害，并使目标陷入【流血】状态
       if (targetId) {
         const actualTargetId = Array.isArray(targetId) ? targetId[0] : targetId
 
@@ -8881,7 +8877,8 @@ export const useGameStore = defineStore('game', () => {
         const target = allyPool.find(p => p.id === targetId)
         if (target && charTemplate) {
           const targetTemplate = findCharacterTemplateInStore(target.characterId)
-          const healAmount = Math.floor(attacker.hp * 0.3)
+          const attackPower = computeAttackPower(attacker)
+          const healAmount = Math.floor(attackPower * (skill.power / 100))
           
           const currentMaxHp = target.maxHp || (targetTemplate?.maxHp || 100)
           const actualHeal = Math.min(healAmount, currentMaxHp - target.hp)
@@ -10393,6 +10390,16 @@ export const useGameStore = defineStore('game', () => {
             let bestHealAmount = 0
             let bestHealTarget: BattleCharacter | null = null
 
+            // 计算自身血量百分比，用于调整治疗优先级
+            const selfMaxHp = charTemplate?.maxHp || char.maxHp || 100
+            const selfHpPercent = char.hp / selfMaxHp
+            let selfHpBonus = 1.0
+            if (selfHpPercent < 0.3) {
+              selfHpBonus = 2.0  // 自身血量低于30%，治疗价值翻倍
+            } else if (selfHpPercent < 0.5) {
+              selfHpBonus = 1.5  // 自身血量低于50%，治疗价值增加50%
+            }
+
             for (const ally of allies) {
               const distance = Math.abs(ally.row - char.row) + Math.abs(ally.col - char.col)
               if (distance <= skillRange) {
@@ -10406,12 +10413,10 @@ export const useGameStore = defineStore('game', () => {
                     healAmount = Math.floor(allyMaxHp * 0.1)
                   } else if (skill.id === 'ai_de_bao_bao' || skill.id === 'ai_de_fei_wen') {
                     // 爱的抱抱/爱的飞吻：0.05*自身最大生命值 + 0.1*目标最大生命值
-                    const selfMaxHp = charTemplate?.maxHp || char.maxHp || 100
                     healAmount = Math.floor(selfMaxHp * 0.05 + allyMaxHp * 0.1)
                   } else if (skill.id === 'ai_de_hui_yi') {
                     // 爱的回忆：恢复自身10%最大生命值（仅自己）
                     if (ally.id !== char.id) continue
-                    const selfMaxHp = charTemplate?.maxHp || char.maxHp || 100
                     healAmount = Math.floor(selfMaxHp * 0.1)
                   } else if (skill.id === 'mu_feng_wei_shang') {
                     // 沐风为裳：50%生命 + 60%法力
@@ -10422,7 +10427,9 @@ export const useGameStore = defineStore('game', () => {
                     healAmount = Math.floor(attackPower * (skill.power / 100))
                   }
                   const actualHeal = Math.min(healAmount, missingHp)
-                  const effectiveValue = actualHeal * 3.0
+                  // 自身目标额外加成
+                  const selfBonus = ally.id === char.id ? selfHpBonus : 1.0
+                  const effectiveValue = actualHeal * 3.0 * selfBonus
                   if (effectiveValue > bestHealAmount) {
                     bestHealAmount = effectiveValue
                     bestHealTarget = ally

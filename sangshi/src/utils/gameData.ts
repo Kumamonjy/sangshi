@@ -7,7 +7,7 @@ export type WeatherType = 'normal' | 'light_snow' | 'medium_snow' | 'heavy_snow'
 export type Attribute = 'normal' | 'metal' | 'wood' | 'water' | 'fire' | 'earth' | 'ice' | 'wind' | 'dark' | 'yang' | 'light' | 'yin'
 
 // 状态系统类型
-export type StatusType = 'poison' | 'burning' | 'silenced' | 'bleeding' | 'cold' | 'disorder' | 'stun' | 'resolute' | 'undying' | 'fury' | 'strong' | 'fierce' | 'swift' | 'lame' | 'weak' | 'heal' | 'regen' | 'tune' | 'meditate' | 'fear' | 'fragile' | 'crumble' | 'weakened' | 'imprison' | 'mili' | 'xinluan' | 'eagle_eye' | 'zhangmu'
+export type StatusType = 'poison' | 'burning' | 'silenced' | 'bleeding' | 'cold' | 'disorder' | 'stun' | 'resolute' | 'undying' | 'fury' | 'strong' | 'fierce' | 'swift' | 'lame' | 'weak' | 'heal' | 'regen' | 'tune' | 'meditate' | 'fear' | 'fragile' | 'crumble' | 'weakened' | 'imprison' | 'mili' | 'xinluan' | 'eagle_eye' | 'zhangmu' | 'dissipate'
 
 // 状态配置：描述、图标、触发类型、标签（正面/负面）
 // effects：战斗中对角色数值产生的百分比影响，正值为增益，负值为减益；用于攻击/防御计算逻辑自动读取
@@ -255,6 +255,13 @@ export const STATUS_CONFIG: Record<StatusType, StatusConfig> = {
     tag: 'negative',
     effects: { attackRange: -1 },
   },
+  dissipate: {
+    id: 'dissipate',
+    name: '消散',
+    icon: '💨',
+    description: '每回合结束损失25%最大生命值',
+    tag: 'negative',
+  },
 }
 
 // 基于标签派生的状态集合，供驱散/增益等逻辑使用；新增状态时只需更新 STATUS_CONFIG 的 tag，这里会自动生效
@@ -330,6 +337,10 @@ export interface Skill {
   selfHpCostType?: 'current' | 'max' // 生命值消耗基于当前血量还是最大血量，默认max
   summonHpPct?: number // 召唤单位的生命值百分比（基于模板maxHp，0-1）
   selfHpThreshold?: number // 使用技能所需的最低生命值阈值（基于当前/最大，0-1）
+  requireHpGtAtk?: boolean // 需要当前生命值大于攻击力才能使用
+  summonMaxCount?: number // 同阵营召唤物最大数量
+  summonCountId?: string // 用于统计召唤物数量的角色ID（如'shashengying'）
+  summonStatusEffects?: StatusType[] // 召唤物获得的状态效果
   reikiCost?: number // 消耗阵营灵气值
   shaQiCost?: number // 消耗阵营煞气值
   selfHealPct?: number // 自身生命值恢复比例（基于最大生命值，0-1）
@@ -696,6 +707,8 @@ export const JOB_CONFIG: Record<string, { name: string; rank: number }> = {
   人皇: { name: '人皇', rank: 5 },
   魔神: { name: '魔神', rank: 5 },
   血色嫁衣: { name: '血色嫁衣', rank: 5 },
+  虚影: { name: '虚影', rank: 1 },
+  天狐司命: { name: '天狐司命', rank: 5 },
 }
 
 export const ATTRIBUTE_CONFIG: Record<Attribute, { name: string; color: string }> = {
@@ -1215,7 +1228,7 @@ export const SKILL_TEMPLATES: Record<string, Omit<Skill, 'currentCooldown'>> = {
   zhao_huan_wawa: { id: 'zhao_huan_wawa', name: '召唤娃娃', mpCost: 80, type: 'support', power: 0, cooldown: 3, range: 2, targetCount: 2, description: '选择2格菱形范围内的2个空地，召唤出2个【傀儡娃娃】，继承施法者阵营', attribute: 'dark', category: 'summon', skillTypeTag: '召唤', rangeTag: '2格', targetCountTag: '2个', summonCharacter: 'kuilei' },
   xi_rang_zai_sheng: { id: 'xi_rang_zai_sheng', name: '息壤再生', mpCost: 70, type: 'attack', power: 120, cooldown: 3, range: 1, description: '选择1格范围内的1个敌方目标，造成120%攻击力的伤害，恢复自身60%攻击力的生命值，自身获得【刚毅】状态', effectType: 'earth', attribute: 'normal', category: '指定', skillTypeTag: '攻击', rangeTag: '1格', targetCountTag: '1个', lifesteal: 0.5, selfStatusEffects: ['resolute'] },
   zhao_huan_nvhuang: { id: 'zhao_huan_nvhuang', name: '召唤女皇', mpCost: 125, type: 'support', power: 0, cooldown: 4, range: 2, targetCount: 1, description: '选择2格范围内的1个空地，召唤出1个【傀儡女皇】，继承施法者阵营', attribute: 'light', category: 'summon', skillTypeTag: '召唤', rangeTag: '2格', targetCountTag: '1个', summonCharacter: 'kuileinvhuang' },
-  feng_wu_liu_huan: { id: 'feng_wu_liu_huan', name: '凤舞六幻', mpCost: 100, type: 'support', power: 0, cooldown: 5, range: 3, targetCount: 2, description: '消耗自身30%的生命值，选择3格菱形范围内的2个空格，召唤出2个【白凤】，召唤出的角色仅有生命值上限的30%血量，继承施法者阵营，白凤只有在血量>=50%生命值上限时可以使用该技能', effectType: 'wind', attribute: 'wind', category: 'summon', skillTypeTag: '召唤', rangeTag: '3格', targetCountTag: '2个', summonCharacter: 'baifeng', selfHpCost: 0.3, selfHpCostType: 'current', summonHpPct: 0.3, selfHpThreshold: 0.5 },
+  feng_wu_liu_huan: { id: 'feng_wu_liu_huan', name: '凤舞六幻', mpCost: 100, type: 'support', power: 0, cooldown: 5, range: 3, targetCount: 2, description: '消耗自身30%的生命值，选择3格菱形范围内的2个空格，召唤出2个【白凤】，召唤出的角色仅有生命值上限的30%血量，继承施法者阵营，白凤只有在血量>=50%生命值上限时可以使用该技能', effectType: 'wind', attribute: 'wind', category: 'summon', skillTypeTag: '召唤', rangeTag: '3格', targetCountTag: '2个', summonCharacter: 'baifeng', selfHpCost: 0.3, selfHpCostType: 'current', summonHpPct: 0.3, selfHpThreshold: 0.5, requireHpGtAtk: true },
   an_ye_jin_sheng: { id: 'an_ye_jin_sheng', name: '暗夜噤声', mpCost: 50, type: 'attack', power: 70, cooldown: 4, range: 3, targetCount: 2, description: '选择3格范围内的2个敌方目标，分别造成70%攻击力的伤害，并使目标陷入【沉默】状态，持续3回合', effectType: 'shadow', attribute: 'dark', category: '指定', skillTypeTag: '攻击', rangeTag: '3格', targetCountTag: '2个', statusEffect: 'silenced' },
   po_jing_chong_yuan: { id: 'po_jing_chong_yuan', name: '破镜重圆', mpCost: 50, type: 'attack', power: 150, cooldown: 2, range: 2, targetCount: 1, description: '选择2格范围内的1个敌方目标，造成150%攻击力的伤害，若目标有增益状态则自身获得相同增益', effectType: 'metal', attribute: 'metal', category: '指定', skillTypeTag: '攻击', rangeTag: '2格', targetCountTag: '1个' },
   yue_zhi_yin_li: { id: 'yue_zhi_yin_li', name: '月之引力', mpCost: 80, type: 'support', power: 0, cooldown: 5, range: 2, targetCount: 1, description: '选择2格范围内的1个同阵营目标，自身和该目标获得【愈合】和【调息】状态', effectType: 'water', attribute: 'water', category: 'support', skillTypeTag: '辅助', rangeTag: '2格', targetCountTag: '1个' },
@@ -1268,6 +1281,12 @@ export const SKILL_TEMPLATES: Record<string, Omit<Skill, 'currentCooldown'>> = {
   ling_luo_shi_hun: { id: 'ling_luo_shi_hun', name: '绫罗噬魂', mpCost: 80, type: 'attack', power: 80, cooldown: 3, range: 4, targetCount: 2, description: '选择4格范围内的2个敌方目标，造成80%攻击力的伤害，并使目标陷入【紊乱】状态', attribute: 'yin', category: '指定', skillTypeTag: '攻击', rangeTag: '4格', targetCountTag: '2个', statusEffect: 'disorder' },
   shi_li_hong_xiao: { id: 'shi_li_hong_xiao', name: '十里红绡', mpCost: 80, type: 'attack', power: 60, cooldown: 3, range: 5, description: '选择上下左右中的一个方向，对该方向上5格范围内的所有敌方单位，造成60%攻击力的伤害，并使目标陷入【禁锢】状态', attribute: 'yin', category: '直线', skillTypeTag: '攻击', rangeTag: '5格', targetCountTag: '直线', statusEffect: 'imprison' },
   hong_gai_mi_zong: { id: 'hong_gai_mi_zong', name: '红盖迷踪', mpCost: 40, type: 'heal', power: 0, cooldown: 4, range: 1, description: '选择自身为目标，恢复自身10%生命值和10%法力值，驱散随机1个负面状态', attribute: 'yin', category: 'heal', skillTypeTag: '治疗', rangeTag: '1格', targetCountTag: '1个', selfHealPct: 0.10, selfMpHealPct: 0.10, dispelRandomDebuffs: 1 },
+  // 杀生樱技能
+  luo_lei: { id: 'luo_lei', name: '落雷', mpCost: 60, type: 'attack', power: 150, cooldown: 1, range: 4, targetCount: 1, description: '选择4格范围内的1个敌方目标，造成150%攻击力的伤害，并且自身陷入【消散】状态', effectType: 'metal', attribute: 'metal', category: '指定', skillTypeTag: '攻击', rangeTag: '4格', targetCountTag: '1个', selfStatusEffects: ['dissipate'] },
+  lei_bao: { id: 'lei_bao', name: '雷暴', mpCost: 60, type: 'attack', power: 65, cooldown: 1, range: 3, areaRange: 1, description: '选择3格范围内的1个格子为目标，对以该格子为中心的1格菱形范围内的所有敌方目标造成65%攻击力的伤害，并且自身陷入【消散】状态', effectType: 'metal', attribute: 'metal', category: 'aoe', skillTypeTag: '攻击', rangeTag: '3格', targetCountTag: '轰炸', rangeType: 'diamond', selfStatusEffects: ['dissipate'] },
+  // 八重神子技能
+  sha_sheng_ying_zhou: { id: 'sha_sheng_ying_zhou', name: '杀生樱咒', mpCost: 40, type: 'support', power: 0, cooldown: 1, range: 4, targetCount: 1, description: '选择4格菱形范围内的1个空格，召唤出一个【杀生樱】，继承施法者阵营，召唤出的杀生樱处于【消散】状态', effectType: 'metal', attribute: 'metal', category: 'summon', skillTypeTag: '召唤', rangeTag: '4格', targetCountTag: '1个', summonCharacter: 'shashengying', summonStatusEffects: ['dissipate'], summonMaxCount: 3, summonCountId: 'shashengying' },
+  tian_hu_xian_zhen: { id: 'tian_hu_xian_zhen', name: '天狐显真', mpCost: 100, type: 'attack', power: 50, cooldown: 4, range: 0, areaRange: 3, description: '以自身为中心，对3格菱形范围内的所有敌方目标造成50%的伤害，并且陷入【禁锢】状态，持续3回合，自身获得【强力】状态', effectType: 'metal', attribute: 'metal', category: 'aoe', skillTypeTag: '攻击', rangeTag: '3格', targetCountTag: 'AOE', rangeType: 'diamond', statusEffect: 'imprison', statusEffectDuration: 3, selfStatusEffects: ['strong'], shaQiCost: 30 },
 }
 
 export interface CharacterGrowth {
@@ -1360,6 +1379,8 @@ export const CHARACTER_GROWTH: Record<string, CharacterGrowth> = {
   mengsike: { maxHp: 125, maxMp: 40, attack: 30, defense: 25 },
   longwu: { maxHp: 110, maxMp: 50, attack: 45, defense: 20 },
   hongluan: { maxHp: 130, maxMp: 50, attack: 45, defense: 15 },
+  shashengying: { maxHp: 40, maxMp: 30, attack: 35, defense: 5 },
+  bachongshenzi: { maxHp: 130, maxMp: 50, attack: 50, defense: 15 },
 }
 
 // 角色-技能关联表：角色 characterId -> 技能 id 列表
@@ -1447,6 +1468,8 @@ export const CHARACTER_SKILLS: Record<string, string[]> = {
   mengsike: ['fu_she_an_ji', 'tian_di_sui', 'tian_ming_huang_quan'],
   longwu: ['long_zhan_yu_ye', 'you_long_bai_wei', 'cang_hai_long_yin', 'man_zhu_sha_hua'],
   hongluan: ['ling_luo_shi_hun', 'shi_li_hong_xiao', 'hong_gai_mi_zong', 'xi'],
+  shashengying: ['luo_lei', 'lei_bao'],
+  bachongshenzi: ['sha_sheng_ying_zhou', 'lei_bao', 'tian_hu_xian_zhen'],
 }
 
 /**
@@ -3313,6 +3336,52 @@ export const HIREABLE_CHARACTERS: Omit<Character, 'equipment' | 'avatar' | 'isPl
     attribute: 'yin',
     avatar: '/static/avatars/ghost/hongluan.png',
   },
+  {
+    id: 'shashengying',
+    name: '杀生樱',
+    job: '虚影',
+    faction: 'beast',
+    level: 1,
+    exp: 0,
+    baseMaxHp: 160,
+    maxHp: 160,
+    baseMaxMp: 240,
+    maxMp: 240,
+    baseAttack: 80,
+    attack: 80,
+    baseDefense: 5,
+    defense: 5,
+    baseMoveRange: 0,
+    moveRange: 0,
+    baseAttackRange: 4,
+    attackRange: 4,
+    skills: buildSkillsForCharacterId('shashengying'),
+    attribute: 'metal',
+    avatar: '/static/avatars/beast/shashengying.png',
+  },
+  {
+    id: 'bachongshenzi',
+    name: '八重神子',
+    job: '天狐司命',
+    faction: 'beast',
+    level: 1,
+    exp: 0,
+    baseMaxHp: 520,
+    maxHp: 520,
+    baseMaxMp: 320,
+    maxMp: 320,
+    baseAttack: 120,
+    attack: 120,
+    baseDefense: 30,
+    defense: 30,
+    baseMoveRange: 4,
+    moveRange: 4,
+    baseAttackRange: 4,
+    attackRange: 4,
+    skills: buildSkillsForCharacterId('bachongshenzi'),
+    attribute: 'metal',
+    avatar: '/static/avatars/beast/bachongshenzi.png',
+  },
 ]
 
 export const EQUIPMENT_TEMPLATES: {
@@ -3545,6 +3614,8 @@ export function getAvatarPath(charId: string, faction: string = 'human'): string
     'mengsike': '/static/avatars/human/mengsike.png',
     'longwu': '/static/avatars/demon/longwu.png',
     'hongluan': '/static/avatars/ghost/hongluan.png',
+    'shashengying': '/static/avatars/beast/shashengying.png',
+    'bachongshenzi': '/static/avatars/beast/bachongshenzi.png',
   }
   return avatarPathMap[charId] || FACTION_CONFIG[faction as keyof typeof FACTION_CONFIG].icon
 }

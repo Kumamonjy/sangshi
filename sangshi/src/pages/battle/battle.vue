@@ -589,7 +589,7 @@
             v-for="skill in characterSkills" 
             :key="skill.id"
             class="skill-card"
-            :class="{ disabled: selectedCharacter!.mp < skill.mpCost || selectedCharacter!.hasActed || (getSkillCurrentCooldown(selectedCharacter!, skill.id) > 0) || isSkillHpRestricted(skill.id, selectedCharacter!) || selectedCharacter!.statuses?.some(s => s.type === 'silenced') || selectedCharacter!.statuses?.some(s => s.type === 'stun') || isSkillResourceRestricted(skill) }"
+            :class="{ disabled: selectedCharacter!.mp < skill.mpCost || selectedCharacter!.hasActed || (getSkillCurrentCooldown(selectedCharacter!, skill.id) > 0) || isSkillHpRestricted(skill.id, selectedCharacter!) || selectedCharacter!.statuses?.some(s => s.type === 'silenced') || selectedCharacter!.statuses?.some(s => s.type === 'stun') || isSkillResourceRestricted(skill) || isSkillSummonLimited(skill, selectedCharacter!) }"
             @click="selectSkill(skill)"
           >
             <text class="skill-card-name">{{ skill.name }}</text>
@@ -891,7 +891,7 @@
 <script setup lang="ts">
 import { ref, computed, watch, nextTick } from 'vue'
 import { useGameStore } from '../../stores/gameStore'
-import { HIREABLE_CHARACTERS, INITIAL_CHARACTERS, getEquipmentStats, getAvatarPath, colorizeBattleLogText, STATUS_CONFIG, getSkillTags, ATTRIBUTE_CONFIG, JOB_CONFIG } from '../../utils/gameData'
+import { HIREABLE_CHARACTERS, INITIAL_CHARACTERS, getEquipmentStats, getAvatarPath, colorizeBattleLogText, STATUS_CONFIG, getSkillTags, ATTRIBUTE_CONFIG, JOB_CONFIG, SKILL_TEMPLATES } from '../../utils/gameData'
 import type { BattleCharacter, BattleBuilding, Skill, BattleCollectible } from '../../utils/gameData'
 
 const gameStore = useGameStore()
@@ -1971,6 +1971,11 @@ function isSkillHpRestricted(skillId: string, char: BattleCharacter): boolean {
     const maxHp = char.maxHp || gameStore.findCharacterTemplateInStore(char.characterId)?.baseMaxHp || 100
     return char.hp / maxHp > 0.2
   }
+  // 需要当前生命值大于攻击力的技能
+  const skillTemplate = SKILL_TEMPLATES[skillId]
+  if (skillTemplate?.requireHpGtAtk) {
+    return char.hp <= char.attack
+  }
   return false
 }
 
@@ -1980,6 +1985,15 @@ function isSkillResourceRestricted(skill: Skill): boolean {
   if (skill.reikiCost && map.playerReiki < skill.reikiCost) return true
   if (skill.shaQiCost && map.playerShaQi < skill.shaQiCost) return true
   return false
+}
+
+function isSkillSummonLimited(skill: Skill, char: BattleCharacter): boolean {
+  if (!skill.summonMaxCount || !skill.summonCountId) return false
+  const map = gameStore.battleMap
+  if (!map) return false
+  const currentSide = char.isPlayer ? map.players : map.enemies
+  const existingCount = currentSide.filter(c => c.characterId === skill.summonCountId).length
+  return existingCount >= skill.summonMaxCount
 }
 
 function computeSweepPositions(
@@ -2034,6 +2048,8 @@ function selectSkill(skill: Skill) {
   if (isSkillHpRestricted(skill.id, selectedCharacter.value)) return
   // 阵营资源检查
   if (isSkillResourceRestricted(skill)) return
+  // 召唤数量限制检查
+  if (isSkillSummonLimited(skill, selectedCharacter.value)) return
   selectedSkill.value = skill
   showSkillSelection.value = false
   selectedTargets.value = []

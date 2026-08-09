@@ -1088,6 +1088,14 @@ export const useGameStore = defineStore('game', () => {
       }
     }
 
+    // HP > ATK check for skills that require it
+    if (skill.requireHpGtAtk) {
+      if (attacker.hp <= attacker.attack) {
+        battleLog.value.push(`【${charTemplate?.name || attacker.characterId}】使用【${skill.name}】失败：当前生命值必须大于攻击力！`)
+        return
+      }
+    }
+
     // Save caster's current HP before deduction for summon HP calculation
     const casterHpBeforeCost = attacker.hp
 
@@ -1134,7 +1142,21 @@ export const useGameStore = defineStore('game', () => {
     if (skill.summonCharacter) {
       const template = HIREABLE_CHARACTERS.find(c => c.id === skill.summonCharacter)
       if (template) {
-        summonTemplates = Array(summonPositions.length).fill(template)
+        // 检查同阵营召唤物数量限制
+        if (skill.summonMaxCount && skill.summonCountId) {
+          const currentSide = attacker.isPlayer ? map.players : map.enemies
+          const existingCount = currentSide.filter(c => c.characterId === skill.summonCountId).length
+          const availableSlots = Math.max(0, skill.summonMaxCount - existingCount)
+          if (availableSlots <= 0) {
+            battleLog.value.push(`【${charTemplate?.name || attacker.characterId}】使用【${skill.name}】失败：同阵营【杀生樱】数量已达上限${skill.summonMaxCount}个！`)
+            return
+          }
+          // 限制可召唤数量
+          const maxSummonCount = Math.min(summonPositions.length, availableSlots)
+          summonTemplates = Array(maxSummonCount).fill(template)
+        } else {
+          summonTemplates = Array(summonPositions.length).fill(template)
+        }
       }
     } else if (skill.summonJob) {
       const jobTemplates = HIREABLE_CHARACTERS.filter(c => c.job === skill.summonJob)
@@ -1175,6 +1197,14 @@ export const useGameStore = defineStore('game', () => {
           const summonHp = Math.max(1, Math.floor(casterHpBeforeCost * skill.summonHpPct))
           newChar.maxHp = summonHp
           newChar.hp = summonHp
+        }
+        
+        // Apply summon status effects to the summoned character
+        if (skill.summonStatusEffects) {
+          skill.summonStatusEffects.forEach((effect: StatusType) => {
+            addStatusToCharacter(newChar, effect, true)
+            triggerStatusApplyEffect(pos.row, pos.col, effect)
+          })
         }
         
         if (attacker.isPlayer) {
@@ -2807,11 +2837,11 @@ export const useGameStore = defineStore('game', () => {
     
     // 从选中的阵营中筛选敌人角色
     const enabledFactions = selectedFactions && selectedFactions.length > 0 ? selectedFactions : ['ghost']
-    const availableEnemyTemplates = HIREABLE_CHARACTERS.filter(char => enabledFactions.includes(char.faction))
+    const availableEnemyTemplates = HIREABLE_CHARACTERS.filter(char => enabledFactions.includes(char.faction) && char.job !== '虚影')
     
     // 如果没有可用的敌人角色，回退到鬼界
     const finalEnemyFactions = availableEnemyTemplates.length > 0 ? enabledFactions : ['ghost']
-    const enemyTemplates = HIREABLE_CHARACTERS.filter(char => finalEnemyFactions.includes(char.faction))
+    const enemyTemplates = HIREABLE_CHARACTERS.filter(char => finalEnemyFactions.includes(char.faction) && char.job !== '虚影')
     
     console.log('选中的敌方阵营:', enabledFactions)
     console.log('可用敌人模板数量:', enemyTemplates.length)
@@ -3596,8 +3626,8 @@ export const useGameStore = defineStore('game', () => {
     const maxMp = template.baseMaxMp + growth.maxMp * levelBonus
     const attack = template.baseAttack + growth.attack * levelBonus
     const defense = template.baseDefense + growth.defense * levelBonus
-    const moveRange = template.moveRange || 2
-    const attackRange = template.attackRange || 1
+    const moveRange = template.moveRange !== undefined ? template.moveRange : 2
+    const attackRange = template.attackRange !== undefined ? template.attackRange : 1
     
     const skillCooldowns: Record<string, number> = {}
     for (const skill of template.skills) {
@@ -3887,6 +3917,21 @@ export const useGameStore = defineStore('game', () => {
         }
       }
 
+      // 消散：每回合结束扣25%最大生命值
+      if (hasStatus(char, 'dissipate')) {
+        const damage = Math.max(1, Math.floor(char.maxHp * 0.25));
+        char.hp -= damage;
+        battleLog.value.push(`【${template?.name || char.characterId}】因【消散】损失${damage}点生命值`);
+        if (char.hp <= 0) {
+          triggerDefeatAnimation(char.row, char.col, 'self')
+          removeCharacterFromBattle(char.id, char.isPlayer);
+          if (battleMap.value.tiles[char.row]?.[char.col]) {
+            battleMap.value.tiles[char.row][char.col].character = null;
+          }
+          battleLog.value.push(`【${template?.name || char.characterId}】因【消散】身亡！`);
+        }
+      }
+
       // 紊乱：每回合结束扣10%最大法力值
       if (hasStatus(char, 'disorder')) {
         const mpDamage = Math.max(1, Math.floor(char.maxMp * 0.10));
@@ -4006,7 +4051,7 @@ export const useGameStore = defineStore('game', () => {
     const allChars = [...battleMap.value.players, ...battleMap.value.enemies]
     
     // 使用角色实际的移动范围（已含装备加成），并叠加状态对移动范围的影响（迅捷+1，瘸腿-1）
-    const baseMove = char.moveRange || 3
+    const baseMove = char.moveRange !== undefined ? char.moveRange : 3
     const moveDist = Math.max(0, baseMove + getStatusMoveRange(char))
     
     // 使用 BFS 计算可移动范围
@@ -4981,6 +5026,18 @@ export const useGameStore = defineStore('game', () => {
     if (skill.selfHpThreshold !== undefined) {
       const hpRatio = attacker.hp / (attacker.maxHp || 1)
       if (hpRatio < skill.selfHpThreshold) return false
+    }
+    
+    // HP > ATK check for skills that require it
+    if (skill.requireHpGtAtk) {
+      if (attacker.hp <= attacker.attack) return false
+    }
+    
+    // 召唤数量限制检查
+    if (skill.summonMaxCount && skill.summonCountId && battleMap.value) {
+      const currentSide = attacker.isPlayer ? battleMap.value.players : battleMap.value.enemies
+      const existingCount = currentSide.filter(c => c.characterId === skill.summonCountId).length
+      if (existingCount >= skill.summonMaxCount) return false
     }
     
     // 沉默状态：无法使用技能
@@ -6328,7 +6385,7 @@ export const useGameStore = defineStore('game', () => {
     else if (skillId === 'spit_slime') {
       // 向2格范围内的指定目标吐出粘液，造成140%攻击力的伤害，并且防御力减少50%
       if (targetId) {
-        targets = attacker.isPlayer 
+        const targets = attacker.isPlayer 
           ? battleMap.value.enemies.filter(e => e.id === targetId)
           : battleMap.value.players.filter(p => p.id === targetId)
         
@@ -6364,7 +6421,7 @@ export const useGameStore = defineStore('game', () => {
     // 特殊处理「二爷咆哮」技能：对目标造成150%攻击力伤害，并使自身进入【愤怒】状态
     else if (skillId === 'er_ye_pao_xiao') {
       if (targetId) {
-        targets = attacker.isPlayer 
+        const targets = attacker.isPlayer 
           ? battleMap.value.enemies.filter(e => e.id === targetId)
           : battleMap.value.players.filter(p => p.id === targetId)
         
@@ -6402,7 +6459,7 @@ export const useGameStore = defineStore('game', () => {
     else if (skillId === 'xie_e_kun_bang') {
       // 对4格范围内的一个指定目标造成150%攻击力的伤害，并使目标陷入【禁锢】状态
       if (targetId) {
-        targets = attacker.isPlayer 
+        const targets = attacker.isPlayer 
           ? battleMap.value.enemies.filter(e => e.id === targetId)
           : battleMap.value.players.filter(p => p.id === targetId)
         
@@ -6442,7 +6499,7 @@ export const useGameStore = defineStore('game', () => {
     else if (skillId === 'life_drain') {
       // 对5格范围内的一个指定目标造成120%攻击力的伤害，并恢复自身造成伤害33%的生命值
       if (targetId) {
-        targets = attacker.isPlayer 
+        const targets = attacker.isPlayer 
           ? battleMap.value.enemies.filter(e => e.id === targetId)
           : battleMap.value.players.filter(p => p.id === targetId)
         
@@ -6491,7 +6548,7 @@ export const useGameStore = defineStore('game', () => {
     else if (skillId === 'xi_rang_zai_sheng') {
       // 选择相邻1格范围内的一个敌方目标，造成120%攻击力的伤害，恢复自身60%攻击力的生命值，自身获得【刚毅】状态
       if (targetId) {
-        targets = attacker.isPlayer 
+        const targets = attacker.isPlayer 
           ? battleMap.value.enemies.filter(e => e.id === targetId)
           : battleMap.value.players.filter(p => p.id === targetId)
         
@@ -7840,7 +7897,7 @@ export const useGameStore = defineStore('game', () => {
       // 选择2格范围内的1个友方目标，恢复生命值和法力值，恢复量为50%的攻击力
       if (targetId) {
         const allyPool = attacker.isPlayer ? battleMap.value.players : battleMap.value.enemies
-        targets = allyPool.filter(p => p.id === targetId)
+        const targets = allyPool.filter(p => p.id === targetId)
         if (targets.length > 0) {
           const target = targets[0]
           const targetTemplate = findCharacterTemplateInStore(target.characterId)
@@ -7867,7 +7924,7 @@ export const useGameStore = defineStore('game', () => {
       // 选择2格范围内的1个友方目标，恢复生命值和法力值，恢复量为100%的攻击力，并驱散目标所有不良状态
       if (targetId) {
         const allyPool = attacker.isPlayer ? battleMap.value.players : battleMap.value.enemies
-        targets = allyPool.filter(p => p.id === targetId)
+        const targets = allyPool.filter(p => p.id === targetId)
         if (targets.length > 0) {
           const target = targets[0]
           const targetTemplate = findCharacterTemplateInStore(target.characterId)
@@ -9256,6 +9313,13 @@ export const useGameStore = defineStore('game', () => {
         if (skill.id === 'fushi_nianye' && hpPercent > 0.2) return false
         // 通用HP阈值检查
         if (skill.selfHpThreshold !== undefined && hpPercent < skill.selfHpThreshold) return false
+        // HP > ATK检查
+        if (skill.requireHpGtAtk && char.hp <= char.attack) return false
+        // 召唤数量限制检查
+        if (skill.summonMaxCount && skill.summonCountId && battleMap.value) {
+          const existingCount = battleMap.value.players.filter(c => c.characterId === skill.summonCountId).length
+          if (existingCount >= skill.summonMaxCount) return false
+        }
         return true
       })
     } else {
@@ -9269,6 +9333,13 @@ export const useGameStore = defineStore('game', () => {
         if (skill.id === 'fushi_nianye' && hpPercent > 0.2) return false
         // 通用HP阈值检查
         if (skill.selfHpThreshold !== undefined && hpPercent < skill.selfHpThreshold) return false
+        // HP > ATK检查
+        if (skill.requireHpGtAtk && char.hp <= char.attack) return false
+        // 召唤数量限制检查
+        if (skill.summonMaxCount && skill.summonCountId && battleMap.value) {
+          const existingCount = battleMap.value.enemies.filter(c => c.characterId === skill.summonCountId).length
+          if (existingCount >= skill.summonMaxCount) return false
+        }
         return true
       })
     }

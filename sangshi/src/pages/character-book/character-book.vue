@@ -33,6 +33,24 @@
           </view>
         </view>
 
+        <view class="sort-bar">
+          <view class="sort-label">排序：</view>
+          <view 
+            class="sort-btn" 
+            :class="{ active: sortOrder === 'asc' }"
+            @click="sortOrder = sortOrder === 'asc' ? null : 'asc'"
+          >
+            <text>位阶↑</text>
+          </view>
+          <view 
+            class="sort-btn" 
+            :class="{ active: sortOrder === 'desc' }"
+            @click="sortOrder = sortOrder === 'desc' ? null : 'desc'"
+          >
+            <text>位阶↓</text>
+          </view>
+        </view>
+
         <view class="character-list">
           <view v-for="char in currentFactionCharacters" :key="char.id" class="character-card">
             <view class="avatar-section" @click="openAvatarPreview(getAvatarPath(char.id))">
@@ -275,13 +293,22 @@ const avatarPreviewUrl = ref('')
 
 const factionOrder: Faction[] = ['human', 'ghost', 'beast', 'immortal', 'god', 'demon']
 const activeFaction = ref<Faction>('human')
+const sortOrder = ref<'asc' | 'desc' | null>(null)
 
 const allCharacters = computed(() => {
   return [...INITIAL_CHARACTERS, ...HIREABLE_CHARACTERS] as Character[]
 })
 
 const currentFactionCharacters = computed(() => {
-  return allCharacters.value.filter((char) => char.faction === activeFaction.value)
+  let chars = allCharacters.value.filter((char) => char.faction === activeFaction.value)
+  if (sortOrder.value) {
+    chars = [...chars].sort((a, b) => {
+      const rankA = JOB_CONFIG[a.job]?.rank || 1
+      const rankB = JOB_CONFIG[b.job]?.rank || 1
+      return sortOrder.value === 'asc' ? rankA - rankB : rankB - rankA
+    })
+  }
+  return chars
 })
 
 function goBack() {
@@ -488,6 +515,35 @@ function isBuildingIconUrl(icon: string): boolean {
   background: rgba(100, 180, 150, 0.2);
   color: #fff;
   border-color: rgba(100, 180, 150, 0.5);
+}
+
+.sort-bar {
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+  margin-bottom: 16rpx;
+  padding: 0 8rpx;
+}
+
+.sort-label {
+  font-size: 24rpx;
+  color: #a0aec0;
+}
+
+.sort-btn {
+  padding: 10rpx 24rpx;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 10rpx;
+  color: #a0aec0;
+  font-size: 22rpx;
+  transition: all 0.2s;
+  border: 2rpx solid transparent;
+}
+
+.sort-btn.active {
+  background: rgba(251, 191, 36, 0.2);
+  color: #fbbf24;
+  border-color: rgba(251, 191, 36, 0.5);
 }
 
 .character-list {

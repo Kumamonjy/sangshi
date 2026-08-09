@@ -6176,7 +6176,7 @@ export const useGameStore = defineStore('game', () => {
     } 
     // 特殊处理「凶猛攻击」技能
     else if (skillId === 'fierce_attack') {
-      // 对范围1格的指定目标，造成140%攻击力+20%当前生命值的伤害
+      // 对范围1格的指定目标，造成150%攻击力的伤害
       let hadValidTargets = false
       if (targetId) {
         const targets = attacker.isPlayer 

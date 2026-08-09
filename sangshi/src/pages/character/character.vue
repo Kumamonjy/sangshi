@@ -322,6 +322,38 @@
           </view>
         </view>
 
+        <view class="sort-bar">
+          <view class="sort-label">排序：</view>
+          <view 
+            class="sort-btn" 
+            :class="{ active: hireSortType === 'rank' && hireSortOrder === 'asc' }"
+            @click="handleSortClick('rank', 'asc')"
+          >
+            <text>位阶↑</text>
+          </view>
+          <view 
+            class="sort-btn" 
+            :class="{ active: hireSortType === 'rank' && hireSortOrder === 'desc' }"
+            @click="handleSortClick('rank', 'desc')"
+          >
+            <text>位阶↓</text>
+          </view>
+          <view 
+            class="sort-btn" 
+            :class="{ active: hireSortType === 'price' && hireSortOrder === 'asc' }"
+            @click="handleSortClick('price', 'asc')"
+          >
+            <text>价格↑</text>
+          </view>
+          <view 
+            class="sort-btn" 
+            :class="{ active: hireSortType === 'price' && hireSortOrder === 'desc' }"
+            @click="handleSortClick('price', 'desc')"
+          >
+            <text>价格↓</text>
+          </view>
+        </view>
+
         <view v-if="currentHireCharacters.length === 0" class="empty-state">
           <text class="empty-icon">👤</text>
           <text class="empty-text">该种族暂无可雇佣角色</text>
@@ -445,9 +477,36 @@ const avatarPreviewUrl = ref('')
 // 雇佣角色种族分类
 const hireFactionOrder: Faction[] = ['human', 'ghost', 'beast', 'immortal', 'god', 'demon']
 const activeHireFaction = ref<Faction>('human')
+const hireSortType = ref<'rank' | 'price' | null>(null)
+const hireSortOrder = ref<'asc' | 'desc' | null>(null)
+
+function handleSortClick(type: 'rank' | 'price', order: 'asc' | 'desc') {
+  if (hireSortType.value === type && hireSortOrder.value === order) {
+    hireSortType.value = null
+    hireSortOrder.value = null
+  } else {
+    hireSortType.value = type
+    hireSortOrder.value = order
+  }
+}
 
 const currentHireCharacters = computed(() => {
-  return HIREABLE_CHARACTERS.filter((char) => char.faction === activeHireFaction.value)
+  let chars = HIREABLE_CHARACTERS.filter((char) => char.faction === activeHireFaction.value)
+  if (hireSortType.value && hireSortOrder.value) {
+    chars = [...chars].sort((a, b) => {
+      if (hireSortType.value === 'rank') {
+        const rankA = JOB_CONFIG[a.job]?.rank || 1
+        const rankB = JOB_CONFIG[b.job]?.rank || 1
+        return hireSortOrder.value === 'asc' ? rankA - rankB : rankB - rankA
+      } else if (hireSortType.value === 'price') {
+        const priceA = getHireCost(a)
+        const priceB = getHireCost(b)
+        return hireSortOrder.value === 'asc' ? priceA - priceB : priceB - priceA
+      }
+      return 0
+    })
+  }
+  return chars
 })
 
 function getFactionCharacterCount(faction: Faction): number {
@@ -1731,6 +1790,35 @@ async function hireChar(char: typeof HIREABLE_CHARACTERS[0]) {
   background: rgba(100, 180, 150, 0.2);
   color: #fff;
   border-color: rgba(100, 180, 150, 0.5);
+}
+
+.sort-bar {
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+  margin-bottom: 16rpx;
+  padding: 0 8rpx;
+}
+
+.sort-label {
+  font-size: 24rpx;
+  color: #a0aec0;
+}
+
+.sort-btn {
+  padding: 10rpx 24rpx;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 10rpx;
+  color: #a0aec0;
+  font-size: 22rpx;
+  transition: all 0.2s;
+  border: 2rpx solid transparent;
+}
+
+.sort-btn.active {
+  background: rgba(251, 191, 36, 0.2);
+  color: #fbbf24;
+  border-color: rgba(251, 191, 36, 0.5);
 }
 
 .character-list {

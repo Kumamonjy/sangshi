@@ -1,7 +1,7 @@
 export type Faction = 'human' | 'ghost' | 'beast' | 'immortal' | 'god' | 'demon'
 export type Job = string
 export type Rarity = 'common' | 'rare' | 'exceptional' | 'treasure' | 'celestial' | 'peerless'
-export type ItemSubtype = 'weapon' | 'armor' | 'helmet' | 'shoes' | 'accessory' | 'book' | 'consumable' | 'chest'
+export type ItemSubtype = 'weapon' | 'armor' | 'helmet' | 'shoes' | 'accessory' | 'book' | 'consumable' | 'chest' | 'soul'
 export type TerrainType = 'empty' | 'river' | 'obstacle' | 'snow'
 export type WeatherType = 'normal' | 'light_snow' | 'medium_snow' | 'heavy_snow' | 'mountain_fire' | 'sky_fire'
 export type Attribute = 'normal' | 'metal' | 'wood' | 'water' | 'fire' | 'earth' | 'ice' | 'wind' | 'dark' | 'yang' | 'light' | 'yin'
@@ -365,6 +365,7 @@ export interface Item {
   grantedSkillId?: string
   setTag?: string
   quality?: Quality
+  soulTargetId?: string  // 魂魄类型：目标角色ID，'universal'表示万能魂魄
 }
 
 export interface Equipment {
@@ -382,6 +383,7 @@ export interface Character {
   faction: Faction
   job: Job
   level: number
+  maxLevel: number
   exp: number
   baseMaxHp: number
   maxHp: number
@@ -2711,8 +2713,8 @@ export const HIREABLE_CHARACTERS: Omit<Character, 'equipment' | 'avatar' | 'isPl
   {
     id: 'yijian',
     name: '奕剑',
-    job: '神将',
-    faction: 'god',
+    job: '金丹修士',
+    faction: 'immortal',
     level: 1,
     exp: 0,
     baseMaxHp: 350,
@@ -2729,7 +2731,7 @@ export const HIREABLE_CHARACTERS: Omit<Character, 'equipment' | 'avatar' | 'isPl
     attackRange: 3,
     skills: buildSkillsForCharacterId('yijian'),
     attribute: 'metal',
-    avatar: '/static/avatars/god/yijian.png',
+    avatar: '/static/avatars/immortal/yijian.png',
   },
   {
     id: 'xinghun',
@@ -3064,8 +3066,8 @@ export const HIREABLE_CHARACTERS: Omit<Character, 'equipment' | 'avatar' | 'isPl
   {
     id: 'bingxin',
     name: '冰心',
-    job: '神将',
-    faction: 'god',
+    job: '金丹修士',
+    faction: 'immortal',
     level: 1,
     exp: 0,
     baseMaxHp: 360,
@@ -3082,6 +3084,7 @@ export const HIREABLE_CHARACTERS: Omit<Character, 'equipment' | 'avatar' | 'isPl
     attackRange: 4,
     skills: buildSkillsForCharacterId('bingxin'),
     attribute: 'water',
+    avatar: '/static/avatars/immortal/bingxin.png',
   },
   {
     id: 'huanghuo',
@@ -3455,6 +3458,54 @@ export const CONSUMABLE_TEMPLATES: Omit<Item, 'id' | 'count'>[] = [
   { name: '药箱', icon: '/static/avatars/items/yaoxiang.png', type: 'consumable', rarity: 'exceptional', level: 1, subtype: 'consumable', description: '恢复全部生命值' },
 ]
 
+// 魂魄配置：用于提升角色等级上限
+export const SOUL_CONFIG: Record<string, { name: string; icon: string; description: string }> = {
+  universal: {
+    name: '万能魂魄',
+    icon: '/static/avatars/items/hunpo.png',
+    description: '可提升任意角色的等级上限'
+  },
+}
+
+// 特定类型魂魄配置（根据角色ID生成），使用角色的头像作为图标
+export function getSoulConfigByCharacter(characterId: string, characterName: string, faction?: string): { name: string; icon: string; description: string } {
+  const avatarPath = getAvatarPath(characterId, faction || 'human')
+  return {
+    name: `${characterName}魂魄`,
+    icon: avatarPath,
+    description: `可提升【${characterName}】的等级上限`
+  }
+}
+
+export function createSoulItem(targetId: string, targetName?: string, targetFaction?: string): Omit<Item, 'id' | 'count'> {
+  if (targetId === 'universal') {
+    const config = SOUL_CONFIG.universal
+    return {
+      name: config.name,
+      icon: config.icon,
+      type: 'consumable',
+      rarity: 'rare',
+      level: 1,
+      subtype: 'soul',
+      description: config.description,
+      soulTargetId: 'universal'
+    }
+  } else {
+    const name = targetName || targetId
+    const config = getSoulConfigByCharacter(targetId, name, targetFaction)
+    return {
+      name: config.name,
+      icon: config.icon,
+      type: 'consumable',
+      rarity: 'common',
+      level: 1,
+      subtype: 'soul',
+      description: config.description,
+      soulTargetId: targetId
+    }
+  }
+}
+
 export const COLLECTIBLE_CONFIG: Record<string, { name: string; icon: string; description: string; hpRestore?: number; mpRestore?: number }> = {
   spirit_grass: { 
     name: '灵草', 
@@ -3595,14 +3646,14 @@ export function getAvatarPath(charId: string, faction: string = 'human'): string
     'guhuoniao': '/static/avatars/beast/guhuoniao.png',
     'qingxingdeng': '/static/avatars/beast/qingxingdeng.png',
     'qiyao': '/static/avatars/beast/qiyao.png',
-    'yijian': '/static/avatars/god/yijian.png',
+    'yijian': '/static/avatars/immortal/yijian.png',
     'xinghun': '/static/avatars/demon/xinghun.png',
     'huyao': '/static/avatars/beast/huyao.png',
     'jingziyao': '/static/avatars/beast/jingziyao.png',
     'tiantu': '/static/avatars/beast/tiantu.png',
     'tianniu': '/static/avatars/beast/tianniu.png',
     'lingyu': '/static/avatars/god/lingyu.png',
-    'bingxin': '/static/avatars/god/bingxin.png',
+    'bingxin': '/static/avatars/immortal/bingxin.png',
     'huanghuo': '/static/avatars/god/huanghuo.png',
     'yunlu': '/static/avatars/god/yunlu.png',
     'xuanwu': '/static/avatars/god/xuanwu.png',
@@ -3669,9 +3720,10 @@ export function colorizeBattleLogText(text: string): string {
   return result
 }
 
-export function createCharacterFromTemplate(template: Omit<Character, 'equipment' | 'avatar' | 'isPlayerOwned' | 'hp' | 'mp'>): Character {
+export function createCharacterFromTemplate(template: Omit<Character, 'equipment' | 'avatar' | 'isPlayerOwned' | 'hp' | 'mp' | 'maxLevel'>): Character {
   return {
     ...template,
+    maxLevel: 5,  // 初始等级上限为5级
     equipment: createEmptyEquipment(),
     avatar: getAvatarPath(template.id, template.faction),
     isPlayerOwned: true,

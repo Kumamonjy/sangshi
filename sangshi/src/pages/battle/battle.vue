@@ -681,41 +681,118 @@
           <text>{{ gameStore.battleResult.type === 'victory' ? '战斗胜利' : gameStore.battleResult.type === 'defeat' ? '战斗失败' : '逃离战斗' }}</text>
         </view>
         
-        <view class="result-section">
-          <view class="section-title">战斗统计</view>
-          <view class="stat-item">
-            <text class="stat-label">击败敌人:</text>
-            <text class="stat-value">{{ gameStore.battleResult.defeatedEnemyCount }}</text>
+        <!-- 标签页切换 -->
+        <view class="result-tabs">
+          <view 
+            class="result-tab" 
+            :class="{ active: resultTab === 'loot' }"
+            @click="resultTab = 'loot'"
+          >
+            <text>战利品</text>
           </view>
-          <view class="stat-item">
-            <text class="stat-label">敌方等级:</text>
-            <text class="stat-value">{{ gameStore.battleResult.enemyLevel }}</text>
-          </view>
-        </view>
-        
-        <view class="result-section" v-if="gameStore.battleResult.goldGained > 0">
-          <view class="section-title">获得奖励</view>
-          <view class="stat-item">
-            <text class="stat-label">金币:</text>
-            <text class="stat-value gold">💰 {{ gameStore.battleResult.goldGained }}</text>
+          <view 
+            class="result-tab" 
+            :class="{ active: resultTab === 'stats' }"
+            @click="resultTab = 'stats'"
+          >
+            <text>战斗统计</text>
           </view>
         </view>
         
-        <view class="result-section" v-if="gameStore.battleResult.loot.length > 0">
-          <view class="section-title">战利品</view>
-          <view class="loot-list">
-            <view v-for="item in gameStore.battleResult.loot" :key="item.name" class="loot-item">
-              <text>{{ item.name }} ×{{ item.count }}</text>
+        <!-- 战利品标签页 -->
+        <view v-if="resultTab === 'loot'" class="result-tab-content">
+          <view class="result-section">
+            <view class="section-title">战斗统计</view>
+            <view class="stat-item">
+              <text class="stat-label">击败敌人:</text>
+              <text class="stat-value">{{ gameStore.battleResult.defeatedEnemyCount }}</text>
+            </view>
+            <view class="stat-item">
+              <text class="stat-label">敌方等级:</text>
+              <text class="stat-value">{{ gameStore.battleResult.enemyLevel }}</text>
+            </view>
+          </view>
+          
+          <view class="result-section" v-if="gameStore.battleResult.goldGained > 0">
+            <view class="section-title">获得奖励</view>
+            <view class="stat-item">
+              <text class="stat-label">金币:</text>
+              <text class="stat-value gold">💰 {{ gameStore.battleResult.goldGained }}</text>
+            </view>
+          </view>
+          
+          <view class="result-section" v-if="gameStore.battleResult.loot.length > 0">
+            <view class="section-title">战利品</view>
+            <view class="loot-list">
+              <view v-for="item in gameStore.battleResult.loot" :key="item.name" class="loot-item">
+                <text>{{ item.name }} ×{{ item.count }}</text>
+              </view>
+            </view>
+          </view>
+          
+          <view class="result-section">
+            <view class="section-title">经验获得</view>
+            <view class="exp-list">
+              <view v-for="char in gameStore.battleResult.characterExp" :key="char.name" class="exp-item">
+                <text class="exp-name">{{ char.name }}<text v-if="char.isDefeated" class="defeated-tag">(战败)</text></text>
+                <text class="exp-value">+{{ char.exp }} EXP</text>
+              </view>
             </view>
           </view>
         </view>
         
-        <view class="result-section">
-          <view class="section-title">经验获得</view>
-          <view class="exp-list">
-            <view v-for="char in gameStore.battleResult.characterExp" :key="char.name" class="exp-item">
-              <text class="exp-name">{{ char.name }}<text v-if="char.isDefeated" class="defeated-tag">(战败)</text></text>
-              <text class="exp-value">+{{ char.exp }} EXP</text>
+        <!-- 战斗统计标签页 -->
+        <view v-if="resultTab === 'stats'" class="result-tab-content">
+          <!-- 总体统计 -->
+          <view class="stats-overview">
+            <view class="stats-team player-team">
+              <text class="stats-team-title">我方</text>
+              <view class="stats-row">
+                <text class="stats-label">总伤害</text>
+                <text class="stats-value damage">{{ gameStore.battleResult.battleStats.playerDamage }}</text>
+              </view>
+              <view class="stats-row">
+                <text class="stats-label">总治疗</text>
+                <text class="stats-value heal">{{ gameStore.battleResult.battleStats.playerHeal }}</text>
+              </view>
+            </view>
+            <view class="stats-team enemy-team">
+              <text class="stats-team-title">敌方</text>
+              <view class="stats-row">
+                <text class="stats-label">总伤害</text>
+                <text class="stats-value damage">{{ gameStore.battleResult.battleStats.enemyDamage }}</text>
+              </view>
+              <view class="stats-row">
+                <text class="stats-label">总治疗</text>
+                <text class="stats-value heal">{{ gameStore.battleResult.battleStats.enemyHeal }}</text>
+              </view>
+            </view>
+          </view>
+          
+          <!-- 角色统计表 -->
+          <view class="stats-table-container">
+            <view class="stats-table-title">角色统计</view>
+            <view class="stats-table">
+              <view class="stats-table-header">
+                <text class="stats-col name">角色</text>
+                <text class="stats-col side">阵营</text>
+                <text class="stats-col damage">伤害</text>
+                <text class="stats-col heal">治疗</text>
+              </view>
+              <view 
+                v-for="char in gameStore.battleResult.battleStats.characters" 
+                :key="char.name + char.side" 
+                class="stats-table-row"
+                :class="{ 'player-row': char.side === 'player', 'enemy-row': char.side === 'enemy' }"
+              >
+                <text class="stats-col name">{{ char.name }}</text>
+                <text class="stats-col side" :class="char.side">{{ char.side === 'player' ? '我方' : '敌方' }}</text>
+                <text class="stats-col damage">{{ char.damage }}</text>
+                <text class="stats-col heal">{{ char.heal }}</text>
+              </view>
+              <view v-if="gameStore.battleResult.battleStats.characters.length === 0" class="stats-empty">
+                <text>暂无数据</text>
+              </view>
             </view>
           </view>
         </view>
@@ -912,6 +989,7 @@ const showSkillSelection = ref(false)
 const showLog = ref(false)
 const logTab = ref<'text' | 'data'>('text')
 const showResult = ref(false)
+const resultTab = ref<'loot' | 'stats'>('loot')
 const showStatPanel = ref(false)
 const statPanelTitle = ref('')
 const statPanelStats = ref<{ icon: string; value: string }[]>([])
@@ -1080,7 +1158,11 @@ const mapStyle = computed(() => {
 
 watch(() => gameStore.isInBattle, (isInBattle) => {
   if (!isInBattle) {
-    uni.navigateBack()
+    if (gameStore.battleResult) {
+      showResult.value = true
+    } else {
+      uni.navigateBack()
+    }
   }
 })
 
@@ -2435,6 +2517,8 @@ function showBattleLog() {
 
 function closeResult() {
   showResult.value = false
+  resultTab.value = 'loot'
+  gameStore.battleResult = null
   uni.navigateBack()
 }
 
@@ -2771,6 +2855,179 @@ function collectCollectible() {
 .exp-value {
   font-size: 26rpx;
   color: #4ade80;
+}
+
+/* 战斗结算标签页 */
+.result-tabs {
+  display: flex;
+  margin-bottom: 24rpx;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 12rpx;
+  padding: 6rpx;
+}
+
+.result-tab {
+  flex: 1;
+  text-align: center;
+  padding: 16rpx;
+  border-radius: 8rpx;
+  font-size: 28rpx;
+  color: #a0aec0;
+  transition: all 0.2s;
+  
+  &.active {
+    background: linear-gradient(135deg, #60a5fa 0%, #3b82f6 100%);
+    color: #fff;
+  }
+}
+
+.result-tab-content {
+  max-height: 500rpx;
+  overflow-y: auto;
+}
+
+/* 战斗统计概览 */
+.stats-overview {
+  display: flex;
+  gap: 24rpx;
+  margin-bottom: 24rpx;
+}
+
+.stats-team {
+  flex: 1;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 12rpx;
+  padding: 20rpx;
+  
+  &.player-team {
+    border: 2rpx solid rgba(96, 165, 250, 0.3);
+  }
+  
+  &.enemy-team {
+    border: 2rpx solid rgba(239, 68, 68, 0.3);
+  }
+}
+
+.stats-team-title {
+  display: block;
+  font-size: 28rpx;
+  color: #fff;
+  font-weight: 600;
+  margin-bottom: 16rpx;
+  text-align: center;
+}
+
+.stats-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 8rpx 0;
+  border-bottom: 1rpx solid rgba(255, 255, 255, 0.1);
+  
+  &:last-child {
+    border-bottom: none;
+  }
+}
+
+.stats-label {
+  font-size: 24rpx;
+  color: #a0aec0;
+}
+
+.stats-value {
+  font-size: 24rpx;
+  color: #fff;
+  
+  &.damage {
+    color: #ef4444;
+  }
+  
+  &.heal {
+    color: #4ade80;
+  }
+}
+
+/* 战斗统计表 */
+.stats-table-container {
+  margin-top: 16rpx;
+}
+
+.stats-table-title {
+  font-size: 26rpx;
+  color: #60a5fa;
+  margin-bottom: 12rpx;
+}
+
+.stats-table {
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 12rpx;
+  overflow: hidden;
+}
+
+.stats-table-header {
+  display: flex;
+  background: rgba(96, 165, 250, 0.2);
+  padding: 12rpx 16rpx;
+  font-size: 24rpx;
+  color: #fff;
+  font-weight: 600;
+}
+
+.stats-table-row {
+  display: flex;
+  padding: 12rpx 16rpx;
+  font-size: 24rpx;
+  border-bottom: 1rpx solid rgba(255, 255, 255, 0.1);
+  
+  &:last-child {
+    border-bottom: none;
+  }
+  
+  &.player-row {
+    background: rgba(96, 165, 250, 0.05);
+  }
+  
+  &.enemy-row {
+    background: rgba(239, 68, 68, 0.05);
+  }
+}
+
+.stats-col {
+  &.name {
+    flex: 2;
+    color: #fff;
+  }
+  
+  &.side {
+    flex: 1;
+    text-align: center;
+    
+    &.player {
+      color: #60a5fa;
+    }
+    
+    &.enemy {
+      color: #ef4444;
+    }
+  }
+  
+  &.damage {
+    flex: 1;
+    text-align: right;
+    color: #ef4444;
+  }
+  
+  &.heal {
+    flex: 1;
+    text-align: right;
+    color: #4ade80;
+  }
+}
+
+.stats-empty {
+  padding: 32rpx;
+  text-align: center;
+  color: #64748b;
+  font-size: 26rpx;
 }
 
 .result-button {

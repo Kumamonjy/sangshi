@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import type { Player, Character, Item, HomeGridCell, BattleMap, BattleCharacter, BattleTile, TerrainType, BattleBuilding, BattleCollectible, WeatherType, SnowArea, FireArea, StatusType, Attribute, Skill } from '../utils/gameData'
-import { INITIAL_CHARACTERS, HIREABLE_CHARACTERS, FACTION_CONFIG, JOB_CONFIG, createInitialHomeGrid, createCharacterFromTemplate, EQUIPMENT_TEMPLATES, CONSUMABLE_TEMPLATES, BATTLE_CONFIG, TERRAIN_PROBABILITIES, TERRAIN_CONFIG, BUILDING_CONFIG, COLLECTIBLE_CONFIG, CHARACTER_GROWTH, getExpRequired, getEquipmentStats, getEquipmentUpgradeCost, openChest, DIFFICULTY_CONFIG, SKILL_TEMPLATES, getAvatarPath, getRandomRarity, CHARACTER_SKILLS, buildSkillsForCharacterId, buildFullSkillsForCharacter, STATUS_CONFIG, NEGATIVE_STATUSES, POSITIVE_STATUSES, RARITY_CONFIG, ATTRIBUTE_CONFIG, calculateCharacterStats, calculateSetBonus, CHEST_CONFIG, createChestItem, isChestItem, getChestConfigByName, processEquipmentEffects } from '../utils/gameData'
+import { INITIAL_CHARACTERS, HIREABLE_CHARACTERS, FACTION_CONFIG, JOB_CONFIG, createInitialHomeGrid, createCharacterFromTemplate, EQUIPMENT_TEMPLATES, CONSUMABLE_TEMPLATES, BATTLE_CONFIG, TERRAIN_PROBABILITIES, TERRAIN_CONFIG, BUILDING_CONFIG, COLLECTIBLE_CONFIG, CHARACTER_GROWTH, getExpRequired, getEquipmentStats, getEquipmentUpgradeCost, openChest, DIFFICULTY_CONFIG, SKILL_TEMPLATES, getAvatarPath, getRandomRarity, CHARACTER_SKILLS, buildSkillsForCharacterId, buildFullSkillsForCharacter, STATUS_CONFIG, NEGATIVE_STATUSES, POSITIVE_STATUSES, RARITY_CONFIG, ATTRIBUTE_CONFIG, calculateCharacterStats, calculateSetBonus, CHEST_CONFIG, createChestItem, isChestItem, getChestConfigByName, processEquipmentEffects, createSoulItem } from '../utils/gameData'
 import { saveGameToExternalStorage, loadGameFromExternalStorage, getExternalStoragePath } from '../utils/storageUtils'
 
 export const useGameStore = defineStore('game', () => {
@@ -1895,6 +1895,7 @@ export const useGameStore = defineStore('game', () => {
       { ...CHEST_CONFIG.wanwu, id: 'chest_1', count: 1, subtype: 'chest', type: 'consumable' },
       { ...CONSUMABLE_TEMPLATES[0], id: 'cons_1', count: 5 },
       { ...CONSUMABLE_TEMPLATES[1], id: 'cons_2', count: 3 },
+      { ...createSoulItem('universal'), id: 'soul_universal_init', count: 3 },
     ]
 
     player.value = {
@@ -2010,6 +2011,11 @@ export const useGameStore = defineStore('game', () => {
               if (!char.baseDefense) char.baseDefense = char.defense
               if (!char.baseMoveRange) char.baseMoveRange = char.moveRange
               if (!char.baseAttackRange) char.baseAttackRange = char.attackRange
+              
+              // 处理 maxLevel 字段（新增的等级上限系统）
+              if (char.maxLevel === undefined || char.maxLevel === null) {
+                char.maxLevel = 5  // 默认等级上限为5级
+              }
               
               // hp 和 mp 恢复到满值
               char.hp = char.maxHp
@@ -2489,6 +2495,11 @@ export const useGameStore = defineStore('game', () => {
   }
 
   function checkAndUpgrade(character: Character) {
+    // 检查等级上限
+    if (character.level >= character.maxLevel) {
+      return
+    }
+    
     const expRequired = getExpRequired(character.level)
     if (character.exp >= expRequired) {
       character.exp -= expRequired
@@ -2510,7 +2521,8 @@ export const useGameStore = defineStore('game', () => {
       // 重新计算装备加成
       updateCharacterStats(character)
       
-      if (character.exp >= getExpRequired(character.level)) {
+      // 递归检查是否可以继续升级（不超过等级上限）
+      if (character.exp >= getExpRequired(character.level) && character.level < character.maxLevel) {
         checkAndUpgrade(character)
       }
     }
@@ -2521,6 +2533,11 @@ export const useGameStore = defineStore('game', () => {
 
     const item = player.value.inventory.find(i => i.id === itemId)
     if (!item || item.type !== 'consumable') return false
+
+    // 检查是否为魂魄道具
+    if (item.subtype === 'soul') {
+      return useSoul(itemId, targetCharacterId)
+    }
 
     let target: Character | null = null
     if (targetCharacterId) {
@@ -2563,6 +2580,60 @@ export const useGameStore = defineStore('game', () => {
 
     await saveGame()
     return openedItem !== null ? openedItem : true
+  }
+
+  // 使用魂魄提升角色等级上限
+  async function useSoul(itemId: string, targetCharacterId?: string): Promise<boolean> {
+    if (!player.value) return false
+
+    const item = player.value.inventory.find(i => i.id === itemId)
+    if (!item || item.subtype !== 'soul') return false
+
+    const soulTargetId = item.soulTargetId
+
+    // 查找目标角色
+    let target: Character | null = null
+    if (soulTargetId === 'universal') {
+      // 万能魂魄：可以提升任意角色
+      if (targetCharacterId) {
+        target = player.value.characters.find(c => c.id === targetCharacterId)
+      } else {
+        // 如果没有指定目标，返回false让UI提示选择角色
+        return false
+      }
+    } else {
+      // 特定类型魂魄：只能提升指定角色
+      if (soulTargetId === targetCharacterId) {
+        target = player.value.characters.find(c => c.id === targetCharacterId)
+      } else {
+        // 检查是否有该角色
+        target = player.value.characters.find(c => c.id === soulTargetId)
+        if (!target) {
+          battleLog.value.push(`没有可以使用【${item.name}】的角色！`)
+          return false
+        }
+      }
+    }
+
+    if (!target) return false
+
+    // 检查等级上限是否已达20级
+    if (target.maxLevel >= 20) {
+      battleLog.value.push(`【${target.name}】的等级上限已达最高（20级）！`)
+      return false
+    }
+
+    // 提升等级上限
+    target.maxLevel++
+    battleLog.value.push(`使用【${item.name}】，【${target.name}】等级上限提升至${target.maxLevel}级！`)
+
+    item.count--
+    if (item.count <= 0) {
+      player.value.inventory = player.value.inventory.filter(i => i.id !== itemId)
+    }
+
+    await saveGame()
+    return true
   }
 
   async function updateHomeGrid(row: number, col: number, terrain: TerrainType, buildingType: 'none' | 'spiritField' | 'elixirRoom') {
@@ -3053,6 +3124,18 @@ export const useGameStore = defineStore('game', () => {
     goldGained: number
     loot: { name: string; count: number }[]
     characterExp: { name: string; exp: number; isDefeated: boolean }[]
+    battleStats: {
+      playerDamage: number
+      playerHeal: number
+      enemyDamage: number
+      enemyHeal: number
+      characters: {
+        name: string
+        side: 'player' | 'enemy'
+        damage: number
+        heal: number
+      }[]
+    }
   }
   
   const battleResult = ref<BattleResult | null>(null)
@@ -3170,7 +3253,60 @@ export const useGameStore = defineStore('game', () => {
       player.value.gold += goldGained;
       battleLog.value.push(`战斗胜利！获得${goldGained}金币`);
       
-      // 5. 计算经验奖励：每个参战角色获得 敌人数量*10*敌人等级 + 摧毁建筑数量*30*敌人等级
+      // 6. 计算魂魄掉落：万能魂魄+击败的敌方角色对应的魂魄
+      // 统计击败的敌方角色类型和数量
+      const defeatedEnemySouls: Record<string, { id: string; name: string; count: number }> = {};
+      if (battleMap.value.defeatedCharacters) {
+        battleMap.value.defeatedCharacters.forEach(char => {
+          if (!char.isPlayer && char.hp <= 0) {
+            const charId = char.characterId;
+            const template = findCharacterTemplateInStore(charId);
+            const charName = template?.name || char.name || charId;
+            if (!defeatedEnemySouls[charId]) {
+              defeatedEnemySouls[charId] = { id: charId, name: charName, count: 0 };
+            }
+            defeatedEnemySouls[charId].count++;
+          }
+        });
+      }
+      
+      // 掉落特定类型魂魄
+      Object.values(defeatedEnemySouls).forEach(soul => {
+        const soulConfig = createSoulItem(soul.id, soul.name);
+        const existingIndex = player.value!.inventory.findIndex(
+          i => i.subtype === 'soul' && i.soulTargetId === soul.id
+        );
+        if (existingIndex >= 0) {
+          player.value!.inventory[existingIndex].count += soul.count;
+        } else {
+          player.value!.inventory.push({
+            ...soulConfig,
+            id: `soul_${Date.now()}_${Math.random()}`,
+            count: soul.count,
+          });
+        }
+        loot.push({ name: soulConfig.name, count: soul.count });
+        battleLog.value.push(`获得${soul.count}个【${soul.name}魂魄】！`);
+      });
+      
+      // 掉落1个万能魂魄
+      const universalSoulConfig = createSoulItem('universal');
+      const universalIndex = player.value!.inventory.findIndex(
+        i => i.subtype === 'soul' && i.soulTargetId === 'universal'
+      );
+      if (universalIndex >= 0) {
+        player.value!.inventory[universalIndex].count += 1;
+      } else {
+        player.value!.inventory.push({
+          ...universalSoulConfig,
+          id: `soul_universal_${Date.now()}_${Math.random()}`,
+          count: 1,
+        });
+      }
+      loot.push({ name: universalSoulConfig.name, count: 1 });
+      battleLog.value.push(`获得1个【万能魂魄】！`);
+      
+      // 7. 计算经验奖励：每个参战角色获得 敌人数量*10*敌人等级 + 摧毁建筑数量*30*敌人等级
       const baseExp = enemyCount * 10 * enemyLevel + destroyedBuildingCount * 30 * enemyLevel;
       
       allPlayerChars.forEach(battleChar => {
@@ -3215,6 +3351,40 @@ export const useGameStore = defineStore('game', () => {
       }
     }
     
+    // 收集战斗统计数据（伤害/治疗）
+    const allBattleChars = [
+      ...battleMap.value.players,
+      ...(battleMap.value.defeatedCharacters || [])
+    ]
+    
+    const charStatsMap: Record<string, { name: string; side: 'player' | 'enemy'; damage: number; heal: number }> = {}
+    
+    allBattleChars.forEach(char => {
+      if (!char.characterId) return
+      const template = findCharacterTemplateInStore(char.characterId)
+      const name = template?.name || char.name || char.characterId
+      const side: 'player' | 'enemy' = char.isPlayer ? 'player' : 'enemy'
+      const damage = char.totalDamage || 0
+      const heal = char.totalHeal || 0
+      
+      // 如果有同名角色（如多个同名敌人），累加统计
+      if (charStatsMap[char.characterId]) {
+        charStatsMap[char.characterId].damage += damage
+        charStatsMap[char.characterId].heal += heal
+      } else {
+        charStatsMap[char.characterId] = { name, side, damage, heal }
+      }
+    })
+    
+    const characters = Object.values(charStatsMap)
+    const playerDamage = characters.filter(c => c.side === 'player').reduce((sum, c) => sum + c.damage, 0)
+    const playerHeal = characters.filter(c => c.side === 'player').reduce((sum, c) => sum + c.heal, 0)
+    const enemyDamage = characters.filter(c => c.side === 'enemy').reduce((sum, c) => sum + c.damage, 0)
+    const enemyHeal = characters.filter(c => c.side === 'enemy').reduce((sum, c) => sum + c.heal, 0)
+    
+    // 按伤害排序
+    characters.sort((a, b) => b.damage - a.damage)
+    
     // 设置结算结果
     battleResult.value = {
       type: victory ? 'victory' : (isEscape ? 'escape' : 'defeat'),
@@ -3224,7 +3394,14 @@ export const useGameStore = defineStore('game', () => {
       goldGained,
       loot,
       characterExp,
-    };
+      battleStats: {
+        playerDamage,
+        playerHeal,
+        enemyDamage,
+        enemyHeal,
+        characters
+      }
+    }
 
     // 战斗结束后自动 + 半天：白天 ↔ 黑夜切换
     if (player.value.phase === 'day') {
@@ -5207,8 +5384,10 @@ export const useGameStore = defineStore('game', () => {
     // 特殊处理「爱的抱抱」「爱的飞吻」「爱的回忆」「余音绕梁」「疯魔琴心」等治疗技能
     // 统一使用 processHealSkill 处理
     const healSkillIds = ['ai_de_bao_bao', 'ai_de_fei_wen', 'ai_de_hui_yi', 'yu_yin_rao_liang', 'feng_mo_qin_xin', 'ning_xin_jue', 'wan_gu_jie_jie']
+    let skillHandled = false
     if (healSkillIds.includes(skillId)) {
       processHealSkill(attacker, skill, targetId)
+      skillHandled = true
     }
     // 特殊处理「噬心食髓」技能
     else if (skillId === 'shi_xin_shi_sui') {
@@ -5430,6 +5609,7 @@ export const useGameStore = defineStore('game', () => {
     const healSkillIds2 = ['tao_hua_zhuo_zhuo', 'fu_guang_lue_ying', 'yin_yang_qi_he']
     if (healSkillIds2.includes(skillId)) {
       processHealSkill(attacker, skill, targetId)
+      skillHandled = true
     }
     // 特殊处理「藏剑一叶」技能
     else if (skillId === 'cang_jian_yi_ye') {
@@ -5506,6 +5686,7 @@ export const useGameStore = defineStore('game', () => {
     const healSkillIds3 = ['mu_feng_wei_shang']
     if (healSkillIds3.includes(skillId)) {
       processHealSkill(attacker, skill, targetId)
+      skillHandled = true
     }
     // 特殊处理「怒砸葫芦」技能
     else if (skillId === 'nu_za_hu_lu') {
@@ -5585,6 +5766,7 @@ export const useGameStore = defineStore('game', () => {
     const healSkillIds4 = ['bi_hai_chao_sheng']
     if (healSkillIds4.includes(skillId)) {
       processHealSkill(attacker, skill, targetId)
+      skillHandled = true
     }
     // 特殊处理「墨影剑光」技能
     else if (skillId === 'mo_ying_jian_guang') {
@@ -8520,6 +8702,7 @@ export const useGameStore = defineStore('game', () => {
     else if (skill.type === 'heal') {
       // 使用统一的治疗技能处理函数
       processHealSkill(attacker, skill, targetId)
+      skillHandled = true
     } else if (skillId === 'ju_du_shi_gu') {
       // 巨毒噬骨：对3格范围内1个目标造成120%攻击力伤害，并施加中毒状态
       if (targetId) {
@@ -8963,7 +9146,7 @@ export const useGameStore = defineStore('game', () => {
           }
         }
       }
-    } else {
+    } else if (!skillHandled) {
       processSingleOrMultiTargetSkill(attacker, skill, targetIds, charTemplate)
     }
 
@@ -12319,6 +12502,7 @@ export const useGameStore = defineStore('game', () => {
     equipItem,
     unequipItem,
     useConsumable,
+    useSoul,
     updateHomeGrid,
     nextPhase,
     restoreResources,

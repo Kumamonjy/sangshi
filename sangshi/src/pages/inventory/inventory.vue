@@ -109,20 +109,22 @@
             v-for="item in consumableItems" 
             :key="item.id" 
             class="item-card"
+            :class="{ 'soul-item': item.subtype === 'soul' }"
           >
-            <view class="item-avatar">
+            <view class="item-avatar" :class="{ 'soul-avatar': item.subtype === 'soul' }">
               <image v-if="item.icon.includes('.png')" :src="item.icon" class="item-icon-image" mode="aspectFit"></image>
               <text v-else>{{ item.icon }}</text>
             </view>
             <view class="item-info">
               <view class="item-name-row">
-                <text class="item-name">{{ item.name }}</text>
+                <text class="item-name" :class="{ 'soul-name': item.subtype === 'soul' }">{{ item.name }}</text>
                 <text class="item-count">×{{ item.count }}</text>
               </view>
               <text class="item-desc">{{ item.description }}</text>
+              <text v-if="item.subtype === 'soul'" class="item-tag soul-tag">等级上限道具</text>
             </view>
             <view class="item-right">
-              <view class="item-action-btn use" @click="selectItemForUse(item)">
+              <view class="item-action-btn use" :class="{ 'soul-btn': item.subtype === 'soul' }" @click="selectItemForUse(item)">
                 <text>使用</text>
               </view>
             </view>
@@ -144,7 +146,7 @@
             v-for="char in gameStore.player?.characters"
             :key="char.id"
             class="char-item-row"
-            :class="{ disabled: char.hp <= 0 }"
+            :class="{ disabled: char.hp <= 0 || !canUseSoulOnCharacter(selectedConsumableItem!, char.id) }"
             @click="confirmUseConsumable(char.id)"
           >
             <image
@@ -157,7 +159,7 @@
             <view class="char-info">
               <view class="char-header">
                 <text class="char-name">{{ char.name }}</text>
-                <text class="char-level">Lv.{{ char.level }}</text>
+                <text class="char-level">Lv.{{ char.level }}/{{ char.maxLevel }}</text>
               </view>
               <view class="char-stats">
                 <view class="stat-bar">
@@ -177,6 +179,7 @@
               </view>
             </view>
             <text v-if="char.hp <= 0" class="dead-text">阵亡</text>
+            <text v-else-if="selectedConsumableItem?.subtype === 'soul' && !canUseSoulOnCharacter(selectedConsumableItem, char.id)" class="dead-text">不可用</text>
           </view>
         </view>
       </scroll-view>
@@ -252,10 +255,31 @@ async function selectItemForUse(item: Item) {
       chestResultItem.value = openedItem;
       showChestResult.value = true;
     }
+  } else if (item.subtype === 'soul' && item.soulTargetId !== 'universal') {
+    // 特定类型魂魄：检查是否有对应角色
+    const hasTargetChar = gameStore.player?.characters.some(c => c.id === item.soulTargetId)
+    if (!hasTargetChar) {
+      uni.showToast({ title: `没有可以使用【${item.name}】的角色`, icon: 'none' })
+      return
+    }
+    selectedConsumableItem.value = item;
+    showConsumableTargetPanel.value = true;
   } else {
     selectedConsumableItem.value = item;
     showConsumableTargetPanel.value = true;
   }
+}
+
+// 检查角色是否可以使用魂魄
+function canUseSoulOnCharacter(item: Item, charId: string): boolean {
+  if (item.subtype !== 'soul') return true
+  const char = gameStore.player?.characters.find(c => c.id === charId)
+  if (!char) return false
+  // 等级上限已达10级不可使用
+  if (char.maxLevel >= 10) return false
+  // 特定类型魂魄只能用于对应角色
+  if (item.soulTargetId && item.soulTargetId !== 'universal' && item.soulTargetId !== charId) return false
+  return true
 }
 
 function showUpgradeConfirm(item: Item) {
@@ -678,6 +702,34 @@ async function confirmSell(item: Item) {
   &:active {
     opacity: 0.9;
   }
+  
+  &.soul-btn {
+    background: linear-gradient(135deg, #a855f7, #7c3aed);
+  }
+}
+
+.soul-item {
+  border: 2rpx solid rgba(168, 85, 247, 0.5);
+  background: linear-gradient(135deg, rgba(168, 85, 247, 0.1), rgba(124, 58, 237, 0.05));
+}
+
+.soul-avatar {
+  border-color: #a855f7 !important;
+  background: rgba(168, 85, 247, 0.1);
+}
+
+.soul-name {
+  color: #a855f7 !important;
+}
+
+.soul-tag {
+  display: inline-block;
+  margin-top: 8rpx;
+  padding: 4rpx 12rpx;
+  font-size: 18rpx;
+  background: rgba(168, 85, 247, 0.2);
+  color: #a855f7;
+  border-radius: 6rpx;
 }
 
 .upgrade-cost {

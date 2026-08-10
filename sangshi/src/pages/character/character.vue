@@ -74,6 +74,14 @@
                 <text class="char-job" :style="{ color: getRankColor(JOB_CONFIG[currentCharacter?.job || 'warrior']?.rank || 1) }">{{ JOB_CONFIG[currentCharacter?.job || 'warrior']?.name || currentCharacter?.job || '未知' }}</text>
                 <text class="char-rank" :style="{ color: getRankColor(JOB_CONFIG[currentCharacter?.job || 'warrior']?.rank || 1) }">【{{ JOB_CONFIG[currentCharacter?.job || 'warrior']?.rank || 1 }}阶】</text>
                 <text class="char-level">Lv.{{ currentCharacter?.level }}</text>
+                <text class="char-max-level" v-if="currentCharacter">（最高{{ currentCharacter.maxLevel }}级）</text>
+                <view 
+                  class="level-upgrade-btn" 
+                  v-if="currentCharacter && currentCharacter.maxLevel < 20"
+                  @click="showSoulSelector = true"
+                >
+                  <text>+</text>
+                </view>
               </view>
               <view class="exp-row">
                 <text class="exp-label">经验</text>
@@ -458,6 +466,55 @@
       />
       <text class="avatar-preview-close">点击任意位置关闭</text>
     </view>
+    
+    <!-- 魂魄选择弹窗 -->
+    <view v-if="showSoulSelector" class="soul-selector-mask" @click="showSoulSelector = false">
+      <view class="soul-selector-panel" @click.stop>
+        <view class="soul-selector-header">
+          <text class="soul-selector-title">提升等级上限</text>
+          <view class="soul-selector-close" @click="showSoulSelector = false">
+            <text>✕</text>
+          </view>
+        </view>
+        <view class="soul-selector-info">
+          <text>当前角色：{{ currentCharacter?.name }}</text>
+          <text>等级上限：{{ currentCharacter?.maxLevel }}级 / 20级</text>
+        </view>
+        <view v-if="availableSouls.length === 0" class="soul-empty">
+          <text>没有可用的魂魄</text>
+        </view>
+        <view v-else class="soul-list">
+          <view
+            v-for="soul in availableSouls"
+            :key="soul.item.id"
+            class="soul-item"
+            @click="useSoulForCharacter(soul.item.id)"
+          >
+            <view class="soul-item-icon">
+              <image 
+                v-if="soul.item.icon.includes('.png')" 
+                :src="soul.item.icon" 
+                class="soul-item-icon-img"
+                mode="aspectFit"
+              ></image>
+              <text v-else>{{ soul.item.icon }}</text>
+            </view>
+            <view class="soul-item-info">
+              <text class="soul-item-name">{{ soul.item.name }}</text>
+              <text class="soul-item-desc">{{ soul.item.description }}</text>
+              <text v-if="soul.isUniversal" class="soul-badge universal">万能魂魄</text>
+              <text v-else class="soul-badge specific">特定魂魄</text>
+            </view>
+            <view class="soul-item-count">
+              <text>×{{ soul.item.count }}</text>
+            </view>
+            <view class="soul-item-btn">
+              <text>使用</text>
+            </view>
+          </view>
+        </view>
+      </view>
+    </view>
   </view>
 </template>
 
@@ -473,6 +530,38 @@ const isEditingName = ref(false)
 const tempName = ref('')
 const showAvatarPreview = ref(false)
 const avatarPreviewUrl = ref('')
+const showSoulSelector = ref(false)
+
+// 获取当前角色可用的魂魄列表
+const availableSouls = computed(() => {
+  if (!currentCharacter.value) return []
+  const souls: { item: Item; isUniversal: boolean; canUse: boolean }[] = []
+  
+  gameStore.player?.inventory.forEach(item => {
+    if (item.subtype !== 'soul') return
+    
+    const isUniversal = item.soulTargetId === 'universal'
+    const canUse = isUniversal || item.soulTargetId === currentCharacter.value!.id
+    
+    if (canUse) {
+      souls.push({ item, isUniversal, canUse: true })
+    }
+  })
+  
+  return souls
+})
+
+async function useSoulForCharacter(itemId: string) {
+  if (!currentCharacter.value) return
+  
+  const result = await gameStore.useSoul(itemId, currentCharacter.value.id)
+  if (result) {
+    uni.showToast({ title: '使用成功', icon: 'success' })
+    showSoulSelector.value = false
+  } else {
+    uni.showToast({ title: '使用失败', icon: 'none' })
+  }
+}
 
 // 雇佣角色种族分类
 const hireFactionOrder: Faction[] = ['human', 'ghost', 'beast', 'immortal', 'god', 'demon']
@@ -1048,6 +1137,29 @@ async function hireChar(char: typeof HIREABLE_CHARACTERS[0]) {
 .char-level {
   font-size: 24rpx;
   color: #fbbf24;
+}
+
+.char-max-level {
+  font-size: 20rpx;
+  color: #a0aec0;
+}
+
+.level-upgrade-btn {
+  width: 36rpx;
+  height: 36rpx;
+  background: linear-gradient(135deg, #a855f7, #7c3aed);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24rpx;
+  color: #fff;
+  font-weight: bold;
+  margin-left: 8rpx;
+  
+  &:active {
+    transform: scale(0.95);
+  }
 }
 
 .exp-row {
@@ -1832,5 +1944,176 @@ async function hireChar(char: typeof HIREABLE_CHARACTERS[0]) {
   border-radius: 20rpx;
   padding: 24rpx;
   border: 2rpx solid rgba(255, 255, 255, 0.1);
+}
+
+/* 魂魄选择弹窗样式 */
+.soul-selector-mask {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.soul-selector-panel {
+  width: 85%;
+  max-height: 70vh;
+  background: linear-gradient(135deg, #1e293b, #334155);
+  border-radius: 24rpx;
+  border: 2rpx solid rgba(168, 85, 247, 0.3);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.soul-selector-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 24rpx 32rpx;
+  background: linear-gradient(135deg, rgba(168, 85, 247, 0.2), rgba(124, 58, 237, 0.1));
+  border-bottom: 2rpx solid rgba(168, 85, 247, 0.2);
+}
+
+.soul-selector-title {
+  font-size: 32rpx;
+  color: #a855f7;
+  font-weight: bold;
+}
+
+.soul-selector-close {
+  width: 48rpx;
+  height: 48rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #a0aec0;
+  font-size: 28rpx;
+  
+  &:active {
+    color: #fff;
+  }
+}
+
+.soul-selector-info {
+  padding: 20rpx 32rpx;
+  display: flex;
+  flex-direction: column;
+  gap: 8rpx;
+  border-bottom: 2rpx solid rgba(255, 255, 255, 0.1);
+  
+  text {
+    font-size: 24rpx;
+    color: #a0aec0;
+  }
+}
+
+.soul-empty {
+  padding: 60rpx 32rpx;
+  text-align: center;
+  
+  text {
+    font-size: 28rpx;
+    color: #64748b;
+  }
+}
+
+.soul-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 20rpx;
+}
+
+.soul-item {
+  display: flex;
+  align-items: center;
+  padding: 20rpx;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 16rpx;
+  margin-bottom: 16rpx;
+  border: 2rpx solid rgba(168, 85, 247, 0.2);
+  
+  &:active {
+    background: rgba(168, 85, 247, 0.1);
+  }
+}
+
+.soul-item-icon {
+  width: 80rpx;
+  height: 80rpx;
+  background: rgba(168, 85, 247, 0.2);
+  border-radius: 12rpx;
+  border: 3rpx solid rgba(168, 85, 247, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 40rpx;
+  margin-right: 20rpx;
+  overflow: hidden;
+}
+
+.soul-item-icon-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.soul-item-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4rpx;
+}
+
+.soul-item-name {
+  font-size: 28rpx;
+  color: #fff;
+  font-weight: 500;
+}
+
+.soul-item-desc {
+  font-size: 22rpx;
+  color: #a0aec0;
+}
+
+.soul-badge {
+  display: inline-block;
+  padding: 4rpx 12rpx;
+  border-radius: 6rpx;
+  font-size: 20rpx;
+  width: fit-content;
+  
+  &.universal {
+    background: rgba(251, 191, 36, 0.2);
+    color: #fbbf24;
+  }
+  
+  &.specific {
+    background: rgba(168, 85, 247, 0.2);
+    color: #a855f7;
+  }
+}
+
+.soul-item-count {
+  font-size: 26rpx;
+  color: #fbbf24;
+  margin-right: 16rpx;
+}
+
+.soul-item-btn {
+  padding: 12rpx 24rpx;
+  background: linear-gradient(135deg, #a855f7, #7c3aed);
+  border-radius: 12rpx;
+  font-size: 24rpx;
+  color: #fff;
+  
+  &:active {
+    opacity: 0.9;
+  }
 }
 </style>

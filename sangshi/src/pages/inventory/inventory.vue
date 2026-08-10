@@ -41,7 +41,7 @@
             :key="item.id" 
             class="item-card"
           >
-            <view class="item-avatar" :style="{ borderColor: RARITY_CONFIG[item.rarity].color }">
+            <view class="item-avatar" :style="{ borderColor: getQualityColor(item.quality) }">
               <image v-if="item.icon.includes('.png')" :src="item.icon" class="item-icon-image" mode="aspectFit"></image>
               <text v-else>{{ item.icon }}</text>
             </view>
@@ -189,7 +189,7 @@
       <view class="chest-result-content" @click.stop>
         <text class="chest-result-title">🎉 恭喜获得 🎉</text>
         <view v-if="chestResultItem" class="chest-result-item">
-          <view class="chest-result-avatar" :style="{ borderColor: RARITY_CONFIG[chestResultItem.rarity].color }">
+          <view class="chest-result-avatar" :style="{ borderColor: getQualityColor(chestResultItem.quality) }">
             <image v-if="chestResultItem.icon.includes('.png')" :src="chestResultItem.icon" class="item-icon-image" mode="aspectFit"></image>
             <text v-else>{{ chestResultItem.icon }}</text>
           </view>
@@ -211,7 +211,7 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import { useGameStore } from '../../stores/gameStore'
-import { RARITY_CONFIG, getEquipmentStats, getEquipmentUpgradeCost, getAvatarPath, isChestItem } from '../../utils/gameData'
+import { RARITY_CONFIG, getEquipmentStats, getEquipmentUpgradeCost, getAvatarPath, isChestItem, getQualityColor } from '../../utils/gameData'
 import type { Item } from '../../utils/gameData'
 
 const gameStore = useGameStore()
@@ -347,17 +347,6 @@ function getSetTagClass(setTag?: string): string {
   if (setTag === '精灵') return 'set-jingling'
   if (setTag === '巨兽') return 'set-jushou'
   return 'single-item'
-}
-
-function getQualityColor(quality?: string): string {
-  if (!quality) return '#9ca3af'
-  if (quality === '凡物') return '#9ca3af'
-  if (quality === '法器') return '#4ade80'
-  if (quality === '灵器') return '#60a5fa'
-  if (quality === '古宝') return '#a855f7'
-  if (quality === '仙器') return '#f87171'
-  if (quality === '神器') return '#fbbf24'
-  return '#9ca3af'
 }
 
 function getSellPrice(item: any): number {

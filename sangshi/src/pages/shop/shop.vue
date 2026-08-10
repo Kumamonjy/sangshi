@@ -47,7 +47,7 @@
             :key="'equip-' + index"
             class="item-card"
           >
-            <view class="item-avatar" :style="{ borderColor: getRarityColor(item.rarity) }">
+            <view class="item-avatar" :style="{ borderColor: getQualityColor(item.quality) }">
               <image v-if="item.icon.includes('.png')" :src="item.icon" class="item-icon-image" mode="aspectFit"></image>
               <text v-else>{{ item.icon }}</text>
             </view>
@@ -124,7 +124,7 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { useGameStore } from '../../stores/gameStore'
-import { EQUIPMENT_TEMPLATES, CONSUMABLE_TEMPLATES, RARITY_CONFIG, getRandomRarity, CHEST_CONFIG } from '../../utils/gameData'
+import { EQUIPMENT_TEMPLATES, CONSUMABLE_TEMPLATES, RARITY_CONFIG, getRandomRarity, CHEST_CONFIG, getQualityColor } from '../../utils/gameData'
 
 const gameStore = useGameStore()
 const activeTab = ref<'equipment' | 'consumables'>('equipment')
@@ -258,16 +258,7 @@ function getSetTagClass(setTag?: string): string {
   return 'single-item'
 }
 
-function getQualityColor(quality?: string): string {
-  if (!quality) return '#9ca3af'
-  if (quality === '凡物') return '#9ca3af'
-  if (quality === '法器') return '#4ade80'
-  if (quality === '灵器') return '#60a5fa'
-  if (quality === '古宝') return '#a855f7'
-  if (quality === '仙器') return '#f87171'
-  if (quality === '神器') return '#fbbf24'
-  return '#9ca3af'
-}
+
 </script>
 
 <style lang="scss">

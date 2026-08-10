@@ -776,6 +776,17 @@ export function getEquipmentUpgradeCost(item: Item): number {
   return totalStats * 5;
 }
 
+export function getQualityColor(quality?: string): string {
+  if (!quality) return '#9ca3af'
+  if (quality === '凡物') return '#9ca3af'
+  if (quality === '法器') return '#4ade80'
+  if (quality === '灵器') return '#60a5fa'
+  if (quality === '古宝') return '#a855f7'
+  if (quality === '仙器') return '#f87171'
+  if (quality === '神器') return '#fbbf24'
+  return '#9ca3af'
+}
+
 export interface SetBonus {
   hp?: number
   mp?: number

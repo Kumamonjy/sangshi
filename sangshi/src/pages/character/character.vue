@@ -244,7 +244,7 @@
                   class="equipment-card"
                   @click="equipItem(item)"
                 >
-                  <view class="equip-avatar" :style="{ borderColor: RARITY_CONFIG[item.rarity].color }">
+                  <view class="equip-avatar" :style="{ borderColor: getQualityColor(item.quality) }">
                     <image v-if="item.icon.includes('.png')" :src="item.icon" class="equip-icon-image" mode="aspectFit"></image>
                     <text v-else class="equip-icon">{{ item.icon }}</text>
                   </view>
@@ -521,7 +521,7 @@
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
 import { useGameStore } from '../../stores/gameStore'
-import { FACTION_CONFIG, JOB_CONFIG, HIREABLE_CHARACTERS, getExpRequired, getEquipmentStats, RARITY_CONFIG, getAvatarPath, ATTRIBUTE_CONFIG, getSkillTags, calculateSetBonus, getRankColor, type Character, type Skill, type Item, type Equipment, type Faction } from '../../utils/gameData'
+import { FACTION_CONFIG, JOB_CONFIG, HIREABLE_CHARACTERS, getExpRequired, getEquipmentStats, RARITY_CONFIG, getAvatarPath, ATTRIBUTE_CONFIG, getSkillTags, calculateSetBonus, getRankColor, getQualityColor, type Character, type Skill, type Item, type Equipment, type Faction } from '../../utils/gameData'
 
 const gameStore = useGameStore()
 const activeTab = ref<'my' | 'hire'>('my')

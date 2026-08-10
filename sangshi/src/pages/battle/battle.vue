@@ -2568,7 +2568,9 @@ function collectCollectible() {
 <style lang="scss">
 .battle-container {
   height: 100vh;
-  background: linear-gradient(180deg, #0f0f1a 0%, #1a1a2e 100%);
+  background: 
+    linear-gradient(180deg, rgba(15,15,26,0.5) 0%, rgba(26,26,46,0.5) 100%),
+    url('/static/backgrounds/taiji.jpg') center/cover no-repeat;
   display: flex;
   flex-direction: column;
   overflow: hidden;

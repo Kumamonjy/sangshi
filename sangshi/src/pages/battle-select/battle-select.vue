@@ -300,7 +300,9 @@ watch(() => gameStore.player, () => {
 <style lang="scss">
 .battle-select-container {
   min-height: 100vh;
-  background: linear-gradient(180deg, #1a1a2e 0%, #16213e 100%);
+  background: 
+    linear-gradient(180deg, rgba(26,26,46,0.5) 0%, rgba(22,33,62,0.5) 100%),
+    url('/static/backgrounds/zhandou.jpg') center/cover no-repeat;
   padding: 0 32rpx 32rpx;
 }
 

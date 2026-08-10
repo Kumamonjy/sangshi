@@ -378,7 +378,9 @@ async function confirmSell(item: Item) {
 <style lang="scss">
 .inventory-container {
   min-height: 100vh;
-  background: linear-gradient(180deg, #1a1a2e 0%, #16213e 100%);
+  background: 
+    linear-gradient(180deg, rgba(26,26,46,0.5) 0%, rgba(22,33,62,0.5) 100%),
+    url('/static/backgrounds/jishi.jpg') center/cover no-repeat;
   display: flex;
   flex-direction: column;
 }

@@ -41,6 +41,22 @@
             {{ type === 'all' ? '全部' : getEquipmentTypeName(type) }}
           </view>
         </view>
+        <view class="sort-bar">
+          <view 
+            class="sort-btn" 
+            :class="{ active: shopSortOrder === 'asc' }"
+            @click="handleShopSortClick('asc')"
+          >
+            <text>价格↑</text>
+          </view>
+          <view 
+            class="sort-btn" 
+            :class="{ active: shopSortOrder === 'desc' }"
+            @click="handleShopSortClick('desc')"
+          >
+            <text>价格↓</text>
+          </view>
+        </view>
         <view class="items-grid">
           <view
             v-for="(item, index) in filteredEquipmentShop"
@@ -130,6 +146,7 @@ const gameStore = useGameStore()
 const activeTab = ref<'equipment' | 'consumables'>('equipment')
 const equipmentTypes = ['all', 'weapon', 'armor', 'helmet', 'shoes', 'accessory', 'book'] as const
 const activeEquipmentType = ref<string>('all')
+const shopSortOrder = ref<'asc' | 'desc' | null>(null)
 
 function buildEquipmentShop(): Array<any> {
   const list: Array<any> = []
@@ -158,11 +175,27 @@ const consumableShop = ref(buildConsumableShop())
 import { computed } from 'vue'
 
 const filteredEquipmentShop = computed(() => {
-  if (activeEquipmentType.value === 'all') {
-    return equipmentShop.value
+  let list = equipmentShop.value
+  if (activeEquipmentType.value !== 'all') {
+    list = equipmentShop.value.filter((item: any) => item.subtype === activeEquipmentType.value)
   }
-  return equipmentShop.value.filter((item: any) => item.subtype === activeEquipmentType.value)
+  if (shopSortOrder.value) {
+    list = [...list].sort((a: any, b: any) => {
+      const priceA = getPrice(a)
+      const priceB = getPrice(b)
+      return shopSortOrder.value === 'asc' ? priceA - priceB : priceB - priceA
+    })
+  }
+  return list
 })
+
+function handleShopSortClick(order: 'asc' | 'desc') {
+  if (shopSortOrder.value === order) {
+    shopSortOrder.value = null
+  } else {
+    shopSortOrder.value = order
+  }
+}
 
 function getEquipmentTypeName(type: string): string {
   const nameMap: Record<string, string> = {
@@ -264,7 +297,9 @@ function getSetTagClass(setTag?: string): string {
 <style lang="scss">
 .shop-container {
   min-height: 100vh;
-  background: linear-gradient(180deg, #1a1a2e 0%, #16213e 100%);
+  background: 
+    linear-gradient(180deg, rgba(26,26,46,0.5) 0%, rgba(22,33,62,0.5) 100%),
+    url('/static/backgrounds/jishi.jpg') center/cover no-repeat;
   display: flex;
   flex-direction: column;
 }
@@ -370,6 +405,30 @@ function getSetTagClass(setTag?: string): string {
   background: rgba(100, 180, 150, 0.2);
   color: #fff;
   border-color: rgba(100, 180, 150, 0.5);
+}
+
+.sort-bar {
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+  margin-bottom: 16rpx;
+  padding: 0 8rpx;
+}
+
+.sort-btn {
+  padding: 10rpx 24rpx;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 10rpx;
+  color: #a0aec0;
+  font-size: 22rpx;
+  transition: all 0.2s;
+  border: 2rpx solid transparent;
+}
+
+.sort-btn.active {
+  background: rgba(251, 191, 36, 0.2);
+  color: #fbbf24;
+  border-color: rgba(251, 191, 36, 0.5);
 }
 
 .items-grid {

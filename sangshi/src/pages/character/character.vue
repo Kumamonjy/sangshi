@@ -1,5 +1,5 @@
 <template>
-  <view class="character-container">
+  <view class="character-container" :style="containerStyle">
     <view class="header">
       <view class="back-btn" @click="goBack">
         <text>←</text>
@@ -526,6 +526,17 @@ import { FACTION_CONFIG, JOB_CONFIG, HIREABLE_CHARACTERS, getExpRequired, getEqu
 const gameStore = useGameStore()
 const activeTab = ref<'my' | 'hire'>('my')
 const currentCharIndex = ref(0)
+
+const containerStyle = computed(() => {
+  if (activeTab.value === 'my') {
+    return {
+      background: 'linear-gradient(180deg, rgba(26,26,46,0.5) 0%, rgba(22,33,62,0.5) 100%), url(\'/static/backgrounds/dongfu.jpg\') center/cover no-repeat'
+    }
+  }
+  return {
+    background: 'linear-gradient(180deg, #1a1a2e 0%, #16213e 100%)'
+  }
+})
 const isEditingName = ref(false)
 const tempName = ref('')
 const showAvatarPreview = ref(false)
@@ -808,7 +819,6 @@ async function hireChar(char: typeof HIREABLE_CHARACTERS[0]) {
 
 .character-container {
   min-height: 100vh;
-  background: linear-gradient(180deg, #1a1a2e 0%, #16213e 100%);
   display: flex;
   flex-direction: column;
 }

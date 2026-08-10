@@ -5366,6 +5366,11 @@ export const useGameStore = defineStore('game', () => {
       
       processAOEAttackSkill(attacker, skill, centerRow, centerCol, charTemplate)
       
+      // 在攻击者位置触发技能光效
+      const aoeSkillAttr = skill.attribute || 'normal'
+      const aoeSkillType = skill.type as 'attack' | 'heal' | 'support' | 'summon' | 'special'
+      triggerSkillEffect(attacker.row, attacker.col, aoeSkillAttr, 'large', aoeSkillType)
+      
       attacker.hasActed = true
       if (attacker.isPlayer) {
         const attackerChar = player.value.characters.find(c => c.id === attacker.characterId)
@@ -9177,8 +9182,9 @@ export const useGameStore = defineStore('game', () => {
     // 在攻击者位置触发技能光效
     const skillAttribute = skill.attribute || 'normal'
     const skillType = skill.type as 'attack' | 'heal' | 'support' | 'summon' | 'special' || 'attack'
-    if (skill.type === 'attack' || skill.type === 'support') {
-      triggerSkillEffect(attacker.row, attacker.col, skillAttribute, 'large', skillType)
+    const skillCategory = skill.category as '指定' | 'aoe' | '直线' | '横扫' | '轰炸' | 'heal' | 'support' | 'summon' | 'special' | undefined
+    if (skill.type === 'attack' || skill.type === 'support' || skill.type === 'heal') {
+      triggerSkillEffect(attacker.row, attacker.col, skillAttribute, 'large', skillType, skillCategory)
       
       // 在目标位置触发技能光效
       if (targetIds && targetIds.length > 0) {
@@ -9186,11 +9192,11 @@ export const useGameStore = defineStore('game', () => {
           const allChars = [...battleMap.value.players, ...battleMap.value.enemies]
           const targetChar = allChars.find(c => c.id === tid)
           if (targetChar) {
-            triggerSkillEffect(targetChar.row, targetChar.col, skillAttribute, 'medium', skillType)
+            triggerSkillEffect(targetChar.row, targetChar.col, skillAttribute, 'medium', skillType, skillCategory)
           }
           const targetBuilding = battleMap.value.buildings.find(b => b.id === tid)
           if (targetBuilding) {
-            triggerSkillEffect(targetBuilding.row, targetBuilding.col, skillAttribute, 'medium', skillType)
+            triggerSkillEffect(targetBuilding.row, targetBuilding.col, skillAttribute, 'medium', skillType, skillCategory)
           }
         })
       }

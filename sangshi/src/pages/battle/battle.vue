@@ -258,7 +258,7 @@
             }"
           >
             <text v-if="text.type === 'heal'" class="heal-icon">❤</text>
-            {{ text.type === 'damage' ? '-' : '+' }}{{ text.value }}
+            {{ text.sign || (text.type === 'damage' ? '-' : '+' ) }}{{ text.value }}
           </view>
         </view>
         

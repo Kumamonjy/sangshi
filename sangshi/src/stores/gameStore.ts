@@ -1528,14 +1528,17 @@ export const useGameStore = defineStore('game', () => {
     type: 'damage' | 'heal' | 'mp'
     attribute?: Attribute
     isShaking?: boolean
+    sign?: '+' | '-'
     timestamp: number
   }
   const floatingTexts = ref<FloatingText[]>([])
   
-  function showFloatingText(row: number, col: number, value: number, type: 'damage' | 'heal' | 'mp', attribute?: Attribute, isShaking?: boolean) {
+  function showFloatingText(row: number, col: number, value: number, type: 'damage' | 'heal' | 'mp', attribute?: Attribute, isShaking?: boolean, sign?: '+' | '-') {
     const textId = `float_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
     // 伤害飘字默认启用震动效果
     const shouldShake = type === 'damage' ? (isShaking !== false) : false
+    // 默认符号：damage 为 '-'，其他为 '+'
+    const finalSign = sign || (type === 'damage' ? '-' : '+')
     floatingTexts.value.push({
       id: textId,
       row,
@@ -1544,6 +1547,7 @@ export const useGameStore = defineStore('game', () => {
       type,
       attribute,
       isShaking: shouldShake,
+      sign: finalSign,
       timestamp: Date.now()
     })
     setTimeout(() => {
@@ -3354,6 +3358,7 @@ export const useGameStore = defineStore('game', () => {
     // 收集战斗统计数据（伤害/治疗）
     const allBattleChars = [
       ...battleMap.value.players,
+      ...battleMap.value.enemies,
       ...(battleMap.value.defeatedCharacters || [])
     ]
     
@@ -5388,7 +5393,7 @@ export const useGameStore = defineStore('game', () => {
 
     // 特殊处理「爱的抱抱」「爱的飞吻」「爱的回忆」「余音绕梁」「疯魔琴心」等治疗技能
     // 统一使用 processHealSkill 处理
-    const healSkillIds = ['ai_de_bao_bao', 'ai_de_fei_wen', 'ai_de_hui_yi', 'yu_yin_rao_liang', 'feng_mo_qin_xin', 'ning_xin_jue', 'wan_gu_jie_jie']
+    const healSkillIds = ['ai_de_bao_bao', 'ai_de_fei_wen', 'ai_de_hui_yi', 'yu_yin_rao_liang', 'feng_mo_qin_xin', 'ning_xin_jue', 'wan_gu_jie_jie', 'fa_xiang_chong_yuan']
     let skillHandled = false
     if (healSkillIds.includes(skillId)) {
       processHealSkill(attacker, skill, targetId)
@@ -10682,6 +10687,10 @@ export const useGameStore = defineStore('game', () => {
                     // 沐风为裳：50%生命 + 60%法力
                     let atkPower = char.attack || (charTemplate?.baseAttack || 20)
                     healAmount = Math.floor(atkPower * 0.5)
+                  } else if (skill.id === 'fa_xiang_chong_yuan') {
+                    // 法相重圆：恢复自身50%生命值
+                    if (ally.id !== char.id) continue
+                    healAmount = Math.floor(allyMaxHp * (skill.selfHealPct || 0.5))
                   } else {
                     let attackPower = char.attack || (charTemplate?.baseAttack || 20)
                     healAmount = Math.floor(attackPower * (skill.power / 100))
@@ -11105,7 +11114,7 @@ export const useGameStore = defineStore('game', () => {
               console.log(`[AI] ${char.id} | using heal AOE skill ${bestSkill.name} (self-centered)`)
               useSkill(bestSkill.id, char.id, null)
               console.log(`[AI] ${char.id} | skill used successfully`)
-            } else if (bestSkill.id === 'ai_de_hui_yi' || bestSkill.id === 'wu_di_niu_niu' || bestSkill.id === 'ning_xin_jue' || bestSkill.id === 'wan_gu_jie_jie') {
+            } else if (bestSkill.id === 'ai_de_hui_yi' || bestSkill.id === 'wu_di_niu_niu' || bestSkill.id === 'ning_xin_jue' || bestSkill.id === 'wan_gu_jie_jie' || bestSkill.id === 'fa_xiang_chong_yuan') {
               // 自身治疗技能
               console.log(`[AI] ${char.id} | using skill ${bestSkill.name} (self-targeting)`)
               useSkill(bestSkill.id, char.id, char.id)
@@ -11504,7 +11513,7 @@ export const useGameStore = defineStore('game', () => {
               console.log(`[AI] ${char.id} | using heal AOE skill ${bestSkill.name} (self-centered)`)
               useSkill(bestSkill.id, char.id, null)
               console.log(`[AI] ${char.id} | skill used successfully`)
-            } else if (bestSkill.id === 'ai_de_hui_yi' || bestSkill.id === 'wu_di_niu_niu' || bestSkill.id === 'ning_xin_jue' || bestSkill.id === 'wan_gu_jie_jie') {
+            } else if (bestSkill.id === 'ai_de_hui_yi' || bestSkill.id === 'wu_di_niu_niu' || bestSkill.id === 'ning_xin_jue' || bestSkill.id === 'wan_gu_jie_jie' || bestSkill.id === 'fa_xiang_chong_yuan') {
               // 自身治疗技能
               console.log(`[AI] ${char.id} | using skill ${bestSkill.name} (self-targeting)`)
               useSkill(bestSkill.id, char.id, char.id)
@@ -12342,7 +12351,7 @@ export const useGameStore = defineStore('game', () => {
           
           showFloatingText(char.row, char.col, hpDamage, 'damage')
           if (mpDamage > 0) {
-            showFloatingText(char.row, char.col, mpDamage, 'mp')
+            showFloatingText(char.row, char.col, mpDamage, 'mp', undefined, false, '-')
           }
           
           triggerShake(char.row, char.col, 'character')

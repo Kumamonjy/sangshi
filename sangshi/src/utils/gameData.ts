@@ -711,6 +711,7 @@ export const JOB_CONFIG: Record<string, { name: string; rank: number }> = {
   血色嫁衣: { name: '血色嫁衣', rank: 5 },
   虚影: { name: '虚影', rank: 1 },
   天狐司命: { name: '天狐司命', rank: 5 },
+  鬼神: { name: '鬼神', rank: 5 },
 }
 
 export const ATTRIBUTE_CONFIG: Record<Attribute, { name: string; color: string }> = {
@@ -1300,6 +1301,11 @@ export const SKILL_TEMPLATES: Record<string, Omit<Skill, 'currentCooldown'>> = {
   // 八重神子技能
   sha_sheng_ying_zhou: { id: 'sha_sheng_ying_zhou', name: '杀生樱咒', mpCost: 40, type: 'support', power: 0, cooldown: 1, range: 4, targetCount: 1, description: '选择4格菱形范围内的1个空格，召唤出一个【杀生樱】，继承施法者阵营，召唤出的杀生樱处于【消散】状态', effectType: 'metal', attribute: 'metal', category: 'summon', skillTypeTag: '召唤', rangeTag: '4格', targetCountTag: '1个', summonCharacter: 'shashengying', summonStatusEffects: ['dissipate'], summonMaxCount: 3, summonCountId: 'shashengying' },
   tian_hu_xian_zhen: { id: 'tian_hu_xian_zhen', name: '天狐显真', mpCost: 100, type: 'attack', power: 50, cooldown: 4, range: 0, areaRange: 3, description: '以自身为中心，对3格菱形范围内的所有敌方目标造成50%的伤害，并且陷入【禁锢】状态，持续3回合，自身获得【强力】状态', effectType: 'metal', attribute: 'metal', category: 'aoe', skillTypeTag: '攻击', rangeTag: '3格', targetCountTag: 'AOE', rangeType: 'diamond', statusEffect: 'imprison', statusEffectDuration: 3, selfStatusEffects: ['strong'], shaQiCost: 30 },
+  // 千手技能
+  qian_ren_fan_zhan: { id: 'qian_ren_fan_zhan', name: '千刃梵斩', mpCost: 100, type: 'attack', power: 110, cooldown: 4, range: 2, sweepLength: 2, sweepWidth: 3, description: '选择上下左右某一方向为目标，对该方向上长2宽3的区域内的所有敌方目标，造成110%攻击力的伤害，并使目标陷入【流血】状态', effectType: 'shadow', attribute: 'dark', category: '横扫', skillTypeTag: '攻击', rangeTag: '2格', targetCountTag: '2x3', statusEffect: 'bleeding' },
+  fan_guang_jin_hua: { id: 'fan_guang_jin_hua', name: '梵光烬化', mpCost: 60, type: 'attack', power: 150, cooldown: 3, range: 3, targetCount: 2, description: '选择3格菱形范围内的2个目标，造成攻击力150%的伤害', effectType: 'shadow', attribute: 'dark', category: '指定', skillTypeTag: '攻击', rangeTag: '3格', targetCountTag: '2个', rangeType: 'diamond' },
+  fa_xiang_chong_yuan: { id: 'fa_xiang_chong_yuan', name: '法相重圆', mpCost: 100, type: 'heal', power: 0, cooldown: 4, range: 1, description: '选择自身为目标，恢复自身50%的生命值，并且驱散随机2个不良状态（如果有不良状态的话）', effectType: 'shadow', attribute: 'dark', category: 'heal', skillTypeTag: '治疗', rangeTag: '1格', targetCountTag: '1个', selfHealPct: 0.5, dispelRandomDebuffs: 2 },
+  jing_ping_fu_ye: { id: 'jing_ping_fu_ye', name: '净瓶腐业', mpCost: 100, type: 'attack', power: 200, cooldown: 4, range: 1, sweepLength: 1, sweepWidth: 3, description: '选择上下左右某一方向为目标，对该方向上长1宽3的区域内的所有敌方目标，造成200%攻击力的伤害，并使目标陷入【流血】和【脆弱】状态', effectType: 'shadow', attribute: 'dark', category: '横扫', skillTypeTag: '攻击', rangeTag: '1格', targetCountTag: '1x3', statusEffects: ['bleeding', 'fragile'], shaQiCost: 40 },
 }
 
 export interface CharacterGrowth {
@@ -1394,6 +1400,7 @@ export const CHARACTER_GROWTH: Record<string, CharacterGrowth> = {
   hongluan: { maxHp: 130, maxMp: 50, attack: 45, defense: 15 },
   shashengying: { maxHp: 40, maxMp: 30, attack: 35, defense: 5 },
   bachongshenzi: { maxHp: 130, maxMp: 50, attack: 50, defense: 15 },
+  qianshou: { maxHp: 140, maxMp: 50, attack: 40, defense: 25 },
 }
 
 // 角色-技能关联表：角色 characterId -> 技能 id 列表
@@ -1483,6 +1490,7 @@ export const CHARACTER_SKILLS: Record<string, string[]> = {
   hongluan: ['ling_luo_shi_hun', 'shi_li_hong_xiao', 'hong_gai_mi_zong', 'xi'],
   shashengying: ['luo_lei', 'lei_bao'],
   bachongshenzi: ['sha_sheng_ying_zhou', 'lei_bao', 'tian_hu_xian_zhen'],
+  qianshou: ['qian_ren_fan_zhan', 'fan_guang_jin_hua', 'fa_xiang_chong_yuan', 'jing_ping_fu_ye'],
 }
 
 /**
@@ -3396,6 +3404,29 @@ export const HIREABLE_CHARACTERS: Omit<Character, 'equipment' | 'avatar' | 'isPl
     attribute: 'metal',
     avatar: '/static/avatars/beast/bachongshenzi.png',
   },
+  {
+    id: 'qianshou',
+    name: '千手',
+    job: '鬼神',
+    faction: 'ghost',
+    level: 1,
+    exp: 0,
+    baseMaxHp: 560,
+    maxHp: 560,
+    baseMaxMp: 320,
+    maxMp: 320,
+    baseAttack: 110,
+    attack: 110,
+    baseDefense: 40,
+    defense: 40,
+    baseMoveRange: 2,
+    moveRange: 2,
+    baseAttackRange: 3,
+    attackRange: 3,
+    skills: buildSkillsForCharacterId('qianshou'),
+    attribute: 'dark',
+    avatar: '/static/avatars/ghost/qianshou.png',
+  },
 ]
 
 export const EQUIPMENT_TEMPLATES: {
@@ -3678,6 +3709,7 @@ export function getAvatarPath(charId: string, faction: string = 'human'): string
     'hongluan': '/static/avatars/ghost/hongluan.png',
     'shashengying': '/static/avatars/beast/shashengying.png',
     'bachongshenzi': '/static/avatars/beast/bachongshenzi.png',
+    'qianshou': '/static/avatars/ghost/qianshou.png',
   }
   return avatarPathMap[charId] || FACTION_CONFIG[faction as keyof typeof FACTION_CONFIG].icon
 }

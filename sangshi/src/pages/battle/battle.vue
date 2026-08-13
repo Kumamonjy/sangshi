@@ -83,6 +83,11 @@
                 <text class="fire-icon">🔥</text>
               </view>
               
+              <!-- 迷雾特效 -->
+              <view v-if="gameStore.isFogArea(rowIndex, colIndex)" class="fog-overlay">
+                <text class="fog-icon">🌫️</text>
+              </view>
+              
               <!-- 地形 -->
               <text v-if="tile.terrain === 'river'" class="terrain-icon">🌊</text>
               <text v-else-if="tile.terrain === 'obstacle'" class="terrain-icon">⛰️</text>
@@ -3925,6 +3930,31 @@ function collectCollectible() {
 @keyframes fire {
   0%, 100% { opacity: 0.7; transform: scale(1) rotate(-5deg); }
   50% { opacity: 1; transform: scale(1.2) rotate(5deg); }
+}
+
+.fog-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(156, 163, 175, 0.3);
+  z-index: 1;
+  pointer-events: none;
+}
+
+.fog-icon {
+  font-size: 28rpx;
+  animation: fog 2s infinite ease-in-out;
+  opacity: 0.6;
+}
+
+@keyframes fog {
+  0%, 100% { opacity: 0.4; transform: translateX(-5px); }
+  50% { opacity: 0.8; transform: translateX(5px); }
 }
 
 .shaking {

@@ -16,7 +16,8 @@
         :class="{ active: selectedTool === tool.id }"
         @click="selectedTool = tool.id"
       >
-        <text class="tool-icon">{{ tool.icon }}</text>
+        <image v-if="isImageIcon(tool.icon)" class="tool-image" :src="tool.icon" mode="aspectFit" />
+        <text v-else class="tool-icon">{{ tool.icon }}</text>
         <text class="tool-name">{{ tool.name }}</text>
       </view>
     </view>
@@ -36,7 +37,8 @@
             @click="handleCellClick(rowIndex, colIndex)"
             @dblclick="handleCellDoubleClick(rowIndex, colIndex)"
           >
-            <text v-if="cell.building" class="cell-icon">{{ cell.building.icon }}</text>
+            <image v-if="cell.building && isImageIcon(cell.building.icon)" class="cell-image" :src="cell.building.icon" mode="aspectFit" />
+            <text v-else-if="cell.building" class="cell-icon">{{ cell.building.icon }}</text>
             <text v-else-if="cell.terrain === 'river'" class="cell-icon">🌊</text>
             <text v-else-if="cell.terrain === 'obstacle'" class="cell-icon">⛰️</text>
           </view>
@@ -61,6 +63,20 @@
             <text class="building-desc">第3回合在周围生成1瓶灵药</text>
           </view>
         </view>
+        <view class="building-item">
+          <image class="building-image" src="/static/avatars/human/jianta.png" mode="aspectFit" />
+          <view class="building-detail">
+            <text class="building-name">箭塔</text>
+            <text class="building-desc">每回合自动攻击4格范围内1个敌人</text>
+          </view>
+        </view>
+        <view class="building-item">
+          <image class="building-image" src="/static/avatars/human/lingnengta.png" mode="aspectFit" />
+          <view class="building-detail">
+            <text class="building-name">灵能塔</text>
+            <text class="building-desc">每回合自动攻击4格范围内1个敌人</text>
+          </view>
+        </view>
       </view>
     </view>
     
@@ -77,14 +93,21 @@ import type { HomeGridCell } from '../../utils/gameData'
 
 const gameStore = useGameStore()
 
-const selectedTool = ref<'river' | 'obstacle' | 'spiritField' | 'elixirRoom'>('river')
+const selectedTool = ref<'river' | 'obstacle' | 'spiritField' | 'elixirRoom' | 'archerTower' | 'energyTower'>('river')
 
 const tools = [
   { id: 'river' as const, name: '水域', icon: '🌊' },
   { id: 'obstacle' as const, name: '障碍', icon: '⛰️' },
   { id: 'spiritField' as const, name: '灵田', icon: '🌾' },
   { id: 'elixirRoom' as const, name: '丹房', icon: '🏯' },
+  { id: 'archerTower' as const, name: '箭塔', icon: '/static/avatars/human/jianta.png' },
+  { id: 'energyTower' as const, name: '灵能塔', icon: '/static/avatars/human/lingnengta.png' },
 ]
+
+// 判断图标是否为图片路径
+function isImageIcon(icon: string): boolean {
+  return icon && (icon.startsWith('/static/') || icon.startsWith('http'))
+}
 
 function goBack() {
   uni.navigateBack()
@@ -102,7 +125,7 @@ async function handleCellClick(row: number, col: number) {
   if (!gameStore.player) return
   
   let terrain: 'empty' | 'river' | 'obstacle' = 'empty'
-  let buildingType: 'none' | 'spiritField' | 'elixirRoom' = 'none'
+  let buildingType: 'none' | 'spiritField' | 'elixirRoom' | 'archerTower' | 'energyTower' = 'none'
   
   switch (selectedTool.value) {
     case 'river':
@@ -120,6 +143,14 @@ async function handleCellClick(row: number, col: number) {
     case 'elixirRoom':
       terrain = 'empty'
       buildingType = 'elixirRoom'
+      break
+    case 'archerTower':
+      terrain = 'empty'
+      buildingType = 'archerTower'
+      break
+    case 'energyTower':
+      terrain = 'empty'
+      buildingType = 'energyTower'
       break
   }
   
@@ -201,6 +232,11 @@ async function handleCellDoubleClick(row: number, col: number) {
   font-size: 36rpx;
 }
 
+.tool-image {
+  width: 48rpx;
+  height: 48rpx;
+}
+
 .tool-name {
   font-size: 22rpx;
   color: #a0aec0;
@@ -266,6 +302,11 @@ async function handleCellDoubleClick(row: number, col: number) {
   font-size: 32rpx;
 }
 
+.cell-image {
+  width: 48rpx;
+  height: 48rpx;
+}
+
 .info-panel {
   padding: 24rpx 32rpx;
   margin: 24rpx;
@@ -291,6 +332,12 @@ async function handleCellDoubleClick(row: number, col: number) {
 
 .building-icon {
   font-size: 40rpx;
+  margin-right: 12rpx;
+}
+
+.building-image {
+  width: 48rpx;
+  height: 48rpx;
   margin-right: 12rpx;
 }
 

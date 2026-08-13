@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import type { Player, Character, Item, HomeGridCell, BattleMap, BattleCharacter, BattleTile, TerrainType, BattleBuilding, BattleCollectible, WeatherType, SnowArea, FireArea, StatusType, Attribute, Skill } from '../utils/gameData'
+import type { Player, Character, Item, HomeGridCell, BattleMap, BattleCharacter, BattleTile, TerrainType, BattleBuilding, BattleCollectible, WeatherType, SnowArea, FireArea, FogArea, StatusType, Attribute, Skill } from '../utils/gameData'
 import { INITIAL_CHARACTERS, HIREABLE_CHARACTERS, FACTION_CONFIG, JOB_CONFIG, createInitialHomeGrid, createCharacterFromTemplate, EQUIPMENT_TEMPLATES, CONSUMABLE_TEMPLATES, BATTLE_CONFIG, TERRAIN_PROBABILITIES, TERRAIN_CONFIG, BUILDING_CONFIG, COLLECTIBLE_CONFIG, CHARACTER_GROWTH, getExpRequired, getEquipmentStats, getEquipmentUpgradeCost, openChest, DIFFICULTY_CONFIG, SKILL_TEMPLATES, getAvatarPath, getRandomRarity, CHARACTER_SKILLS, buildSkillsForCharacterId, buildFullSkillsForCharacter, STATUS_CONFIG, NEGATIVE_STATUSES, POSITIVE_STATUSES, RARITY_CONFIG, ATTRIBUTE_CONFIG, calculateCharacterStats, calculateSetBonus, CHEST_CONFIG, createChestItem, isChestItem, getChestConfigByName, processEquipmentEffects, createSoulItem } from '../utils/gameData'
 import { saveGameToExternalStorage, loadGameFromExternalStorage, getExternalStoragePath } from '../utils/storageUtils'
 
@@ -2640,7 +2640,7 @@ export const useGameStore = defineStore('game', () => {
     return true
   }
 
-  async function updateHomeGrid(row: number, col: number, terrain: TerrainType, buildingType: 'none' | 'spiritField' | 'elixirRoom') {
+  async function updateHomeGrid(row: number, col: number, terrain: TerrainType, buildingType: 'none' | 'spiritField' | 'elixirRoom' | 'archerTower' | 'energyTower') {
     if (!player.value) return
 
     if (row < 0 || row >= 9 || col < 0 || col >= 9) return
@@ -2651,9 +2651,24 @@ export const useGameStore = defineStore('game', () => {
     if (buildingType === 'none') {
       cell.building = null
     } else {
-      const buildingConfig = buildingType === 'spiritField' 
-        ? { type: 'spiritField' as const, name: '灵田', icon: '🌾', maxHp: 500 }
-        : { type: 'elixirRoom' as const, name: '丹房', icon: '🏯', maxHp: 1000 }
+      let buildingConfig: { type: string; name: string; icon: string; maxHp: number; level: number }
+      
+      switch (buildingType) {
+        case 'spiritField':
+          buildingConfig = { type: 'spiritField', name: '灵田', icon: '🌾', maxHp: 500, level: 1 }
+          break
+        case 'elixirRoom':
+          buildingConfig = { type: 'elixirRoom', name: '丹房', icon: '🏯', maxHp: 1000, level: 1 }
+          break
+        case 'archerTower':
+          buildingConfig = { type: 'archerTower', name: '箭塔', icon: '/static/avatars/human/jianta.png', maxHp: 200, level: 1 }
+          break
+        case 'energyTower':
+          buildingConfig = { type: 'energyTower', name: '灵能塔', icon: '/static/avatars/human/lingnengta.png', maxHp: 300, level: 1 }
+          break
+        default:
+          buildingConfig = { type: 'spiritField', name: '灵田', icon: '🌾', maxHp: 500, level: 1 }
+      }
       
       cell.building = {
         id: `building_${row}_${col}`,
@@ -2768,18 +2783,30 @@ export const useGameStore = defineStore('game', () => {
           if (homeCell.building) {
             const buildingConfig = BUILDING_CONFIG[homeCell.building.type]
             const calculatedMaxHp = getBuildingHp(buildingConfig.maxHp)
+            // 计算建筑攻击力和防御力（考虑等级加成）
+            const buildingLevel = homeCell.building.level || 1
+            const hpGrowth = buildingConfig.hpGrowth || 0
+            const attackGrowth = buildingConfig.attackGrowth || 0
+            const defenseGrowth = buildingConfig.defenseGrowth || 0
+            const calculatedAttack = (buildingConfig.attack || 0) + attackGrowth * (buildingLevel - 1)
+            const calculatedDefense = (buildingConfig.defense || 0) + defenseGrowth * (buildingLevel - 1)
+            
             const newBuilding: BattleBuilding = {
               id: `building_${homeRow}_${homeCol}`,
               type: homeCell.building.type,
               name: buildingConfig.name,
               icon: buildingConfig.icon,
-              maxHp: calculatedMaxHp,
-              hp: calculatedMaxHp,
+              maxHp: calculatedMaxHp + hpGrowth * (buildingLevel - 1),
+              hp: calculatedMaxHp + hpGrowth * (buildingLevel - 1),
               row: battleRow,
               col: battleCol,
               isPlayer: true,
               spawnRound: buildingConfig.spawnRound || 0,
               hasSpawnedBonus: false,
+              attack: calculatedAttack,
+              defense: calculatedDefense,
+              attackRange: buildingConfig.attackRange || 0,
+              level: buildingLevel,
             }
             buildings.push(newBuilding)
             tiles[battleRow][battleCol].building = newBuilding
@@ -3099,6 +3126,7 @@ export const useGameStore = defineStore('game', () => {
       weather: 'normal',
       snowAreas: [],
       fireAreas: [],
+      fogAreas: [],
       enemyLevel,
       initialEnemyCount: enemies.length,
       defeatedCharacters: [],
@@ -3252,8 +3280,8 @@ export const useGameStore = defineStore('game', () => {
       loot.push({ name: faqiChestConfig.name, count: enemyCount });
       battleLog.value.push(`获得${enemyCount}个${faqiChestConfig.name}！`);
       
-      // 5. 计算金币奖励：100 + 敌人数量 * 20 * 敌人等级
-      goldGained = 100 + enemyCount * 20 * enemyLevel;
+      // 5. 计算金币奖励：150 + 敌人数量 * 30 * 敌人等级
+      goldGained = 150 + enemyCount * 30 * enemyLevel;
       player.value.gold += goldGained;
       battleLog.value.push(`战斗胜利！获得${goldGained}金币`);
       
@@ -3378,6 +3406,22 @@ export const useGameStore = defineStore('game', () => {
         charStatsMap[char.characterId].heal += heal
       } else {
         charStatsMap[char.characterId] = { name, side, damage, heal }
+      }
+    })
+    
+    // 收集建筑伤害统计（玩家建筑）
+    const playerBuildingsWithDamage = battleMap.value.buildings.filter(b => b.isPlayer && b.totalDamage && b.totalDamage > 0)
+    playerBuildingsWithDamage.forEach(building => {
+      const buildingId = building.type
+      const buildingName = building.name || building.type
+      const side: 'player' | 'enemy' = 'player'
+      const damage = building.totalDamage || 0
+      const heal = 0
+      
+      if (charStatsMap[buildingId]) {
+        charStatsMap[buildingId].damage += damage
+      } else {
+        charStatsMap[buildingId] = { name: buildingName, side, damage, heal }
       }
     })
     
@@ -3564,22 +3608,25 @@ export const useGameStore = defineStore('game', () => {
     const rand = Math.random()
     let newWeather: WeatherType = 'normal'
 
-    // 15% 小雪，15% 中雪，10% 大雪，10% 山火，10% 天火
-    if (rand < 0.15) {
+    // 10% 小雪，10% 中雪，10% 大雪，10% 山火，10% 天火，10% 迷雾
+    if (rand < 0.10) {
       newWeather = 'light_snow'
-    } else if (rand < 0.30) {
+    } else if (rand < 0.20) {
       newWeather = 'medium_snow'
-    } else if (rand < 0.40) {
+    } else if (rand < 0.30) {
       newWeather = 'heavy_snow'
-    } else if (rand < 0.50) {
+    } else if (rand < 0.40) {
       newWeather = 'mountain_fire'
-    } else if (rand < 0.60) {
+    } else if (rand < 0.50) {
       newWeather = 'sky_fire'
+    } else if (rand < 0.60) {
+      newWeather = 'fog'
     }
 
     battleMap.value.weather = newWeather
     generateSnowAreas()
     generateFireAreas()
+    generateFogAreas()
 
     const weatherNames: Record<WeatherType, string> = {
       normal: '晴朗',
@@ -3587,7 +3634,8 @@ export const useGameStore = defineStore('game', () => {
       medium_snow: '中雪',
       heavy_snow: '大雪',
       mountain_fire: '山火',
-      sky_fire: '天火'
+      sky_fire: '天火',
+      fog: '迷雾'
     }
     battleLog.value.push(`天气变为：${weatherNames[newWeather]}`)
   }
@@ -3736,6 +3784,67 @@ export const useGameStore = defineStore('game', () => {
 
   function isCharacterInSnow(char: BattleCharacter): boolean {
     return isSnowArea(char.row, char.col)
+  }
+
+  function generateFogAreas() {
+    if (!battleMap.value) return
+
+    const { width, height, weather } = battleMap.value
+    battleMap.value.fogAreas = []
+
+    if (weather !== 'fog') return
+
+    const fogAreas: FogArea[] = []
+    const usedPositions = new Set<string>()
+
+    // 迷雾：3个2x2大小的区域
+    const areaCount = 3
+    const areaSize = 2
+
+    for (let i = 0; i < areaCount; i++) {
+      let attempts = 0
+      while (attempts < 50) {
+        const startRow = Math.floor(Math.random() * (height - areaSize + 1))
+        const startCol = Math.floor(Math.random() * (width - areaSize + 1))
+
+        let valid = true
+        for (let r = 0; r < areaSize; r++) {
+          for (let c = 0; c < areaSize; c++) {
+            const key = `${startRow + r},${startCol + c}`
+            if (usedPositions.has(key)) {
+              valid = false
+              break
+            }
+          }
+          if (!valid) break
+        }
+
+        if (valid) {
+          for (let r = 0; r < areaSize; r++) {
+            for (let c = 0; c < areaSize; c++) {
+              const row = startRow + r
+              const col = startCol + c
+              const key = `${row},${col}`
+              usedPositions.add(key)
+              fogAreas.push({ row, col, source: 'weather' })
+            }
+          }
+          break
+        }
+        attempts++
+      }
+    }
+
+    battleMap.value.fogAreas = fogAreas
+  }
+
+  function isFogArea(row: number, col: number): boolean {
+    if (!battleMap.value) return false
+    return battleMap.value.fogAreas.some(f => f.row === row && f.col === col)
+  }
+
+  function isCharacterInFog(char: BattleCharacter): boolean {
+    return isFogArea(char.row, char.col)
   }
 
   function useCollectible(collectibleId: string, charId: string) {
@@ -4234,7 +4343,12 @@ export const useGameStore = defineStore('game', () => {
     
     // 使用角色实际的移动范围（已含装备加成），并叠加状态对移动范围的影响（迅捷+1，瘸腿-1）
     const baseMove = char.moveRange !== undefined ? char.moveRange : 3
-    const moveDist = Math.max(0, baseMove + getStatusMoveRange(char))
+    let moveDist = Math.max(0, baseMove + getStatusMoveRange(char))
+    
+    // 如果角色在迷雾中，移动力变成1
+    if (isCharacterInFog(char)) {
+      moveDist = Math.min(moveDist, 1)
+    }
     
     // 使用 BFS 计算可移动范围
     const visited: boolean[][] = Array(battleMap.value.height).fill(null).map(() => Array(battleMap.value.width).fill(false))
@@ -4301,7 +4415,12 @@ export const useGameStore = defineStore('game', () => {
     const targets: (BattleCharacter | BattleBuilding | any)[] = []
     // 使用角色实际的攻击范围（已含装备加成），并叠加状态对攻击范围的影响（鹰眼+1，障目-1）
     const baseAttackRange = char.attackRange || 1
-    const attackRange = Math.max(0, baseAttackRange + getStatusAttackRange(char))
+    let attackRange = Math.max(0, baseAttackRange + getStatusAttackRange(char))
+    
+    // 如果角色在迷雾中，攻击范围变成1
+    if (isCharacterInFog(char)) {
+      attackRange = Math.min(attackRange, 1)
+    }
     if (char.isPlayer) {
       battleMap.value.enemies.forEach(enemy => {
         const dist = Math.abs(enemy.row - char.row) + Math.abs(enemy.col - char.col)
@@ -12368,6 +12487,70 @@ export const useGameStore = defineStore('game', () => {
       }
     }
 
+    // 建筑自动攻击：玩家阵营的箭塔和灵能塔攻击敌方目标
+    console.log('=== 建筑自动攻击 ===')
+    const playerBuildings = battleMap.value.buildings.filter(b => b.isPlayer && (b.type === 'archerTower' || b.type === 'energyTower'))
+    for (const building of playerBuildings) {
+      if (building.hp <= 0) continue
+      if (battleResult.value || battleMap.value.enemies.length === 0) break
+      
+      const attackRange = building.attackRange || 4
+      const enemies = battleMap.value.enemies.filter(e => e.hp > 0)
+      
+      // 找到攻击范围内的敌人
+      const targets = enemies.filter(enemy => {
+        const dist = Math.abs(enemy.row - building.row) + Math.abs(enemy.col - building.col)
+        return dist <= attackRange
+      })
+      
+      if (targets.length > 0 && building.attack && building.attack > 0) {
+        // 选择最近的敌人作为目标
+        targets.sort((a, b) => {
+          const distA = Math.abs(a.row - building.row) + Math.abs(a.col - building.col)
+          const distB = Math.abs(b.row - building.row) + Math.abs(b.col - building.col)
+          return distA - distB
+        })
+        
+        const target = targets[0]
+        const template = findCharacterTemplateInStore(target.characterId)
+        
+        // 计算伤害：攻击力 - 防御力（最低1点伤害）
+        const damage = Math.max(1, (building.attack || 0) - (target.defense || 0))
+        
+        // 记录建筑总伤害
+        if (!building.totalDamage) building.totalDamage = 0
+        building.totalDamage += damage
+        
+        // 造成伤害
+        target.hp = Math.max(0, target.hp - damage)
+        
+        // 飘字显示
+        showFloatingText(target.row, target.col, damage, 'damage')
+        triggerShake(target.row, target.col, 'character')
+        
+        // 攻击特效
+        triggerSkillEffect(target.row, target.col, 'shadow', 'small', 'attack')
+        
+        // 战斗日志
+        const buildingName = building.type === 'archerTower' ? '箭塔' : '灵能塔'
+        const targetName = template?.name || target.characterId
+        battleLog.value.push(`【${buildingName}】攻击【${targetName}】，造成${damage}点伤害`)
+        
+        // 检查目标是否死亡
+        if (target.hp <= 0) {
+          triggerDefeatAnimation(target.row, target.col, 'self')
+          removeCharacterFromBattle(target.id, false)
+          if (battleMap.value.tiles[target.row]?.[target.col]) {
+            battleMap.value.tiles[target.row][target.col].character = null
+          }
+          battleLog.value.push(`【${targetName}】被【${buildingName}】击败！`)
+        }
+        
+        // 添加延迟以显示特效
+        await new Promise(resolve => setTimeout(resolve, 300 / gameSpeed.value))
+      }
+    }
+
     // 重置敌人状态
     battleMap.value.enemies.forEach(e => {
       e.hasMoved = false
@@ -12547,8 +12730,10 @@ export const useGameStore = defineStore('game', () => {
     generateFireAreas,
     isSnowArea,
     isFireArea,
+    isFogArea,
     isCharacterInSnow,
     isCharacterInFire,
+    isCharacterInFog,
     setFactionCommand,
     toggleGatherPointSelection,
     addGatheringPoint,

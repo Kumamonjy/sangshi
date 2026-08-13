@@ -3,7 +3,7 @@ export type Job = string
 export type Rarity = 'common' | 'rare' | 'exceptional' | 'treasure' | 'celestial' | 'peerless'
 export type ItemSubtype = 'weapon' | 'armor' | 'helmet' | 'shoes' | 'accessory' | 'book' | 'consumable' | 'chest' | 'soul'
 export type TerrainType = 'empty' | 'river' | 'obstacle' | 'snow'
-export type WeatherType = 'normal' | 'light_snow' | 'medium_snow' | 'heavy_snow' | 'mountain_fire' | 'sky_fire'
+export type WeatherType = 'normal' | 'light_snow' | 'medium_snow' | 'heavy_snow' | 'mountain_fire' | 'sky_fire' | 'fog'
 export type Attribute = 'normal' | 'metal' | 'wood' | 'water' | 'fire' | 'earth' | 'ice' | 'wind' | 'dark' | 'yang' | 'light' | 'yin'
 
 // 状态系统类型
@@ -281,6 +281,12 @@ export interface FireArea {
   source?: 'weather' | 'skill'
 }
 
+export interface FogArea {
+  row: number
+  col: number
+  source?: 'weather'
+}
+
 export interface ItemStats {
   attack?: number
   defense?: number
@@ -417,7 +423,7 @@ export interface Building {
 
 export interface BattleBuilding {
   id: string
-  type: 'spiritField' | 'elixirRoom' | 'heart' | 'barracks' | 'tianqiPao'
+  type: 'spiritField' | 'elixirRoom' | 'heart' | 'barracks' | 'tianqiPao' | 'archerTower' | 'energyTower'
   name: string
   icon: string
   maxHp: number
@@ -429,6 +435,10 @@ export interface BattleBuilding {
   hasSpawnedBonus: boolean // 是否已经产出过额外奖励
   targetPositions?: { row: number; col: number }[] // 天启炮的瞄准位置
   totalDamage?: number // 本局总伤害（用于天启炮）
+  attack?: number // 攻击力
+  defense?: number // 防御力
+  attackRange?: number // 攻击范围
+  level?: number // 等级
 }
 
 export interface HomeGridCell {
@@ -508,6 +518,7 @@ export interface BattleMap {
   weather: WeatherType
   snowAreas: SnowArea[]
   fireAreas: FireArea[]
+  fogAreas: FogArea[]
   enemyLevel: number
   initialEnemyCount: number
   defeatedCharacters: BattleCharacter[]
@@ -540,12 +551,30 @@ export const FACTION_CONFIG: Record<Faction, { name: string; icon: string; color
 }
 
 // 建筑配置 - maxHp为基础等级(1级)的血量，每级在1级基础上提高10%
-export const BUILDING_CONFIG: Record<string, { name: string; icon: string; description: string; maxHp: number; spawnItem?: { id: string; count: number }; spawnRound?: number; spawnCharacter?: boolean; characterFaction?: string; characterJob?: string }> = {
+export const BUILDING_CONFIG: Record<string, { 
+  name: string; 
+  icon: string; 
+  description: string; 
+  maxHp: number; 
+  attack?: number; // 1级攻击力
+  defense?: number; // 1级防御力
+  attackRange?: number; // 攻击范围
+  hpGrowth?: number; // 每级生命值增长
+  attackGrowth?: number; // 每级攻击力增长
+  defenseGrowth?: number; // 每级防御力增长
+  spawnItem?: { id: string; count: number }; 
+  spawnRound?: number; 
+  spawnCharacter?: boolean; 
+  characterFaction?: string; 
+  characterJob?: string 
+}> = {
   spiritField: { name: '灵田', icon: '🌾', description: '种植灵草的田地，战斗第5回合在4个相邻空格上生成最多4株灵草', maxHp: 200, spawnItem: { id: 'spirit_grass', count: 4 }, spawnRound: 5 },
   elixirRoom: { name: '丹房', icon: '🏯', description: '炼制丹药的场所，战斗第5回合在4个相邻空格上随机生成1个丹药', maxHp: 400, spawnItem: { id: 'elixir', count: 1 }, spawnRound: 5 },
   heart: { name: '血心', icon: '/static/avatars/ghost/xuexin.png', description: '鬼界的出兵建筑，每4回合生成一只丧尸', maxHp: 400, spawnRound: 4 },
   barracks: { name: '兵营', icon: '/static/avatars/human/bingying.png', description: '人界的出兵建筑，每6回合在周围生成一个随机职业为士兵的角色', maxHp: 600, spawnRound: 6, spawnCharacter: true, characterFaction: 'human', characterJob: '士兵' },
   tianqiPao: { name: '天启炮', icon: '/static/avatars/human/tianqipao.png', description: '人界的攻击建筑，奇数回合瞄准，偶数回合攻击被瞄准的目标', maxHp: 500 },
+  archerTower: { name: '箭塔', icon: '/static/avatars/human/jianta.png', description: '每回合自动攻击4格范围内1个敌方目标，造成100%攻击力伤害', maxHp: 200, attack: 60, defense: 0, attackRange: 4, hpGrowth: 50, attackGrowth: 10, defenseGrowth: 0 },
+  energyTower: { name: '灵能塔', icon: '/static/avatars/human/lingnengta.png', description: '每回合自动攻击4格范围内1个敌方目标，造成100%攻击力伤害', maxHp: 300, attack: 80, defense: 0, attackRange: 4, hpGrowth: 75, attackGrowth: 15, defenseGrowth: 0 },
 }
 
 // 装备配置 - 按类型分类展示
@@ -1146,8 +1175,8 @@ export const SKILL_TEMPLATES: Record<string, Omit<Skill, 'currentCooldown'>> = {
   po_kong_zhan: { id: 'po_kong_zhan', name: '破空斩', mpCost: 50, type: 'attack', power: 130, cooldown: 3, description: '选择1格范围内的1个敌方目标，造成130%攻击力+10%当前生命值的伤害', effectType: 'fire', attribute: 'normal', category: '指定', skillTypeTag: '攻击', rangeTag: '1格', targetCountTag: '1个', damageFormula: 'atk_plus_hp_pct', hpPct: 0.1 },
   qian_li_bing_feng: { id: 'qian_li_bing_feng', name: '千里冰封', mpCost: 60, type: 'attack', power: 110, cooldown: 4, range: 0, description: '以自身为中心，对3格菱形范围内的所有敌方目标造成110%攻击力的伤害，并使目标陷入【削弱】状态', effectType: 'ice', areaRange: 3, attribute: 'ice', category: 'aoe', skillTypeTag: '攻击', rangeTag: '3格', targetCountTag: 'AOE', statusEffect: 'weakened', rangeType: 'diamond' },
   bing_feng_zhi_men: { id: 'bing_feng_zhi_men', name: '冰封之门', mpCost: 15, type: 'support', power: 0, cooldown: 2, range: 2, targetCount: 2, description: '选择2格范围内的任意两个空地，确认后生成障碍物', effectType: 'ice', attribute: 'ice', category: 'special', skillTypeTag: '特殊', rangeTag: '2格', targetCountTag: '2个' },
-  ai_de_bao_bao: { id: 'ai_de_bao_bao', name: '爱的抱抱', mpCost: 25, type: 'heal', power: 5, cooldown: 2, range: 1, description: '对相邻1格范围内的指定目标，恢复血量和法力值（恢复量为0.05*自身最大生命值/法力值+0.1*目标最大生命值/法力值），并驱散目标所有不良状态', attribute: 'water', category: 'heal', skillTypeTag: '治疗', rangeTag: '1格', targetCountTag: '1个' },
-  ai_de_fei_wen: { id: 'ai_de_fei_wen', name: '爱的飞吻', mpCost: 35, type: 'heal', power: 0, cooldown: 3, range: 3, description: '选择3格范围内的一个指定目标，恢复血量（恢复量为0.05*自身最大生命值+0.1*目标最大生命值），并驱散目标所有不良状态', attribute: 'water', category: 'heal', skillTypeTag: '治疗', rangeTag: '3格', targetCountTag: '1个' },
+  ai_de_bao_bao: { id: 'ai_de_bao_bao', name: '爱的抱抱', mpCost: 30, type: 'heal', power: 5, cooldown: 2, range: 1, description: '对相邻1格范围内的指定目标，恢复血量和法力值（恢复量为0.05*自身最大生命值/法力值+0.1*目标最大生命值/法力值），并驱散目标所有不良状态', attribute: 'water', category: 'heal', skillTypeTag: '治疗', rangeTag: '1格', targetCountTag: '1个' },
+  ai_de_fei_wen: { id: 'ai_de_fei_wen', name: '爱的飞吻', mpCost: 50, type: 'heal', power: 0, cooldown: 3, range: 3, description: '选择3格范围内的一个指定目标，恢复血量（恢复量为0.05*自身最大生命值+0.1*目标最大生命值），并驱散目标所有不良状态', attribute: 'water', category: 'heal', skillTypeTag: '治疗', rangeTag: '3格', targetCountTag: '1个' },
   ai_de_hui_yi: { id: 'ai_de_hui_yi', name: '爱的回忆', mpCost: 15, type: 'heal', power: 0, cooldown: 5, range: 1, description: '熊熊选择自己为目标，恢复10%的最大生命值以及10%的最大法力值，并驱散自身所有不良状态', attribute: 'water', category: 'heal', skillTypeTag: '治疗', rangeTag: '1格', targetCountTag: '1个' },
   fire_burst: { id: 'fire_burst', name: '炎爆术', mpCost: 20, type: 'attack', power: 120, cooldown: 2, description: '选择1格范围内的1个敌方目标，造成120%攻击力的伤害', attribute: 'normal', category: '指定', skillTypeTag: '攻击', rangeTag: '1格', targetCountTag: '1个' },
   ice_shard: { id: 'ice_shard', name: '冰晶术', mpCost: 18, type: 'attack', power: 100, cooldown: 2, description: '选择1格范围内的1个敌方目标，造成100%攻击力的伤害', attribute: 'normal', category: '指定', skillTypeTag: '攻击', rangeTag: '1格', targetCountTag: '1个' },
@@ -1317,7 +1346,7 @@ export interface CharacterGrowth {
 
 export const CHARACTER_GROWTH: Record<string, CharacterGrowth> = {
   xiongxiong: { maxHp: 50, maxMp: 5, attack: 10, defense: 10 },
-  tutu: { maxHp: 40, maxMp: 30, attack: 35, defense: 5 },
+  tutu: { maxHp: 40, maxMp: 50, attack: 35, defense: 5 },
   daheixiong: { maxHp: 75, maxMp: 30, attack: 10, defense: 30 },
   bingxin: { maxHp: 110, maxMp: 25, attack: 15, defense: 20 },
   ordinary_zombie: { maxHp: 50, maxMp: 0, attack: 10, defense: 5 },
@@ -1569,8 +1598,8 @@ export const INITIAL_CHARACTERS: Omit<Character, 'equipment' | 'avatar' | 'isPla
     exp: 0,
     baseMaxHp: 220,
     maxHp: 220,
-    baseMaxMp: 150,
-    maxMp: 150,
+    baseMaxMp: 250,
+    maxMp: 250,
     baseAttack: 70,
     attack: 70,
     baseDefense: 5,

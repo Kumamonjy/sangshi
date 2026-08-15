@@ -300,7 +300,7 @@ const allCharacters = computed(() => {
 })
 
 const currentFactionCharacters = computed(() => {
-  let chars = allCharacters.value.filter((char) => char.faction === activeFaction.value)
+  let chars = allCharacters.value.filter((char) => char.faction === activeFaction.value && char.job !== '虚影')
   if (sortOrder.value) {
     chars = [...chars].sort((a, b) => {
       const rankA = JOB_CONFIG[a.job]?.rank || 1

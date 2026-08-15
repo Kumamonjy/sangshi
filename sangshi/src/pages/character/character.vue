@@ -591,7 +591,7 @@ function handleSortClick(type: 'rank' | 'price', order: 'asc' | 'desc') {
 }
 
 const currentHireCharacters = computed(() => {
-  let chars = HIREABLE_CHARACTERS.filter((char) => char.faction === activeHireFaction.value)
+  let chars = HIREABLE_CHARACTERS.filter((char) => char.faction === activeHireFaction.value && char.job !== '虚影')
   if (hireSortType.value && hireSortOrder.value) {
     chars = [...chars].sort((a, b) => {
       if (hireSortType.value === 'rank') {
@@ -610,7 +610,7 @@ const currentHireCharacters = computed(() => {
 })
 
 function getFactionCharacterCount(faction: Faction): number {
-  return HIREABLE_CHARACTERS.filter((char) => char.faction === faction).length
+  return HIREABLE_CHARACTERS.filter((char) => char.faction === faction && char.job !== '虚影').length
 }
 
 const equipmentSlots = {

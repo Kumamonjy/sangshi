@@ -527,6 +527,13 @@ export const useGameStore = defineStore('game', () => {
       showFloatingText(attacker.row, attacker.col, healAmount, 'heal')
     }
 
+    if (skill.selfMpHealPct && attacker.maxMp) {
+      const mpHealAmount = Math.floor(attacker.maxMp * skill.selfMpHealPct)
+      attacker.mp = Math.min(attacker.mp + mpHealAmount, attacker.maxMp)
+      damageResults.push(`恢复${mpHealAmount}点法力值`)
+      showFloatingText(attacker.row, attacker.col, mpHealAmount, 'mp')
+    }
+
     if (skill.dispelRandomDebuffs && skill.dispelRandomDebuffs > 0) {
       const negStatuses = NEGATIVE_STATUSES.filter(status => hasStatus(attacker, status))
       if (negStatuses.length > 0) {
@@ -817,6 +824,13 @@ export const useGameStore = defineStore('game', () => {
       showFloatingText(attacker.row, attacker.col, healAmount, 'heal')
     }
 
+    if (skill.selfMpHealPct && attacker.maxMp) {
+      const mpHealAmount = Math.floor(attacker.maxMp * skill.selfMpHealPct)
+      attacker.mp = Math.min(attacker.mp + mpHealAmount, attacker.maxMp)
+      damageResults.push(`恢复${mpHealAmount}点法力值`)
+      showFloatingText(attacker.row, attacker.col, mpHealAmount, 'mp')
+    }
+
     if (skill.dispelRandomDebuffs && skill.dispelRandomDebuffs > 0) {
       const negStatuses = NEGATIVE_STATUSES.filter(status => hasStatus(attacker, status))
       if (negStatuses.length > 0) {
@@ -1050,6 +1064,13 @@ export const useGameStore = defineStore('game', () => {
       showFloatingText(attacker.row, attacker.col, healAmount, 'heal')
     }
 
+    if (skill.selfMpHealPct && attacker.maxMp) {
+      const mpHealAmount = Math.floor(attacker.maxMp * skill.selfMpHealPct)
+      attacker.mp = Math.min(attacker.mp + mpHealAmount, attacker.maxMp)
+      damageResults.push(`恢复${mpHealAmount}点法力值`)
+      showFloatingText(attacker.row, attacker.col, mpHealAmount, 'mp')
+    }
+
     if (skill.dispelRandomDebuffs && skill.dispelRandomDebuffs > 0) {
       const negStatuses = NEGATIVE_STATUSES.filter(status => hasStatus(attacker, status))
       if (negStatuses.length > 0) {
@@ -1197,6 +1218,12 @@ export const useGameStore = defineStore('game', () => {
           const summonHp = Math.max(1, Math.floor(casterHpBeforeCost * skill.summonHpPct))
           newChar.maxHp = summonHp
           newChar.hp = summonHp
+        }
+        
+        // Apply summon MP override: set fixed max MP for summoned character
+        if (skill.summonMpOverride !== undefined) {
+          newChar.maxMp = skill.summonMpOverride
+          newChar.mp = skill.summonMpOverride
         }
         
         // Apply summon status effects to the summoned character
@@ -1505,6 +1532,13 @@ export const useGameStore = defineStore('game', () => {
       attacker.totalHeal += healAmount
       damageResults.push(`恢复${healAmount}点生命值`)
       showFloatingText(attacker.row, attacker.col, healAmount, 'heal')
+    }
+
+    if (skill.selfMpHealPct && attacker.maxMp) {
+      const mpHealAmount = Math.floor(attacker.maxMp * skill.selfMpHealPct)
+      attacker.mp = Math.min(attacker.mp + mpHealAmount, attacker.maxMp)
+      damageResults.push(`恢复${mpHealAmount}点法力值`)
+      showFloatingText(attacker.row, attacker.col, mpHealAmount, 'mp')
     }
 
     if (skill.dispelRandomDebuffs && skill.dispelRandomDebuffs > 0) {
@@ -4112,10 +4146,12 @@ export const useGameStore = defineStore('game', () => {
     
     char.statuses.push({ type: status, duration });
     
-    if (status === 'crumble') {
+    const statusConfig = STATUS_CONFIG[status];
+    if (statusConfig?.effects?.maxHpPercent) {
       const origMaxHp = char.maxHp;
-      char.maxHpBeforeCrumble = origMaxHp;
-      char.maxHp = Math.floor(origMaxHp * 0.8);
+      if (!char.maxHpReductionHistory) char.maxHpReductionHistory = {};
+      char.maxHpReductionHistory[status] = origMaxHp;
+      char.maxHp = Math.floor(origMaxHp * (1 + statusConfig.effects.maxHpPercent / 100));
       char.hp = Math.min(char.hp, char.maxHp);
     }
     
@@ -4136,10 +4172,10 @@ export const useGameStore = defineStore('game', () => {
     const idx = char.statuses.findIndex(s => s.type === status);
     if (idx >= 0) {
       char.statuses.splice(idx, 1);
-      // 解除脆皮：恢复原本的生命值上限
-      if (status === 'crumble' && char.maxHpBeforeCrumble) {
-        char.maxHp = char.maxHpBeforeCrumble;
-        char.maxHpBeforeCrumble = undefined;
+      // 解除生命值上限减少的状态：恢复原本的生命值上限
+      if (char.maxHpReductionHistory && char.maxHpReductionHistory[status]) {
+        char.maxHp = char.maxHpReductionHistory[status];
+        delete char.maxHpReductionHistory[status];
       }
       const template = findCharacterTemplateInStore(char.characterId);
       battleLog.value.push(`【${template?.name || char.characterId}】解除了【${STATUS_CONFIG[status].name}】状态`);
@@ -4483,7 +4519,16 @@ export const useGameStore = defineStore('game', () => {
 
     const targets = char.isPlayer ? battleMap.value.enemies : battleMap.value.players
     const charTemplate = findCharacterTemplateInStore(char.characterId)
-    const attackRange = charTemplate?.baseAttackRange || 1
+    let attackRange = charTemplate?.baseAttackRange || 1
+    
+    // 叠加状态对攻击范围的影响
+    attackRange = Math.max(0, attackRange + getStatusAttackRange(char))
+    
+    // 如果角色在迷雾中，攻击范围变成1
+    if (isCharacterInFog(char)) {
+      attackRange = Math.min(attackRange, 1)
+    }
+    
     const attackable: BattleCharacter[] = []
 
     targets.forEach(target => {
@@ -5334,6 +5379,16 @@ export const useGameStore = defineStore('game', () => {
       if (attacker.hp <= attacker.attack) return false
     }
     
+    // 检查技能使用次数限制
+    if (skill.maxUsesPerBattle !== undefined) {
+      if (!attacker.skillUseCount) attacker.skillUseCount = {}
+      const currentUseCount = attacker.skillUseCount[skillId] || 0
+      if (currentUseCount >= skill.maxUsesPerBattle) {
+        battleLog.value.push(`【${attacker.characterId}】的【${skill.name}】已达到本局战斗最大使用次数(${skill.maxUsesPerBattle}次)`)
+        return false
+      }
+    }
+    
     // 召唤数量限制检查
     if (skill.summonMaxCount && skill.summonCountId && battleMap.value) {
       const currentSide = attacker.isPlayer ? battleMap.value.players : battleMap.value.enemies
@@ -5363,6 +5418,12 @@ export const useGameStore = defineStore('game', () => {
       } else {
         battleMap.value.enemyShaQi = Math.max(0, battleMap.value.enemyShaQi - skill.shaQiCost)
       }
+    }
+    
+    // 记录技能使用次数
+    if (skill.maxUsesPerBattle !== undefined) {
+      if (!attacker.skillUseCount) attacker.skillUseCount = {}
+      attacker.skillUseCount[skillId] = (attacker.skillUseCount[skillId] || 0) + 1
     }
 
     // 归一化目标ID数组
@@ -9358,6 +9419,8 @@ export const useGameStore = defineStore('game', () => {
         battleMap.value.enemies.splice(idx, 1)
       }
     }
+    // 检查战斗是否结束
+    checkBattleEnd()
   }
   
   // 辅助函数：移除建筑并保存到 destroyedBuildings 列表
@@ -9374,6 +9437,8 @@ export const useGameStore = defineStore('game', () => {
       battleMap.value.destroyedBuildings.push(building)
       battleMap.value.buildings.splice(idx, 1)
     }
+    // 检查战斗是否结束
+    checkBattleEnd()
   }
 
   function checkBattleEnd(): boolean {
@@ -9633,6 +9698,11 @@ export const useGameStore = defineStore('game', () => {
           const existingCount = battleMap.value.players.filter(c => c.characterId === skill.summonCountId).length
           if (existingCount >= skill.summonMaxCount) return false
         }
+        // 技能使用次数限制检查
+        if (skill.maxUsesPerBattle !== undefined) {
+          const useCount = char.skillUseCount ? (char.skillUseCount[skill.id] || 0) : 0
+          if (useCount >= skill.maxUsesPerBattle) return false
+        }
         return true
       })
     } else {
@@ -9652,6 +9722,11 @@ export const useGameStore = defineStore('game', () => {
         if (skill.summonMaxCount && skill.summonCountId && battleMap.value) {
           const existingCount = battleMap.value.enemies.filter(c => c.characterId === skill.summonCountId).length
           if (existingCount >= skill.summonMaxCount) return false
+        }
+        // 技能使用次数限制检查
+        if (skill.maxUsesPerBattle !== undefined) {
+          const useCount = char.skillUseCount ? (char.skillUseCount[skill.id] || 0) : 0
+          if (useCount >= skill.maxUsesPerBattle) return false
         }
         return true
       })
@@ -9673,11 +9748,16 @@ export const useGameStore = defineStore('game', () => {
     // 使用角色实际的攻击范围（已含装备加成），并叠加状态效果
     const baseAttackRangeVal = char.attackRange || 1
     const statusAttackRange = getStatusAttackRange(char)
-    const effectiveAttackRange = Math.max(0, baseAttackRangeVal + statusAttackRange)
     
     for (const pos of moveRange) {
       char.row = pos.row
       char.col = pos.col
+      
+      // 检查当前位置是否在迷雾中
+      let effectiveAttackRange = Math.max(0, baseAttackRangeVal + statusAttackRange)
+      if (isFogArea(pos.row, pos.col)) {
+        effectiveAttackRange = Math.min(effectiveAttackRange, 1)
+      }
       
       // 检查普攻对敌人的伤害
       const enemies = char.isPlayer ? battleMap.value.enemies : battleMap.value.players
@@ -12494,7 +12574,11 @@ export const useGameStore = defineStore('game', () => {
       if (building.hp <= 0) continue
       if (battleResult.value || battleMap.value.enemies.length === 0) break
       
-      const attackRange = building.attackRange || 4
+      // 如果建筑在迷雾中，攻击范围变成1
+      let attackRange = building.attackRange || 4
+      if (isFogArea(building.row, building.col)) {
+        attackRange = Math.min(attackRange, 1)
+      }
       const enemies = battleMap.value.enemies.filter(e => e.hp > 0)
       
       // 找到攻击范围内的敌人

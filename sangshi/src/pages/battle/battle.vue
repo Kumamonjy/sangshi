@@ -83,9 +83,14 @@
                 <text class="fire-icon">🔥</text>
               </view>
               
-              <!-- 迷雾特效 -->
+              <!-- 迷雾特效 - 圆形云团 -->
               <view v-if="gameStore.isFogArea(rowIndex, colIndex)" class="fog-overlay">
-                <text class="fog-icon">🌫️</text>
+                <view class="fog-cloud">
+                  <view class="cloud-puff puff1"></view>
+                  <view class="cloud-puff puff2"></view>
+                  <view class="cloud-puff puff3"></view>
+                  <view class="cloud-puff puff4"></view>
+                </view>
               </view>
               
               <!-- 地形 -->
@@ -594,7 +599,7 @@
             v-for="skill in characterSkills" 
             :key="skill.id"
             class="skill-card"
-            :class="{ disabled: selectedCharacter!.mp < skill.mpCost || selectedCharacter!.hasActed || (getSkillCurrentCooldown(selectedCharacter!, skill.id) > 0) || isSkillHpRestricted(skill.id, selectedCharacter!) || selectedCharacter!.statuses?.some(s => s.type === 'silenced') || selectedCharacter!.statuses?.some(s => s.type === 'stun') || isSkillResourceRestricted(skill) || isSkillSummonLimited(skill, selectedCharacter!) }"
+            :class="{ disabled: selectedCharacter!.mp < skill.mpCost || selectedCharacter!.hasActed || (getSkillCurrentCooldown(selectedCharacter!, skill.id) > 0) || isSkillHpRestricted(skill.id, selectedCharacter!) || selectedCharacter!.statuses?.some(s => s.type === 'silenced') || selectedCharacter!.statuses?.some(s => s.type === 'stun') || isSkillResourceRestricted(skill) || isSkillSummonLimited(skill, selectedCharacter!) || isSkillMaxUsesReached(skill, selectedCharacter!) }"
             @click="selectSkill(skill)"
           >
             <text class="skill-card-name">{{ skill.name }}</text>
@@ -610,6 +615,7 @@
               <text v-if="skill.reikiCost" class="skill-cost reiki-cost">✨ {{ skill.reikiCost }}</text>
               <text v-if="skill.shaQiCost" class="skill-cost shaqi-cost">💢 {{ skill.shaQiCost }}</text>
               <text class="skill-cooldown">⌛ {{ getSkillCurrentCooldown(selectedCharacter!, skill.id) }}/{{ skill.cooldown }}回合</text>
+              <text v-if="skill.maxUsesPerBattle" class="skill-use-count" :class="{ 'maxed': isSkillMaxUsesReached(skill, selectedCharacter!) }">📌 {{ getSkillUseCount(skill, selectedCharacter!) }}/{{ skill.maxUsesPerBattle }}</text>
             </view>
           </view>
         </scroll-view>
@@ -1297,7 +1303,14 @@ function getCharacterAttackRange(char: BattleCharacter): number {
     return acc
   }, 0)
   
-  return Math.max(0, char.attackRange + statusBonus)
+  let attackRange = Math.max(0, char.attackRange + statusBonus)
+  
+  // 如果角色在迷雾中，攻击范围变成1
+  if (gameStore.isFogArea(char.row, char.col)) {
+    attackRange = Math.min(attackRange, 1)
+  }
+  
+  return attackRange
 }
 
 function getCharacterMoveRange(char: BattleCharacter): number {
@@ -2083,6 +2096,17 @@ function isSkillSummonLimited(skill: Skill, char: BattleCharacter): boolean {
   return existingCount >= skill.summonMaxCount
 }
 
+function getSkillUseCount(skill: Skill, char: BattleCharacter): number {
+  if (!skill.maxUsesPerBattle) return 0
+  if (!char.skillUseCount) return 0
+  return char.skillUseCount[skill.id] || 0
+}
+
+function isSkillMaxUsesReached(skill: Skill, char: BattleCharacter): boolean {
+  if (!skill.maxUsesPerBattle) return false
+  return getSkillUseCount(skill, char) >= skill.maxUsesPerBattle
+}
+
 function computeSweepPositions(
   direction: 'up' | 'down' | 'left' | 'right',
   row: number,
@@ -2137,6 +2161,8 @@ function selectSkill(skill: Skill) {
   if (isSkillResourceRestricted(skill)) return
   // 召唤数量限制检查
   if (isSkillSummonLimited(skill, selectedCharacter.value)) return
+  // 技能使用次数限制检查
+  if (isSkillMaxUsesReached(skill, selectedCharacter.value)) return
   selectedSkill.value = skill
   showSkillSelection.value = false
   selectedTargets.value = []
@@ -3941,20 +3967,81 @@ function collectCollectible() {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(156, 163, 175, 0.3);
   z-index: 1;
   pointer-events: none;
+  overflow: hidden;
 }
 
-.fog-icon {
-  font-size: 28rpx;
-  animation: fog 2s infinite ease-in-out;
-  opacity: 0.6;
+.fog-cloud {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
-@keyframes fog {
-  0%, 100% { opacity: 0.4; transform: translateX(-5px); }
-  50% { opacity: 0.8; transform: translateX(5px); }
+.cloud-puff {
+  position: absolute;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(200, 210, 225, 0.7) 0%, rgba(180, 195, 215, 0.5) 50%, rgba(160, 180, 200, 0.3) 100%);
+  animation: cloudFloat 3s infinite ease-in-out;
+  filter: blur(2rpx);
+}
+
+.cloud-puff.puff1 {
+  width: 80%;
+  height: 80%;
+  top: 10%;
+  left: 10%;
+  animation-delay: 0s;
+  animation-duration: 3s;
+}
+
+.cloud-puff.puff2 {
+  width: 60%;
+  height: 60%;
+  top: 25%;
+  left: 30%;
+  animation-delay: 0.5s;
+  animation-duration: 2.5s;
+}
+
+.cloud-puff.puff3 {
+  width: 50%;
+  height: 50%;
+  bottom: 15%;
+  right: 10%;
+  animation-delay: 1s;
+  animation-duration: 3.5s;
+}
+
+.cloud-puff.puff4 {
+  width: 40%;
+  height: 40%;
+  top: 20%;
+  right: 20%;
+  animation-delay: 1.5s;
+  animation-duration: 2.8s;
+}
+
+@keyframes cloudFloat {
+  0%, 100% { 
+    opacity: 0.5; 
+    transform: translate(0, 0) scale(1); 
+  }
+  25% {
+    opacity: 0.7;
+    transform: translate(3rpx, -2rpx) scale(1.05);
+  }
+  50% { 
+    opacity: 0.6; 
+    transform: translate(-2rpx, 2rpx) scale(0.95); 
+  }
+  75% {
+    opacity: 0.8;
+    transform: translate(2rpx, 1rpx) scale(1.02);
+  }
 }
 
 .shaking {
@@ -4526,6 +4613,16 @@ function collectCollectible() {
 .skill-cost, .skill-cooldown {
   font-size: 18rpx;
   color: #60a5fa;
+}
+
+.skill-use-count {
+  font-size: 18rpx;
+  color: #f59e0b;
+}
+
+.skill-use-count.maxed {
+  color: #ef4444;
+  font-weight: bold;
 }
 
 .collectible-info {

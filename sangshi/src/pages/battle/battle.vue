@@ -248,6 +248,9 @@
             
             <!-- 轰炸技能：随机火花 -->
             <view v-if="effect.category === '轰炸'" class="effect-bomb-spark" :style="{ backgroundColor: effect.color }"></view>
+            
+            <!-- 陷阵技能：瞬移光环 -->
+            <view v-if="effect.category === '陷阵'" class="effect-xianzhen-ring" :style="{ borderColor: effect.color }"></view>
           </view>
         </view>
         
@@ -468,11 +471,11 @@
 
         <!-- 多目标技能选择面板 -->
         <view 
-          v-if="selectedSkill && ((selectedSkill.targetCount && selectedSkill.targetCount > 1) || selectedSkill.id === 'terror_scream' || selectedSkill.id === 'lian_yu_huo_hai' || selectedSkill.category === '直线' || selectedSkill.category === '横扫' || selectedSkill.category === 'summon') && currentAction === 'skill'"
+          v-if="selectedSkill && ((selectedSkill.targetCount && selectedSkill.targetCount > 1) || selectedSkill.id === 'terror_scream' || selectedSkill.id === 'lian_yu_huo_hai' || selectedSkill.category === '直线' || selectedSkill.category === '横扫' || selectedSkill.category === 'summon' || selectedSkill.category === '陷阵') && currentAction === 'skill'"
           class="multi-target-panel"
         >
           <text class="multi-target-info">
-            {{ (selectedSkill.category === '直线' || selectedSkill.category === '横扫') ? (selectedDirection ? `已选方向: ${directionNames[selectedDirection]}` : '请选择方向') : (selectedSkill.id === 'terror_scream' || selectedSkill.id === 'lian_yu_huo_hai' ? '点击自己选择目标' : `已选目标 ${selectedTargets.length} / ${selectedSkill.targetCount}`) }}
+            {{ (selectedSkill.category === '直线' || selectedSkill.category === '横扫') ? (selectedDirection ? `已选方向: ${directionNames[selectedDirection]}` : '请选择方向') : (selectedSkill.category === '陷阵' ? (selectedTargets.length > 0 ? '已选位置，点击确认施放' : '点击范围内的空格子选择目标位置') : (selectedSkill.id === 'terror_scream' || selectedSkill.id === 'lian_yu_huo_hai' ? '点击自己选择目标' : `已选目标 ${selectedTargets.length} / ${selectedSkill.targetCount}`)) }}
           </text>
           <view 
             class="action-btn"
@@ -1638,6 +1641,20 @@ function getCellClass(tile: { terrain: string; building?: any }, row: number, co
       if (moveRange.value.some(r => r.row === row && r.col === col)) {
         classes['moveable'] = true
       }
+    } else if (selectedSkill.value && selectedSkill.value.category === '陷阵') {
+      // 陷阵技能：高亮范围内的空格子
+      if (moveRange.value.some(r => r.row === row && r.col === col)) {
+        const tile = gameStore.battleMap?.tiles[row]?.[col]
+        const charHere = getCharacterAt(row, col)
+        const buildingHere = getBuildingAt(row, col)
+        if (tile && tile.terrain === 'empty' && !charHere && !buildingHere) {
+          classes['moveable'] = true
+          // 已选中的格子额外高亮
+          if (selectedTargets.value.includes(`pos_${row}_${col}`)) {
+            classes['target-selected'] = true
+          }
+        }
+      }
     } else if (selectedSkill.value && selectedSkill.value.id === 'bing_feng_zhi_men') {
       // 冰封之门：高亮 2 格范围内的空格（不包含角色、建筑、河流）
       if (moveRange.value.some(r => r.row === row && r.col === col)) {
@@ -1823,6 +1840,24 @@ function handleCellClick(row: number, col: number) {
           if (selectedCharacter.value && row === selectedCharacter.value.row && col === selectedCharacter.value.col) {
             gameStore.useSkill(selectedSkill.value.id, selectedCharacter.value.id)
             cancelSelection()
+          }
+        }
+      } else if (selectedSkill.value.category === '陷阵') {
+        // 陷阵技能：点击范围内空格子选择目标（需要确认按钮施放）
+        if (moveRange.value.some(r => r.row === row && r.col === col)) {
+          const tile = gameStore.battleMap?.tiles[row]?.[col]
+          const charHere = getCharacterAt(row, col)
+          const buildingHere = getBuildingAt(row, col)
+          if (!charHere && !buildingHere && tile && tile.terrain === 'empty') {
+            const posId = `pos_${row}_${col}`
+            const existingIdx = selectedTargets.value.indexOf(posId)
+            if (existingIdx !== -1) {
+              // 已选中，取消选中
+              selectedTargets.value.splice(existingIdx, 1)
+            } else {
+              // 未选中，添加选中
+              selectedTargets.value = [posId]
+            }
           }
         }
       } else if (selectedSkill.value.id === 'bing_feng_zhi_men') {
@@ -2231,7 +2266,7 @@ function selectSkill(skill: Skill) {
       ]
     }
     currentAction.value = 'skill'
-  } else if (skill.category === 'aoe') {
+    } else if (skill.category === 'aoe') {
     const char = selectedCharacter.value
     const map = gameStore.battleMap
     if (map && char) {
@@ -2270,6 +2305,34 @@ function selectSkill(skill: Skill) {
         }
         moveRange.value = aoeRange
       }
+    }
+    currentAction.value = 'skill'
+  } else if (skill.category === '陷阵') {
+    // 陷阵技能：显示范围内的空格子
+    const char = selectedCharacter.value
+    const map = gameStore.battleMap
+    if (map && char) {
+      const skillRange = skill.range || 1
+      const targetRange: { row: number; col: number }[] = []
+      for (let r = -skillRange; r <= skillRange; r++) {
+        for (let c = -skillRange; c <= skillRange; c++) {
+          const nr = char.row + r
+          const nc = char.col + c
+          const distance = Math.abs(r) + Math.abs(c)
+          if (distance <= skillRange && distance > 0) {
+            if (nr >= 0 && nr < map.height && nc >= 0 && nc < map.width) {
+              // 只显示空格子
+              const tile = map.tiles[nr]?.[nc]
+              const charHere = getCharacterAt(nr, nc)
+              const buildingHere = getBuildingAt(nr, nc)
+              if (tile && tile.terrain === 'empty' && !charHere && !buildingHere) {
+                targetRange.push({ row: nr, col: nc })
+              }
+            }
+          }
+        }
+      }
+      moveRange.value = targetRange
     }
     currentAction.value = 'skill'
   } else if (skill.id === 'bing_feng_zhi_men') {
@@ -2328,6 +2391,15 @@ function confirmSkillCast() {
   if (selectedSkill.value.category === '横扫') {
     if (!selectedDirection.value) return
     gameStore.useSkill(selectedSkill.value.id, selectedCharacter.value.id, selectedDirection.value)
+    cancelSelection()
+    return
+  }
+
+  // 陷阵技能：需要选择空格子后才能释放
+  if (selectedSkill.value.category === '陷阵') {
+    if (selectedTargets.value.length === 0) return
+    const target = selectedTargets.value[0]
+    gameStore.useSkill(selectedSkill.value.id, selectedCharacter.value.id, target)
     cancelSelection()
     return
   }
@@ -5344,6 +5416,36 @@ function collectCollectible() {
   }
   100% {
     transform: translate(-50%, -50%) scale(0);
+    opacity: 0;
+  }
+}
+
+.skill-effect .effect-xianzhen-ring {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 60rpx;
+  height: 60rpx;
+  border-radius: 50%;
+  border: 4rpx solid;
+  animation: xianzhen-ring 0.6s ease-out forwards;
+  z-index: 5;
+  pointer-events: none;
+  box-shadow: 0 0 20rpx currentColor, inset 0 0 20rpx currentColor;
+}
+
+@keyframes xianzhen-ring {
+  0% {
+    transform: translate(-50%, -50%) scale(0.3);
+    opacity: 1;
+  }
+  50% {
+    transform: translate(-50%, -50%) scale(1.5);
+    opacity: 0.8;
+  }
+  100% {
+    transform: translate(-50%, -50%) scale(2.5);
     opacity: 0;
   }
 }

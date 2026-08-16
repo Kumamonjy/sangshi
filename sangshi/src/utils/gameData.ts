@@ -754,6 +754,7 @@ export const JOB_CONFIG: Record<string, { name: string; rank: number }> = {
   天狐司命: { name: '天狐司命', rank: 5 },
   鬼神: { name: '鬼神', rank: 5 },
   黄泉冥神: { name: '黄泉冥神', rank: 5 },
+  玉衡: { name: '玉衡', rank: 5 },
 }
 
 export const ATTRIBUTE_CONFIG: Record<Attribute, { name: string; color: string }> = {
@@ -1161,6 +1162,8 @@ export function getSkillTags(skill: Skill): { type: string; range: string; targe
     targetCountColor = '#f472b6'
   } else if (targetCountTag === '横扫') {
     targetCountColor = '#a855f7'
+  } else if (targetCountTag === '陷阵') {
+    targetCountColor = '#fbbf24'
   } else if (targetCountTag === '3x1') {
     targetCountColor = '#4ade80'
   } else if (targetCountTag === '5x1') {
@@ -1173,6 +1176,8 @@ export function getSkillTags(skill: Skill): { type: string; range: string; targe
     targetCountColor = '#c084fc'
   } else if (targetCountTag === '1x3') {
     targetCountColor = '#4ade80'
+  } else if (targetCountTag === '1x5') {
+    targetCountColor = '#a855f7'
   } else if (targetCountTag === '1个') {
     targetCountColor = '#ffffff'
   } else if (targetCountTag === '2个') {
@@ -1354,6 +1359,10 @@ export const SKILL_TEMPLATES: Record<string, Omit<Skill, 'currentCooldown'>> = {
   si_sheng_duan_lv: { id: 'si_sheng_duan_lv', name: '死生断律', mpCost: 100, type: 'attack', power: 130, cooldown: 4, range: 4, description: '选择上下左右某一方向为目标，对该方向上4格范围内的所有敌方单位，造成130%攻击力的伤害，并使目标陷入【沉默】状态', effectType: 'shadow', attribute: 'yin', category: '直线', skillTypeTag: '攻击', rangeTag: '4格', targetCountTag: '直线', statusEffect: 'silenced' },
   ming_qu_gui_zhen: { id: 'ming_qu_gui_zhen', name: '冥躯归真', mpCost: 100, type: 'heal', power: 0, cooldown: 4, range: 1, description: '选择自身为目标，恢复自身30%的生命值和10%的法力值', effectType: 'shadow', attribute: 'yin', category: 'heal', skillTypeTag: '治疗', rangeTag: '1格', targetCountTag: '1个', selfHealPct: 0.30, selfMpHealPct: 0.10 },
   jing_hua_huang_quan: { id: 'jing_hua_huang_quan', name: '镜花黄泉', mpCost: 100, type: 'support', power: 0, cooldown: 5, range: 1, targetCount: 1, description: '选择1格范围内的1个空地，召唤出一个【伊邪那美虚影】，继承施法者阵营，召唤出的虚影处于【消散】状态', effectType: 'shadow', attribute: 'yin', category: 'summon', skillTypeTag: '召唤', rangeTag: '1格', targetCountTag: '1个', summonCharacter: 'yixienamei_virtual', summonStatusEffects: ['dissipate'], summonMpOverride: 100, shaQiCost: 60 },
+  // 刻晴技能
+  yun_lai_jian_fa: { id: 'yun_lai_jian_fa', name: '云来剑法', mpCost: 80, type: 'attack', power: 130, cooldown: 3, range: 2, sweepLength: 1, sweepWidth: 5, description: '选择上下左右某一方向为目标，对该方向上长1宽5的区域内的所有敌方目标，造成130%攻击力的伤害', effectType: 'metal', attribute: 'metal', category: '横扫', skillTypeTag: '攻击', rangeTag: '2格', targetCountTag: '1x5' },
+  jian_ying_ru_guang: { id: 'jian_ying_ru_guang', name: '剑影如光', mpCost: 80, type: 'attack', power: 50, cooldown: 3, range: 0, areaRange: 3, description: '以自身为中心，对3格菱形范围内的所有敌方目标造成50%的伤害', effectType: 'metal', attribute: 'metal', category: 'aoe', skillTypeTag: '攻击', rangeTag: '3格', targetCountTag: 'AOE', rangeType: 'diamond' },
+  tian_jie_xun_you: { id: 'tian_jie_xun_you', name: '天街巡游', mpCost: 80, type: 'attack', power: 150, cooldown: 3, range: 4, areaRange: 2, description: '选择4格范围内的一个空格子作为目标，对以该格子为中心的2格范围内所有敌方目标，造成150%攻击力的范围伤害', effectType: 'metal', attribute: 'metal', category: '陷阵', skillTypeTag: '攻击', rangeTag: '4格', targetCountTag: '陷阵', rangeType: 'diamond', reikiCost: 10 },
 }
 
 export interface CharacterGrowth {
@@ -1451,6 +1460,7 @@ export const CHARACTER_GROWTH: Record<string, CharacterGrowth> = {
   qianshou: { maxHp: 140, maxMp: 50, attack: 40, defense: 25 },
   yixienamei: { maxHp: 130, maxMp: 50, attack: 40, defense: 25 },
   yixienamei_virtual: { maxHp: 130, maxMp: 0, attack: 40, defense: 25 },
+  keqing: { maxHp: 130, maxMp: 50, attack: 45, defense: 20 },
 }
 
 // 角色-技能关联表：角色 characterId -> 技能 id 列表
@@ -1543,6 +1553,7 @@ export const CHARACTER_SKILLS: Record<string, string[]> = {
   qianshou: ['qian_ren_fan_zhan', 'fan_guang_jin_hua', 'fa_xiang_chong_yuan', 'jing_ping_fu_ye'],
   yixienamei: ['huang_quan_chui_ji', 'si_sheng_duan_lv', 'ming_qu_gui_zhen', 'jing_hua_huang_quan'],
   yixienamei_virtual: ['huang_quan_chui_ji', 'si_sheng_duan_lv', 'ming_qu_gui_zhen'],
+  keqing: ['yun_lai_jian_fa', 'jian_ying_ru_guang', 'tian_jie_xun_you'],
 }
 
 /**
@@ -3525,6 +3536,29 @@ export const HIREABLE_CHARACTERS: Omit<Character, 'equipment' | 'avatar' | 'isPl
     attribute: 'yin',
     avatar: '/static/avatars/ghost/yixienamei.png',
   },
+  {
+    id: 'keqing',
+    name: '刻晴',
+    job: '玉衡',
+    faction: 'god',
+    level: 1,
+    exp: 0,
+    baseMaxHp: 520,
+    maxHp: 520,
+    baseMaxMp: 320,
+    maxMp: 320,
+    baseAttack: 125,
+    attack: 125,
+    baseDefense: 25,
+    defense: 25,
+    baseMoveRange: 4,
+    moveRange: 4,
+    baseAttackRange: 2,
+    attackRange: 2,
+    skills: buildSkillsForCharacterId('keqing'),
+    attribute: 'metal',
+    avatar: '/static/avatars/god/keqing.png',
+  },
 ]
 
 export const EQUIPMENT_TEMPLATES: {
@@ -3810,6 +3844,7 @@ export function getAvatarPath(charId: string, faction: string = 'human'): string
     'qianshou': '/static/avatars/ghost/qianshou.png',
     'yixienamei': '/static/avatars/ghost/yixienamei.png',
     'yixienamei_virtual': '/static/avatars/ghost/yixienamei.png',
+    'keqing': '/static/avatars/god/keqing.png',
   }
   return avatarPathMap[charId] || FACTION_CONFIG[faction as keyof typeof FACTION_CONFIG].icon
 }

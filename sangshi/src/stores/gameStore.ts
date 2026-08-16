@@ -49,14 +49,14 @@ export const useGameStore = defineStore('game', () => {
     attribute: Attribute
     skillType: 'attack' | 'heal' | 'support' | 'summon' | 'special'
     particles?: { x: number; y: number; delay: number }[]
-    category?: '指定' | 'aoe' | '直线' | '横扫' | '轰炸' | 'heal' | 'support' | 'summon' | 'special'
+    category?: '指定' | 'aoe' | '直线' | '横扫' | '轰炸' | '陷阵' | 'heal' | 'support' | 'summon' | 'special'
     direction?: 'up' | 'down' | 'left' | 'right'
     fromRow?: number
     fromCol?: number
   }
   const skillEffects = ref<SkillEffect[]>([])
   
-  function triggerSkillEffect(row: number, col: number, attribute: Attribute, size: 'small' | 'medium' | 'large' = 'medium', skillType: 'attack' | 'heal' | 'support' | 'summon' | 'special' = 'attack', category?: '指定' | 'aoe' | '直线' | '横扫' | '轰炸' | 'heal' | 'support' | 'summon' | 'special', fromRow?: number, fromCol?: number) {
+  function triggerSkillEffect(row: number, col: number, attribute: Attribute, size: 'small' | 'medium' | 'large' = 'medium', skillType: 'attack' | 'heal' | 'support' | 'summon' | 'special' = 'attack', category?: '指定' | 'aoe' | '直线' | '横扫' | '轰炸' | '陷阵' | 'heal' | 'support' | 'summon' | 'special', fromRow?: number, fromCol?: number) {
     const color = ATTRIBUTE_CONFIG[attribute]?.color || ATTRIBUTE_CONFIG.normal.color
     const effectId = `skill_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
     
@@ -107,7 +107,7 @@ export const useGameStore = defineStore('game', () => {
     attribute: Attribute,
     rangeType: 'diamond' | 'square' = 'diamond',
     skillType: 'attack' | 'heal' | 'support' | 'summon' | 'special' = 'attack',
-    category?: 'aoe' | '轰炸'
+    category?: 'aoe' | '轰炸' | '陷阵'
   ) {
     if (!battleMap.value) return
     
@@ -127,14 +127,15 @@ export const useGameStore = defineStore('game', () => {
             const effectId = `skill_${timestamp}_${Math.random().toString(36).substr(2, 9)}`
             const particles = generateParticles(attribute, skillType)
             const isBombing = category === '轰炸'
-            const delay = isBombing ? Math.random() * 0.4 : Math.max(Math.abs(dr), Math.abs(dc)) * 0.08
+            const isXianZhen = category === '陷阵'
+            const delay = isBombing ? Math.random() * 0.4 : isXianZhen ? Math.random() * 0.3 : Math.max(Math.abs(dr), Math.abs(dc)) * 0.08
             
             skillEffects.value.push({
               id: effectId,
               row: r,
               col: c,
               color,
-              size: isBombing ? 'small' : 'medium',
+              size: (isBombing || isXianZhen) ? 'small' : 'medium',
               timestamp,
               attribute,
               skillType,
@@ -5569,6 +5570,83 @@ export const useGameStore = defineStore('game', () => {
       }
       triggerStatusOnAction(attacker)
       return true
+    }
+
+    // 陷阵技能处理：选择空格子，对范围内敌人造成伤害，自身瞬移到目标位置
+    if (skill.category === '陷阵') {
+      let centerRow = attacker.row
+      let centerCol = attacker.col
+      
+      if (targetId && targetId.startsWith('pos_')) {
+        const [, rowStr, colStr] = targetId.split('_')
+        centerRow = parseInt(rowStr)
+        centerCol = parseInt(colStr)
+        
+        // 验证目标格子是空格子
+        const targetTile = battleMap.value?.tiles[centerRow]?.[centerCol]
+        if (!targetTile || targetTile.terrain !== 'empty') {
+          battleLog.value.push(`【${charTemplate?.name || attacker.characterId}】的【${skill.name}】需要选择一个空格子！`)
+          attacker.mp += skill.mpCost
+          return false
+        }
+        
+        // 检查目标格子是否被其他角色占据
+        const occupiedByPlayer = battleMap.value.players.some(p => p.row === centerRow && p.col === centerCol)
+        const occupiedByEnemy = battleMap.value.enemies.some(e => e.row === centerRow && e.col === centerCol)
+        const occupiedByBuilding = battleMap.value.buildings.some(b => b.row === centerRow && b.col === centerCol)
+        if (occupiedByPlayer || occupiedByEnemy || occupiedByBuilding) {
+          battleLog.value.push(`【${charTemplate?.name || attacker.characterId}】的【${skill.name}】需要选择一个没有其他单位的空格子！`)
+          attacker.mp += skill.mpCost
+          return false
+        }
+        
+        const skillAttr = skill.attribute || 'normal'
+        const skillType = skill.type as 'attack' | 'heal' | 'support' | 'summon' | 'special'
+        
+        // 1. 先触发攻击特效（瞬移前在原位置触发）
+        triggerSkillEffect(attacker.row, attacker.col, skillAttr, 'large', skillType, '陷阵', centerRow, centerCol)
+        
+        // 2. 对范围内敌人造成伤害
+        processAOEAttackSkill(attacker, skill, centerRow, centerCol, charTemplate)
+        
+        // 3. 在目标位置触发陷阵特效
+        triggerAOEEffects(centerRow, centerCol, skill.areaRange || 1, skillAttr, skill.rangeType || 'diamond', skillType, '陷阵')
+        
+        // 4. 触发瞬移特效（从原位置消失，在目标位置出现）
+        setTimeout(() => {
+          if (!battleMap.value) return
+          
+          // 在原位置触发消失特效
+          triggerSkillEffect(attacker.row, attacker.col, skillAttr, 'medium', skillType, '陷阵')
+          
+          // 瞬移：更新攻击者位置
+          attacker.row = centerRow
+          attacker.col = centerCol
+          
+          // 在新位置触发出现特效
+          triggerSkillEffect(centerRow, centerCol, skillAttr, 'large', skillType, '陷阵')
+          
+          battleLog.value.push(`【${charTemplate?.name || attacker.characterId}】使用【${skill.name}】瞬移至(${centerRow},${centerCol})！`)
+        }, 300)
+        
+        attacker.hasActed = true
+        if (attacker.isPlayer) {
+          const attackerChar = player.value.characters.find(c => c.id === attacker.characterId)
+          if (attackerChar) {
+            const playerSkill = attackerChar.skills.find(s => s.id === skillId)
+            if (playerSkill) playerSkill.currentCooldown = skill.cooldown || 1
+          }
+        } else {
+          if (!attacker.skillCooldowns) attacker.skillCooldowns = {}
+          attacker.skillCooldowns[skillId] = skill.cooldown || 1
+        }
+        triggerStatusOnAction(attacker)
+        return true
+      }
+      
+      battleLog.value.push(`【${charTemplate?.name || attacker.characterId}】的【${skill.name}】需要选择一个目标格子！`)
+      attacker.mp += skill.mpCost
+      return false
     }
 
     // 特殊处理「爱的抱抱」「爱的飞吻」「爱的回忆」「余音绕梁」「疯魔琴心」等治疗技能

@@ -3,7 +3,7 @@ export type Job = string
 export type Rarity = 'common' | 'rare' | 'exceptional' | 'treasure' | 'celestial' | 'peerless'
 export type ItemSubtype = 'weapon' | 'armor' | 'helmet' | 'shoes' | 'accessory' | 'book' | 'consumable' | 'chest' | 'soul'
 export type TerrainType = 'empty' | 'river' | 'obstacle' | 'snow'
-export type WeatherType = 'normal' | 'light_snow' | 'medium_snow' | 'heavy_snow' | 'mountain_fire' | 'sky_fire' | 'fog'
+export type WeatherType = 'normal' | 'light_snow' | 'medium_snow' | 'heavy_snow' | 'mountain_fire' | 'sky_fire' | 'fog' | 'ghost_fog'
 export type Attribute = 'normal' | 'metal' | 'wood' | 'water' | 'fire' | 'earth' | 'ice' | 'wind' | 'dark' | 'yang' | 'light' | 'yin'
 
 // 状态系统类型
@@ -327,6 +327,7 @@ export interface Skill {
   damageFormula?: 'power' | 'atk_plus_hp_pct' | 'move_based' // 伤害计算公式类型
   hpPct?: number // 当damageFormula为atk_plus_hp_pct时，目标当前生命值的百分比系数
   skillTypeTag?: string // 技能类型标签：攻击/辅助/治疗/特殊
+  elementTag?: string // 元素标签：冰/火/雷/水等
   rangeTag?: string // 范围标签：1格/2格/3格等
   targetCountTag?: string // 目标数量标签：AOE/1个/2个/3个等
   statusEffect?: StatusType // AOE技能对目标施加的状态效果
@@ -755,6 +756,9 @@ export const JOB_CONFIG: Record<string, { name: string; rank: number }> = {
   鬼神: { name: '鬼神', rank: 5 },
   黄泉冥神: { name: '黄泉冥神', rank: 5 },
   玉衡: { name: '玉衡', rank: 5 },
+  冰雪女神: { name: '冰雪女神', rank: 5 },
+  高科技: { name: '高科技', rank: 4 },
+  蛇姬: { name: '蛇姬', rank: 5 },
 }
 
 export const ATTRIBUTE_CONFIG: Record<Attribute, { name: string; color: string }> = {
@@ -1088,8 +1092,9 @@ export function openChest(chestId?: string): Item {
   };
 }
 
-export function getSkillTags(skill: Skill): { type: string; range: string; targetCount: string; typeColor: string; rangeColor: string; targetCountColor: string } {
+export function getSkillTags(skill: Skill): { type: string; element: string; range: string; targetCount: string; typeColor: string; elementColor: string; rangeColor: string; targetCountColor: string } {
   let typeTag = skill.skillTypeTag || ''
+  let elementTag = skill.elementTag || ''
   let rangeTag = skill.rangeTag || ''
   let targetCountTag = skill.targetCountTag || ''
 
@@ -1186,16 +1191,59 @@ export function getSkillTags(skill: Skill): { type: string; range: string; targe
     targetCountColor = '#60a5fa'
   }
 
-  return { type: typeTag, range: rangeTag, targetCount: targetCountTag, typeColor, rangeColor, targetCountColor }
+  if (!elementTag && skill.attribute) {
+    const attrElementMap: Record<string, string> = {
+      ice: '冰',
+      fire: '火',
+      thunder: '雷',
+      water: '水',
+      wind: '风',
+      earth: '土',
+      metal: '金',
+      wood: '木',
+      shadow: '暗',
+      holy: '光',
+      yin: '阴',
+    }
+    elementTag = attrElementMap[skill.attribute] || ''
+  }
+
+  let elementColor = '#eaeaea'
+  if (elementTag === '冰') {
+    elementColor = '#60a5fa'
+  } else if (elementTag === '火') {
+    elementColor = '#f87171'
+  } else if (elementTag === '雷') {
+    elementColor = '#fbbf24'
+  } else if (elementTag === '水') {
+    elementColor = '#38bdf8'
+  } else if (elementTag === '风') {
+    elementColor = '#4ade80'
+  } else if (elementTag === '土') {
+    elementColor = '#a16207'
+  } else if (elementTag === '金') {
+    elementColor = '#facc15'
+  } else if (elementTag === '木') {
+    elementColor = '#22c55e'
+  } else if (elementTag === '暗') {
+    elementColor = '#a855f7'
+  } else if (elementTag === '光') {
+    elementColor = '#fef08a'
+  } else if (elementTag === '阴') {
+    elementColor = '#8B5CF6'
+  }
+
+  return { type: typeTag, element: elementTag, range: rangeTag, targetCount: targetCountTag, typeColor, elementColor, rangeColor, targetCountColor }
 }
 
 export const SKILL_TEMPLATES: Record<string, Omit<Skill, 'currentCooldown'>> = {
   po_kong_zhan: { id: 'po_kong_zhan', name: '破空斩', mpCost: 50, type: 'attack', power: 130, cooldown: 3, description: '选择1格范围内的1个敌方目标，造成130%攻击力+10%当前生命值的伤害', effectType: 'fire', attribute: 'normal', category: '指定', skillTypeTag: '攻击', rangeTag: '1格', targetCountTag: '1个', damageFormula: 'atk_plus_hp_pct', hpPct: 0.1 },
   qian_li_bing_feng: { id: 'qian_li_bing_feng', name: '千里冰封', mpCost: 60, type: 'attack', power: 110, cooldown: 4, range: 0, description: '以自身为中心，对3格菱形范围内的所有敌方目标造成110%攻击力的伤害，并使目标陷入【削弱】状态', effectType: 'ice', areaRange: 3, attribute: 'ice', category: 'aoe', skillTypeTag: '攻击', rangeTag: '3格', targetCountTag: 'AOE', statusEffect: 'weakened', rangeType: 'diamond' },
   bing_feng_zhi_men: { id: 'bing_feng_zhi_men', name: '冰封之门', mpCost: 15, type: 'support', power: 0, cooldown: 2, range: 2, targetCount: 2, description: '选择2格范围内的任意两个空地，确认后生成障碍物', effectType: 'ice', attribute: 'ice', category: 'special', skillTypeTag: '特殊', rangeTag: '2格', targetCountTag: '2个' },
-  ai_de_bao_bao: { id: 'ai_de_bao_bao', name: '爱的抱抱', mpCost: 30, type: 'heal', power: 5, cooldown: 2, range: 1, description: '对相邻1格范围内的指定目标，恢复血量和法力值（恢复量为0.05*自身最大生命值/法力值+0.1*目标最大生命值/法力值），并驱散目标所有不良状态', attribute: 'water', category: 'heal', skillTypeTag: '治疗', rangeTag: '1格', targetCountTag: '1个' },
+  bing_jing_fei_she: { id: 'bing_jing_fei_she', name: '冰晶飞射', mpCost: 50, type: 'attack', power: 90, cooldown: 2, range: 3, description: '选择上下左右中的一个方向，对该方向上3格范围内的所有敌方单位，造成90%攻击力的伤害', effectType: 'ice', attribute: 'ice', category: '直线', skillTypeTag: '攻击', elementTag: '冰', rangeTag: '3格', targetCountTag: '直线' },
+  ai_de_bao_bao: { id: 'ai_de_bao_bao', name: '爱的抱抱', mpCost: 40, type: 'heal', power: 5, cooldown: 2, range: 1, description: '对相邻1格范围内的指定目标，恢复血量和法力值（恢复量为0.05*自身最大生命值/法力值+0.1*目标最大生命值/法力值），并驱散目标所有不良状态', attribute: 'water', category: 'heal', skillTypeTag: '治疗', rangeTag: '1格', targetCountTag: '1个' },
   ai_de_fei_wen: { id: 'ai_de_fei_wen', name: '爱的飞吻', mpCost: 50, type: 'heal', power: 0, cooldown: 3, range: 3, description: '选择3格范围内的一个指定目标，恢复血量（恢复量为0.05*自身最大生命值+0.1*目标最大生命值），并驱散目标所有不良状态', attribute: 'water', category: 'heal', skillTypeTag: '治疗', rangeTag: '3格', targetCountTag: '1个' },
-  ai_de_hui_yi: { id: 'ai_de_hui_yi', name: '爱的回忆', mpCost: 15, type: 'heal', power: 0, cooldown: 5, range: 1, description: '熊熊选择自己为目标，恢复10%的最大生命值以及10%的最大法力值，并驱散自身所有不良状态', attribute: 'water', category: 'heal', skillTypeTag: '治疗', rangeTag: '1格', targetCountTag: '1个' },
+  ai_de_hui_yi: { id: 'ai_de_hui_yi', name: '爱的回忆', mpCost: 30, type: 'heal', power: 0, cooldown: 5, range: 1, description: '熊熊选择自己为目标，恢复10%的最大生命值以及10%的最大法力值，并驱散自身所有不良状态', attribute: 'water', category: 'heal', skillTypeTag: '治疗', rangeTag: '1格', targetCountTag: '1个' },
   fire_burst: { id: 'fire_burst', name: '炎爆术', mpCost: 20, type: 'attack', power: 120, cooldown: 2, description: '选择1格范围内的1个敌方目标，造成120%攻击力的伤害', attribute: 'normal', category: '指定', skillTypeTag: '攻击', rangeTag: '1格', targetCountTag: '1个' },
   ice_shard: { id: 'ice_shard', name: '冰晶术', mpCost: 18, type: 'attack', power: 100, cooldown: 2, description: '选择1格范围内的1个敌方目标，造成100%攻击力的伤害', attribute: 'normal', category: '指定', skillTypeTag: '攻击', rangeTag: '1格', targetCountTag: '1个' },
   thunder_bolt: { id: 'thunder_bolt', name: '雷电术', mpCost: 25, type: 'attack', power: 140, cooldown: 3, description: '选择1格范围内的1个敌方目标，造成140%攻击力的伤害', attribute: 'normal', category: '指定', skillTypeTag: '攻击', rangeTag: '1格', targetCountTag: '1个' },
@@ -1226,9 +1274,9 @@ export const SKILL_TEMPLATES: Record<string, Omit<Skill, 'currentCooldown'>> = {
   lingqisi: { id: 'lingqisi', name: '灵气丝', mpCost: 40, type: 'attack', power: 130, cooldown: 3, range: 3, description: '选择3格范围内的1个敌方目标，造成130%攻击力的伤害，恢复自身造成伤害38%的生命值', attribute: 'normal', category: '指定', skillTypeTag: '攻击', rangeTag: '3格', targetCountTag: '1个', lifesteal: 0.385 },
   xing_huo_liao_yuan: { id: 'xing_huo_liao_yuan', name: '星火燎原', mpCost: 60, type: 'attack', power: 130, cooldown: 3, range: 3, targetCount: 2, description: '选择3格范围内的2个敌方目标，分别造成130%攻击力的伤害', effectType: 'fire', attribute: 'fire', category: '指定', skillTypeTag: '攻击', rangeTag: '3格', targetCountTag: '2个' },
   ju_huo_fen_tian: { id: 'ju_huo_fen_tian', name: '举火焚天', mpCost: 50, type: 'attack', power: 120, cooldown: 3, range: 3, description: '选择3格范围内的1个敌方目标，造成120%攻击力的伤害，自身获得【强力】状态', effectType: 'fire', attribute: 'fire', category: '指定', skillTypeTag: '攻击', rangeTag: '3格', targetCountTag: '1个', selfStatusEffects: ['strong'] },
-  yuan_cheng_dao_dan: { id: 'yuan_cheng_dao_dan', name: '远程导弹', mpCost: 75, type: 'attack', power: 90, cooldown: 3, range: 4, areaRange: 1, description: '选择4格范围内的1个格子为目标，对以该格子为中心的1格菱形范围内的所有敌方目标造成90%攻击力的伤害', attribute: 'metal', category: 'aoe', skillTypeTag: '攻击', rangeTag: '4格', targetCountTag: '轰炸', rangeType: 'diamond' },
+  yuan_cheng_dao_dan: { id: 'yuan_cheng_dao_dan', name: '远程导弹', mpCost: 75, type: 'attack', power: 130, cooldown: 3, range: 4, areaRange: 1, description: '选择4格范围内的1个格子为目标，对以该格子为中心的1格菱形范围内的所有敌方目标造成130%攻击力的伤害', attribute: 'metal', category: 'aoe', skillTypeTag: '攻击', rangeTag: '4格', targetCountTag: '轰炸', rangeType: 'diamond' },
   jing_zhun_da_ji: { id: 'jing_zhun_da_ji', name: '精准打击', mpCost: 60, type: 'attack', power: 130, cooldown: 3, range: 4, targetCount: 2, description: '选择4格范围内的2个敌方目标，分别造成130%攻击力的伤害', attribute: 'metal', category: '指定', skillTypeTag: '攻击', rangeTag: '4格', targetCountTag: '2个' },
-  gong_cheng_zhong_pao: { id: 'gong_cheng_zhong_pao', name: '攻城重炮', mpCost: 80, type: 'attack', power: 200, cooldown: 3, range: 5, areaRange: 1, description: '选择5格范围内的1个格子为目标，对以该格子为中心的1格菱形范围内的所有敌方目标造成200%攻击力的伤害；自身陷入【瘸腿】和【鹰眼】状态', effectType: 'fire', attribute: 'fire', category: 'aoe', skillTypeTag: '攻击', rangeTag: '5格', targetCountTag: '轰炸', rangeType: 'diamond', selfStatusEffects: ['lame', 'eagle_eye'] },
+  gong_cheng_zhong_pao: { id: 'gong_cheng_zhong_pao', name: '攻城重炮', mpCost: 80, type: 'attack', power: 220, cooldown: 3, range: 5, areaRange: 1, description: '选择5格范围内的1个格子为目标，对以该格子为中心的1格菱形范围内的所有敌方目标造成220%攻击力的伤害；自身陷入【瘸腿】和【鹰眼】状态', effectType: 'fire', attribute: 'fire', category: 'aoe', skillTypeTag: '攻击', rangeTag: '5格', targetCountTag: '轰炸', rangeType: 'diamond', selfStatusEffects: ['lame', 'eagle_eye'] },
   hong_lian_hua_huo: { id: 'hong_lian_hua_huo', name: '红莲花火', mpCost: 80, type: 'attack', power: 150, cooldown: 3, range: 3, targetCount: 1, description: '选择3格范围内的1个敌方目标，造成150%攻击力的伤害，并使目标陷入【燃烧】状态', effectType: 'fire', attribute: 'fire', category: '指定', skillTypeTag: '攻击', rangeTag: '3格', targetCountTag: '1个', statusEffect: 'burning' },
   she_jian_du_wen: { id: 'she_jian_du_wen', name: '蛇剑毒吻', mpCost: 80, type: 'attack', power: 120, cooldown: 3, range: 3, targetCount: 2, description: '选择3格范围内的2个敌方目标，分别造成120%攻击力的伤害，并使目标陷入【流血】状态', effectType: 'earth', attribute: 'fire', category: '指定', skillTypeTag: '攻击', rangeTag: '3格', targetCountTag: '2个', statusEffect: 'bleeding' },
   xie_shen_di_yu: { id: 'xie_shen_di_yu', name: '邪神低语', mpCost: 90, type: 'attack', power: 120, cooldown: 4, range: 0, areaRange: 2, description: '以自身为中心，对2格菱形范围内的所有敌方目标造成120%攻击力的伤害，并使目标陷入【迷离】状态', effectType: 'shadow', attribute: 'earth', category: 'aoe', skillTypeTag: '攻击', rangeTag: '2格', targetCountTag: 'AOE', statusEffect: 'mili', rangeType: 'diamond' },
@@ -1263,7 +1311,7 @@ export const SKILL_TEMPLATES: Record<string, Omit<Skill, 'currentCooldown'>> = {
   ku_lou_xue_shou_yin: { id: 'ku_lou_xue_shou_yin', name: '骷髅血手印', mpCost: 60, type: 'attack', power: 160, cooldown: 3, range: 3, description: '选择3格范围内的1个敌方目标，造成160%攻击力的伤害，并使目标陷入【流血】状态', attribute: 'fire', category: '指定', skillTypeTag: '攻击', rangeTag: '3格', targetCountTag: '1个', statusEffect: 'bleeding' },
   liu_hun_kong_zhou: { id: 'liu_hun_kong_zhou', name: '六魂恐咒', mpCost: 80, type: 'attack', power: 150, cooldown: 4, range: 2, description: '选择2格范围内的1个敌方目标，造成150%攻击力的伤害，并使目标陷入【中毒】和【沉默】状态', attribute: 'fire', category: '指定', skillTypeTag: '攻击', rangeTag: '2格', targetCountTag: '1个', statusEffects: ['poison', 'silenced'] },
   zhi_yu_zhi_guang: { id: 'zhi_yu_zhi_guang', name: '治愈之光', mpCost: 70, type: 'heal', power: 100, cooldown: 4, range: 3, description: '选择3格范围内的1个友方目标，恢复自己和该目标100%攻击力的生命值与法力值，并驱散目标所有不良状态', attribute: 'wind', category: 'heal', skillTypeTag: '治疗', rangeTag: '3格', targetCountTag: '1个' },
-  emp_chong_ji_bo: { id: 'emp_chong_ji_bo', name: 'EMP冲击波', mpCost: 70, type: 'attack', power: 150, cooldown: 4, range: 3, description: '选择3格范围内的1个敌方目标，造成150%攻击力的伤害，并使目标陷入【沉默】状态，持续3回合', attribute: 'wind', category: '指定', skillTypeTag: '攻击', rangeTag: '3格', targetCountTag: '1个', statusEffect: 'silenced' },
+  emp_chong_ji_bo: { id: 'emp_chong_ji_bo', name: 'EMP冲击波', mpCost: 100, type: 'attack', power: 120, cooldown: 4, range: 3, areaRange: 1, description: '选择3格范围内的1个格子为目标，对以该格子为中心的1格菱形范围内的所有敌方目标，造成攻击力120%的伤害，并使目标陷入【沉默】状态，持续2回合', effectType: 'wind', attribute: 'wind', category: 'aoe', skillTypeTag: '攻击', elementTag: '风', rangeTag: '3格', targetCountTag: '轰炸', rangeType: 'diamond', statusEffect: 'silenced', statusEffectDuration: 2 },
   fu_she_da_ji: { id: 'fu_she_da_ji', name: '辐射打击', mpCost: 80, type: 'attack', power: 150, cooldown: 3, range: 4, description: '选择4格范围内的1个敌方目标，造成150%攻击力的伤害，并使目标陷入【中毒】状态', attribute: 'wind', category: '指定', skillTypeTag: '攻击', rangeTag: '4格', targetCountTag: '1个', statusEffect: 'poison' },
   huo_yu_liu_xing: { id: 'huo_yu_liu_xing', name: '火羽流星', mpCost: 80, type: 'attack', power: 70, cooldown: 3, range: 3, targetCount: 3, description: '选择3格范围内的3个敌方目标，分别造成70%攻击力的伤害', effectType: 'fire', attribute: 'fire', category: '指定', skillTypeTag: '攻击', rangeTag: '3格', targetCountTag: '3个' },
   tian_ya_qing_qing: { id: 'tian_ya_qing_qing', name: '天雅倾情', mpCost: 60, type: 'heal', power: 10, cooldown: 4, range: 4, description: '选择4格范围内的1个友方目标，恢复生命值和法力值，恢复量为自身10%生命值和法力值上限，并消除所有不良状态', attribute: 'yang', category: 'heal', skillTypeTag: '治疗', rangeTag: '4格', targetCountTag: '1个' },
@@ -1296,7 +1344,7 @@ export const SKILL_TEMPLATES: Record<string, Omit<Skill, 'currentCooldown'>> = {
   tian_tu_zhan_fang: { id: 'tian_tu_zhan_fang', name: '天兔绽放', mpCost: 60, type: 'attack', power: 120, cooldown: 3, range: 0, areaRange: 2, description: '以自身为中心，对2格菱形范围内的所有敌方目标造成120%攻击力的伤害', effectType: 'water', attribute: 'water', category: 'aoe', skillTypeTag: '攻击', rangeTag: '2格', targetCountTag: 'AOE', rangeType: 'diamond' },
   fei_xue_meng_ji: { id: 'fei_xue_meng_ji', name: '沸血猛击', mpCost: 80, type: 'attack', power: 210, cooldown: 3, range: 1, targetCount: 1, description: '选择1格范围内的1个敌方目标，造成210%攻击力的伤害，自身损失10%最大生命值并获得【愤怒】状态', effectType: 'earth', attribute: 'earth', category: '指定', skillTypeTag: '攻击', rangeTag: '1格', targetCountTag: '1个', selfHpCost: 0.1, selfStatusEffects: ['fury'] },
   wu_di_niu_niu: { id: 'wu_di_niu_niu', name: '无敌牛牛', mpCost: 100, type: 'heal', power: 100, cooldown: 5, range: 0, targetCount: 1, description: '选择自身为目标，恢复自身100%攻击力的生命值，驱散所有不良状态，并且自身获得【愈合】状态', effectType: 'earth', attribute: 'earth', category: 'heal', skillTypeTag: '治疗', rangeTag: '1格', targetCountTag: '1个', selfStatusEffects: ['heal'] },
-  jian_yu: { id: 'jian_yu', name: '箭雨', mpCost: 80, type: 'attack', power: 65, cooldown: 3, range: 4, areaRange: 2, description: '选择4格范围内的1个格子为目标，对以该格子为中心的2格菱形范围内的所有敌方目标造成65%攻击力的伤害', effectType: 'wind', attribute: 'wind', category: 'aoe', skillTypeTag: '攻击', rangeTag: '4格', targetCountTag: '轰炸', rangeType: 'diamond' },
+  jian_yu: { id: 'jian_yu', name: '箭雨', mpCost: 80, type: 'attack', power: 80, cooldown: 3, range: 4, areaRange: 2, description: '选择4格范围内的1个格子为目标，对以该格子为中心的2格菱形范围内的所有敌方目标造成80%攻击力的伤害', effectType: 'wind', attribute: 'wind', category: 'aoe', skillTypeTag: '攻击', rangeTag: '4格', targetCountTag: '轰炸', rangeType: 'diamond' },
   sui_xing: { id: 'sui_xing', name: '碎星', mpCost: 80, type: 'attack', power: 200, cooldown: 4, range: 4, targetCount: 1, description: '选择4格范围内的1个敌方目标，造成200%攻击力的伤害，并使目标陷入【流血】状态', effectType: 'wind', attribute: 'wind', category: '指定', statusEffect: 'bleeding', skillTypeTag: '攻击', rangeTag: '4格', targetCountTag: '1个' },
   miao_shou: { id: 'miao_shou', name: '妙手', mpCost: 80, type: 'heal', power: 100, cooldown: 4, range: 3, targetCount: 1, description: '选择3格菱形范围内的1个友方单位（可以选择自身），恢复100%攻击力的生命值，使目标获得【愈合】状态，并驱散目标所有不良状态', effectType: 'water', attribute: 'water', category: 'heal', skillTypeTag: '治疗', rangeTag: '3格', targetCountTag: '1个' },
   cuo_gu: { id: 'cuo_gu', name: '错骨', mpCost: 80, type: 'attack', power: 50, cooldown: 4, range: 2, targetCount: 1, description: '选择2格范围内的1个敌方目标，造成50%攻击力+20%当前生命值的伤害，并使目标陷入【紊乱】状态', effectType: 'water', attribute: 'water', category: '指定', damageFormula: 'atk_plus_hp_pct', hpPct: 0.2, statusEffect: 'disorder', skillTypeTag: '攻击', rangeTag: '2格', targetCountTag: '1个' },
@@ -1322,7 +1370,7 @@ export const SKILL_TEMPLATES: Record<string, Omit<Skill, 'currentCooldown'>> = {
   yu_men_chong_zhen: { id: 'yu_men_chong_zhen', name: '狱门重震', mpCost: 75, type: 'attack', power: 130, cooldown: 4, range: 2, targetCount: 2, description: '选择2格菱形范围内的2个目标，造成攻击力130%的伤害，并且使目标陷入【虚弱】状态', effectType: 'metal', attribute: 'metal', category: '指定', skillTypeTag: '攻击', rangeTag: '2格', targetCountTag: '2个', statusEffect: 'weak', rangeType: 'diamond' },
   suo_hun: { id: 'suo_hun', name: '锁魂', mpCost: 50, type: 'attack', power: 150, cooldown: 2, range: 3, targetCount: 1, description: '选择3格菱形范围内的一个敌方目标，造成攻击力150%的伤害，并且使目标陷入【禁锢】状态，持续3回合', effectType: 'metal', attribute: 'metal', category: '指定', skillTypeTag: '攻击', rangeTag: '3格', targetCountTag: '1个', statusEffect: 'imprison', statusEffectDuration: 3, rangeType: 'diamond' },
   qiu_ling: { id: 'qiu_ling', name: '囚灵', mpCost: 100, type: 'attack', power: 130, cooldown: 4, range: 3, targetCount: 2, description: '选择3格菱形范围内的2个目标，造成攻击力130%的伤害，并且使目标陷入【禁锢】和【紊乱】状态，持续3回合', effectType: 'metal', attribute: 'metal', category: '指定', skillTypeTag: '攻击', rangeTag: '3格', targetCountTag: '2个', statusEffects: ['imprison', 'disorder'], statusEffectsDurations: [3, 3], rangeType: 'diamond' },
-  fu_she_an_ji: { id: 'fu_she_an_ji', name: '辐射打击', mpCost: 80, type: 'attack', power: 80, cooldown: 4, range: 3, areaRange: 1, description: '选择3格范围内的1个格子为目标，对以该格子为中心的1格菱形范围内的所有敌方目标造成80%攻击力的伤害，并且使目标陷入【中毒】状态', effectType: 'dark', attribute: 'dark', category: 'aoe', skillTypeTag: '攻击', rangeTag: '3格', targetCountTag: '轰炸', statusEffect: 'poison', rangeType: 'diamond' },
+  fu_she_an_ji: { id: 'fu_she_an_ji', name: '辐射暗记', mpCost: 80, type: 'attack', power: 80, cooldown: 4, range: 3, targetCount: 1, description: '选择3格范围内的1个敌方目标，造成80%攻击力的伤害，并使目标陷入【中毒】状态', effectType: 'dark', attribute: 'dark', category: '指定', skillTypeTag: '攻击', rangeTag: '3格', targetCountTag: '1个', statusEffect: 'poison' },
   tian_di_sui: { id: 'tian_di_sui', name: '天地碎裂', mpCost: 75, type: 'attack', power: 150, cooldown: 3, range: 0, areaRange: 2, description: '以自身为中心，对2格菱形范围内的所有敌方目标造成150%的伤害', effectType: 'light', attribute: 'light', category: 'aoe', skillTypeTag: '攻击', rangeTag: '2格', targetCountTag: 'AOE', rangeType: 'diamond' },
   tian_ming_huang_quan: { id: 'tian_ming_huang_quan', name: '天命皇权', mpCost: 100, type: 'summon', power: 0, cooldown: 5, range: 3, targetCount: 4, description: '选择3格菱形范围内的4个空地，召唤出4个【动员兵】，并使自身获得【刚毅】和【愈合】状态，持续3回合', effectType: 'light', attribute: 'light', category: 'summon', skillTypeTag: '召唤', rangeTag: '3格', targetCountTag: '4个', summonCharacter: 'dongyuan_bing', selfStatusEffects: ['resolute', 'heal'], selfStatusEffectsDurations: [3, 3], reikiCost: 30, rangeType: 'diamond' },
   man_zhu_sha_hua: { id: 'man_zhu_sha_hua', name: '曼珠沙华', mpCost: 100, type: 'attack', power: 50, cooldown: 5, range: 0, areaRange: 3, description: '以自身为中心，对3格菱形范围内的所有敌方目标造成50%的伤害，并且陷入【中毒】状态，并恢复自身15%的生命值', effectType: 'dark', attribute: 'dark', category: 'aoe', skillTypeTag: '攻击', rangeTag: '3格', targetCountTag: 'AOE', rangeType: 'diamond', statusEffect: 'poison', selfHealPct: 0.15, shaQiCost: 60 },
@@ -1345,7 +1393,7 @@ export const SKILL_TEMPLATES: Record<string, Omit<Skill, 'currentCooldown'>> = {
   // 杀生樱技能
   luo_lei: { id: 'luo_lei', name: '落雷', mpCost: 60, type: 'attack', power: 150, cooldown: 1, range: 4, targetCount: 1, description: '选择4格范围内的1个敌方目标，造成150%攻击力的伤害，并且自身陷入【消散】状态', effectType: 'metal', attribute: 'metal', category: '指定', skillTypeTag: '攻击', rangeTag: '4格', targetCountTag: '1个', selfStatusEffects: ['dissipate'] },
   lei_bao: { id: 'lei_bao', name: '雷暴', mpCost: 60, type: 'attack', power: 65, cooldown: 1, range: 3, areaRange: 1, description: '选择3格范围内的1个格子为目标，对以该格子为中心的1格菱形范围内的所有敌方目标造成65%攻击力的伤害，并且自身陷入【消散】状态', effectType: 'metal', attribute: 'metal', category: 'aoe', skillTypeTag: '攻击', rangeTag: '3格', targetCountTag: '轰炸', rangeType: 'diamond', selfStatusEffects: ['dissipate'] },
-  da_lei_bao: { id: 'da_lei_bao', name: '大雷暴', mpCost: 80, type: 'attack', power: 75, cooldown: 3, range: 3, areaRange: 1, description: '选择3格范围内的1个格子为目标，对以该格子为中心的1格菱形范围内的所有敌方目标造成75%攻击力的伤害', effectType: 'metal', attribute: 'metal', category: 'aoe', skillTypeTag: '攻击', rangeTag: '3格', targetCountTag: '轰炸', rangeType: 'diamond' },
+  da_lei_bao: { id: 'da_lei_bao', name: '大雷暴', mpCost: 80, type: 'attack', power: 120, cooldown: 3, range: 3, areaRange: 1, description: '选择3格范围内的1个格子为目标，对以该格子为中心的1格菱形范围内的所有敌方目标造成120%攻击力的伤害', effectType: 'metal', attribute: 'metal', category: 'aoe', skillTypeTag: '攻击', rangeTag: '3格', targetCountTag: '轰炸', rangeType: 'diamond' },
   // 八重神子技能
   sha_sheng_ying_zhou: { id: 'sha_sheng_ying_zhou', name: '杀生樱咒', mpCost: 40, type: 'support', power: 0, cooldown: 1, range: 4, targetCount: 1, description: '选择4格菱形范围内的1个空格，召唤出一个【杀生樱】，继承施法者阵营，召唤出的杀生樱处于【消散】状态', effectType: 'metal', attribute: 'metal', category: 'summon', skillTypeTag: '召唤', rangeTag: '4格', targetCountTag: '1个', summonCharacter: 'shashengying', summonStatusEffects: ['dissipate'], summonMaxCount: 3, summonCountId: 'shashengying', maxUsesPerBattle: 5 },
   tian_hu_xian_zhen: { id: 'tian_hu_xian_zhen', name: '天狐显真', mpCost: 100, type: 'attack', power: 50, cooldown: 4, range: 0, areaRange: 3, description: '以自身为中心，对3格菱形范围内的所有敌方目标造成50%的伤害，并且陷入【禁锢】状态，持续3回合，自身获得【强力】状态', effectType: 'metal', attribute: 'metal', category: 'aoe', skillTypeTag: '攻击', rangeTag: '3格', targetCountTag: 'AOE', rangeType: 'diamond', statusEffect: 'imprison', statusEffectDuration: 3, selfStatusEffects: ['strong'], shaQiCost: 30 },
@@ -1363,6 +1411,15 @@ export const SKILL_TEMPLATES: Record<string, Omit<Skill, 'currentCooldown'>> = {
   yun_lai_jian_fa: { id: 'yun_lai_jian_fa', name: '云来剑法', mpCost: 80, type: 'attack', power: 130, cooldown: 3, range: 2, sweepLength: 1, sweepWidth: 5, description: '选择上下左右某一方向为目标，对该方向上长1宽5的区域内的所有敌方目标，造成130%攻击力的伤害', effectType: 'metal', attribute: 'metal', category: '横扫', skillTypeTag: '攻击', rangeTag: '2格', targetCountTag: '1x5' },
   jian_ying_ru_guang: { id: 'jian_ying_ru_guang', name: '剑影如光', mpCost: 80, type: 'attack', power: 50, cooldown: 3, range: 0, areaRange: 3, description: '以自身为中心，对3格菱形范围内的所有敌方目标造成50%的伤害', effectType: 'metal', attribute: 'metal', category: 'aoe', skillTypeTag: '攻击', rangeTag: '3格', targetCountTag: 'AOE', rangeType: 'diamond' },
   tian_jie_xun_you: { id: 'tian_jie_xun_you', name: '天街巡游', mpCost: 80, type: 'attack', power: 150, cooldown: 3, range: 4, areaRange: 2, description: '选择4格范围内的一个空格子作为目标，对以该格子为中心的2格范围内所有敌方目标，造成150%攻击力的范围伤害', effectType: 'metal', attribute: 'metal', category: '陷阵', skillTypeTag: '攻击', rangeTag: '4格', targetCountTag: '陷阵', rangeType: 'diamond', reikiCost: 10 },
+  // 雪月技能
+  sui_bing_liu: { id: 'sui_bing_liu', name: '碎冰流', mpCost: 80, type: 'attack', power: 90, cooldown: 3, range: 4, description: '选择上下左右中的一个方向，对该方向上4格范围内的所有敌方单位，造成90%攻击力的伤害', effectType: 'ice', attribute: 'ice', category: '直线', skillTypeTag: '攻击', elementTag: '冰', rangeTag: '4格', targetCountTag: '直线' },
+  lin_dong_jie_jie: { id: 'lin_dong_jie_jie', name: '凛冬结界', mpCost: 80, type: 'attack', power: 90, cooldown: 3, range: 0, areaRange: 2, description: '以自身为中心，对2格菱形范围内的所有敌方目标造成90%的伤害，并且陷入【寒冷】状态，持续2回合', effectType: 'ice', attribute: 'ice', category: 'aoe', skillTypeTag: '攻击', elementTag: '冰', rangeTag: '2格', targetCountTag: 'AOE', rangeType: 'diamond', statusEffect: 'cold', statusEffectDuration: 2 },
+  wan_jing_qiu_lao: { id: 'wan_jing_qiu_lao', name: '万晶囚牢', mpCost: 100, type: 'attack', power: 95, cooldown: 4, range: 4, areaRange: 2, description: '选择4格范围内的1个格子为目标，对以该格子为中心的2格菱形范围内的所有敌方目标，造成攻击力95%的伤害，并使目标陷入【寒冷】状态，持续2回合', effectType: 'ice', attribute: 'ice', category: 'aoe', skillTypeTag: '攻击', elementTag: '冰', rangeTag: '4格', targetCountTag: '轰炸', rangeType: 'diamond', statusEffect: 'cold', statusEffectDuration: 2 },
+  // 天蛇技能
+  shi_gu_she_chao: { id: 'shi_gu_she_chao', name: '蚀骨蛇巢', mpCost: 100, type: 'attack', power: 130, cooldown: 4, range: 4, areaRange: 1, description: '选择4格范围内的一个空格子作为目标，对以该格子为中心的1格范围内所有敌方目标，造成130%攻击力的范围伤害，并使目标陷入【中毒】状态，持续时间3回合', effectType: 'shadow', attribute: 'yin', category: '陷阵', skillTypeTag: '攻击', elementTag: '阴', rangeTag: '4格', targetCountTag: '陷阵', statusEffect: 'poison', statusEffectDuration: 3 },
+  she_ying_qiu_long: { id: 'she_ying_qiu_long', name: '蛇影囚笼', mpCost: 100, type: 'attack', power: 90, cooldown: 4, range: 4, areaRange: 2, description: '选择4格范围内的一个空格子作为目标，对以该格子为中心的2格范围内所有敌方目标，造成90%攻击力的范围伤害，施加【禁锢】状态，持续2回合', effectType: 'shadow', attribute: 'yin', category: '陷阵', skillTypeTag: '攻击', elementTag: '阴', rangeTag: '4格', targetCountTag: '陷阵', statusEffect: 'imprison', statusEffectDuration: 2 },
+  du_ya_chuan_xi: { id: 'du_ya_chuan_xi', name: '毒牙穿隙', mpCost: 100, type: 'attack', power: 90, cooldown: 3, range: 4, description: '选择上下左右某一方向为目标，对该方向上4格范围内的所有敌方目标，造成90%攻击力的伤害，并使目标陷入【中毒】状态', effectType: 'shadow', attribute: 'yin', category: '直线', skillTypeTag: '攻击', elementTag: '阴', rangeTag: '4格', targetCountTag: '直线', statusEffect: 'poison' },
+  wan_she_shi_xin: { id: 'wan_she_shi_xin', name: '万蛇噬心', mpCost: 120, type: 'attack', power: 90, cooldown: 3, range: 0, areaRange: 3, description: '以自身为中心，对3格菱形范围内的所有敌方目标造成90%攻击力的伤害，并使目标陷入【恐惧】状态，持续1回合', effectType: 'shadow', attribute: 'yin', category: 'aoe', skillTypeTag: '攻击', elementTag: '阴', rangeTag: '3格', targetCountTag: 'AOE', rangeType: 'diamond', statusEffect: 'fear', statusEffectDuration: 1, shaQiCost: 60 },
 }
 
 export interface CharacterGrowth {
@@ -1375,7 +1432,7 @@ export interface CharacterGrowth {
 export const CHARACTER_GROWTH: Record<string, CharacterGrowth> = {
   xiongxiong: { maxHp: 50, maxMp: 5, attack: 10, defense: 10 },
   tutu: { maxHp: 40, maxMp: 50, attack: 35, defense: 5 },
-  daheixiong: { maxHp: 75, maxMp: 30, attack: 10, defense: 30 },
+  daheixiong: { maxHp: 75, maxMp: 50, attack: 10, defense: 30 },
   bingxin: { maxHp: 110, maxMp: 25, attack: 15, defense: 20 },
   ordinary_zombie: { maxHp: 50, maxMp: 0, attack: 10, defense: 5 },
   fat_zombie: { maxHp: 75, maxMp: 0, attack: 10, defense: 20 },
@@ -1413,7 +1470,7 @@ export const CHARACTER_GROWTH: Record<string, CharacterGrowth> = {
   niutou: { maxHp: 80, maxMp: 20, attack: 25, defense: 20 },
   mamian: { maxHp: 80, maxMp: 25, attack: 20, defense: 20 },
   dasiming: { maxHp: 85, maxMp: 25, attack: 30, defense: 15 },
-  kejiqiu: { maxHp: 90, maxMp: 30, attack: 15, defense: 25 },
+  kejiqiu: { maxHp: 120, maxMp: 40, attack: 15, defense: 35 },
   shouren: { maxHp: 65, maxMp: 5, attack: 15, defense: 10 },
   xueshou: { maxHp: 65, maxMp: 10, attack: 20, defense: 10 },
   duying: { maxHp: 50, maxMp: 15, attack: 20, defense: 10 },
@@ -1452,7 +1509,7 @@ export const CHARACTER_GROWTH: Record<string, CharacterGrowth> = {
   canjuanhun: { maxHp: 80, maxMp: 20, attack: 25, defense: 10 },
   tiegao: { maxHp: 90, maxMp: 20, attack: 30, defense: 15 },
   zhengjia: { maxHp: 85, maxMp: 25, attack: 25, defense: 15 },
-  mengsike: { maxHp: 140, maxMp: 40, attack: 30, defense: 25 },
+  mengsike: { maxHp: 150, maxMp: 40, attack: 35, defense: 25 },
   longwu: { maxHp: 110, maxMp: 50, attack: 45, defense: 20 },
   hongluan: { maxHp: 130, maxMp: 50, attack: 45, defense: 15 },
   shashengying: { maxHp: 40, maxMp: 30, attack: 35, defense: 5 },
@@ -1461,13 +1518,15 @@ export const CHARACTER_GROWTH: Record<string, CharacterGrowth> = {
   yixienamei: { maxHp: 130, maxMp: 50, attack: 40, defense: 25 },
   yixienamei_virtual: { maxHp: 130, maxMp: 0, attack: 40, defense: 25 },
   keqing: { maxHp: 130, maxMp: 50, attack: 45, defense: 20 },
+  xueyue: { maxHp: 130, maxMp: 50, attack: 40, defense: 20 },
+  tianshe: { maxHp: 130, maxMp: 50, attack: 40, defense: 20 },
 }
 
 // 角色-技能关联表：角色 characterId -> 技能 id 列表
 // （作为装配技能的权威来源，角色模板和存档都以它为准）
 export const CHARACTER_SKILLS: Record<string, string[]> = {
   xiongxiong: ['po_kong_zhan', 'jue_chu_feng_sheng'],
-  tutu: ['qian_li_bing_feng', 'bing_feng_zhi_men'],
+  tutu: ['qian_li_bing_feng', 'bing_feng_zhi_men', 'bing_jing_fei_she'],
   daheixiong: ['ai_de_bao_bao', 'ai_de_fei_wen', 'ai_de_hui_yi'],
   eba: ['fierce_attack'],
   qianfuzhe: ['shadow_assassination', 'die_xue_ci_ji'],
@@ -1554,6 +1613,8 @@ export const CHARACTER_SKILLS: Record<string, string[]> = {
   yixienamei: ['huang_quan_chui_ji', 'si_sheng_duan_lv', 'ming_qu_gui_zhen', 'jing_hua_huang_quan'],
   yixienamei_virtual: ['huang_quan_chui_ji', 'si_sheng_duan_lv', 'ming_qu_gui_zhen'],
   keqing: ['yun_lai_jian_fa', 'jian_ying_ru_guang', 'tian_jie_xun_you'],
+  xueyue: ['sui_bing_liu', 'lin_dong_jie_jie', 'wan_jing_qiu_lao'],
+  tianshe: ['shi_gu_she_chao', 'she_ying_qiu_long', 'du_ya_chuan_xi', 'wan_she_shi_xin'],
 }
 
 /**
@@ -1654,8 +1715,8 @@ export const INITIAL_CHARACTERS: Omit<Character, 'equipment' | 'avatar' | 'isPla
     exp: 0,
     baseMaxHp: 250,
     maxHp: 250,
-    baseMaxMp: 150,
-    maxMp: 150,
+    baseMaxMp: 250,
+    maxMp: 250,
     baseAttack: 50,
     attack: 50,
     baseDefense: 20,
@@ -1739,18 +1800,18 @@ export const HIREABLE_CHARACTERS: Omit<Character, 'equipment' | 'avatar' | 'isPl
   {
     id: 'kejiqiu',
     name: '科技球',
-    job: '机甲',
+    job: '高科技',
     faction: 'human',
     level: 1,
     exp: 0,
-    baseMaxHp: 360,
-    maxHp: 360,
-    baseMaxMp: 220,
-    maxMp: 220,
+    baseMaxHp: 480,
+    maxHp: 480,
+    baseMaxMp: 280,
+    maxMp: 280,
     baseAttack: 60,
     attack: 60,
-    baseDefense: 30,
-    defense: 30,
+    baseDefense: 35,
+    defense: 35,
     baseMoveRange: 4,
     moveRange: 4,
     baseAttackRange: 3,
@@ -3359,12 +3420,12 @@ export const HIREABLE_CHARACTERS: Omit<Character, 'equipment' | 'avatar' | 'isPl
     faction: 'human',
     level: 1,
     exp: 0,
-    baseMaxHp: 560,
-    maxHp: 560,
+    baseMaxHp: 600,
+    maxHp: 600,
     baseMaxMp: 260,
     maxMp: 260,
-    baseAttack: 85,
-    attack: 85,
+    baseAttack: 100,
+    attack: 100,
     baseDefense: 35,
     defense: 35,
     baseMoveRange: 3,
@@ -3558,6 +3619,52 @@ export const HIREABLE_CHARACTERS: Omit<Character, 'equipment' | 'avatar' | 'isPl
     skills: buildSkillsForCharacterId('keqing'),
     attribute: 'metal',
     avatar: '/static/avatars/god/keqing.png',
+  },
+  {
+    id: 'xueyue',
+    name: '雪月',
+    job: '冰雪女神',
+    faction: 'god',
+    level: 1,
+    exp: 0,
+    baseMaxHp: 520,
+    maxHp: 520,
+    baseMaxMp: 350,
+    maxMp: 350,
+    baseAttack: 110,
+    attack: 110,
+    baseDefense: 30,
+    defense: 30,
+    baseMoveRange: 3,
+    moveRange: 3,
+    baseAttackRange: 4,
+    attackRange: 4,
+    skills: buildSkillsForCharacterId('xueyue'),
+    attribute: 'ice',
+    avatar: '/static/avatars/god/xueyue.jpg',
+  },
+  {
+    id: 'tianshe',
+    name: '天蛇',
+    job: '蛇姬',
+    faction: 'beast',
+    level: 1,
+    exp: 0,
+    baseMaxHp: 520,
+    maxHp: 520,
+    baseMaxMp: 340,
+    maxMp: 340,
+    baseAttack: 125,
+    attack: 125,
+    baseDefense: 25,
+    defense: 25,
+    baseMoveRange: 4,
+    moveRange: 4,
+    baseAttackRange: 1,
+    attackRange: 1,
+    skills: buildSkillsForCharacterId('tianshe'),
+    attribute: 'yin',
+    avatar: '/static/avatars/beast/tianshe.jpg',
   },
 ]
 
@@ -3781,7 +3888,7 @@ export function getAvatarPath(charId: string, faction: string = 'human'): string
     'huoxiushi': '/static/avatars/immortal/huoxiushi.png',
     'baihu': '/static/avatars/immortal/baihuli.png',
     'songyu': '/static/avatars/immortal/songyu.png',
-    'tianxiang': '/static/avatars/immortal/tianxiang.png',
+    'tianxiang': '/static/avatars/immortal/tianxiang.jpg',
     'penhuobing': '/static/avatars/human/penhuobing.png',
     'eba': '/static/avatars/human/eba.png',
     'qianfuzhe': '/static/avatars/human/qianfuzhe.png',
@@ -3845,6 +3952,8 @@ export function getAvatarPath(charId: string, faction: string = 'human'): string
     'yixienamei': '/static/avatars/ghost/yixienamei.png',
     'yixienamei_virtual': '/static/avatars/ghost/yixienamei.png',
     'keqing': '/static/avatars/god/keqing.png',
+    'xueyue': '/static/avatars/god/xueyue.jpg',
+    'tianshe': '/static/avatars/beast/tianshe.jpg',
   }
   return avatarPathMap[charId] || FACTION_CONFIG[faction as keyof typeof FACTION_CONFIG].icon
 }

@@ -215,10 +215,10 @@
             <!-- 属性专属核心特效 -->
             <view class="effect-core" :class="`core-${effect.attribute}`"></view>
             
-            <!-- 属性专属图标 -->
-            <text class="effect-icon" :class="`icon-${effect.attribute}`">{{ getAttributeIcon(effect.attribute) }}</text>
+            <!-- 属性专属图标（仅非AOE/陷阵类显示以减少DOM） -->
+            <text v-if="effect.category !== 'aoe' && effect.category !== '陷阵' && effect.category !== '轰炸'" class="effect-icon" :class="`icon-${effect.attribute}`">{{ getAttributeIcon(effect.attribute) }}</text>
             
-            <!-- 粒子特效 -->
+            <!-- 粒子特效（AOE/陷阵类减少粒子数量显示） -->
             <view 
               v-for="(particle, idx) in effect.particles" 
               :key="idx"
@@ -234,8 +234,8 @@
             <!-- 技能类型光环 -->
             <view class="effect-ring" :class="`ring-${effect.skillType}`" :style="{ borderColor: effect.color }"></view>
             
-            <!-- 二次扩散波纹 -->
-            <view class="effect-wave" :style="{ borderColor: effect.color }"></view>
+            <!-- 二次扩散波纹（仅指定/非AOE类显示） -->
+            <view v-if="effect.category !== 'aoe' && effect.category !== '陷阵'" class="effect-wave" :style="{ borderColor: effect.color }"></view>
             
             <!-- 指定技能：目标锁定框 -->
             <view v-if="effect.category === '指定'" class="effect-target-frame" :style="{ borderColor: effect.color }"></view>
@@ -383,6 +383,108 @@
               }"
             ></view>
           </template>
+        </view>
+        
+        <!-- 元素粒子尾迹层（直线/横扫技能路径上的元素粒子） -->
+        <view class="trail-particles-layer">
+          <view 
+            v-for="p in gameStore.trailParticles" 
+            :key="p.id"
+            class="trail-particle"
+            :class="[p.size, `attr-${p.attribute}`]"
+            :style="{
+              left: (p.col * 64 + 46) + 'rpx',
+              top: (p.row * 64 + 46) + 'rpx',
+              '--trail-color': p.color
+            }"
+          >
+            <view class="trail-core"></view>
+            <view class="trail-glow"></view>
+          </view>
+        </view>
+        
+        <!-- 技能蓄力特效层（选择目标时角色头顶/身上的蓄力光效） -->
+        <view class="charge-effects-layer">
+          <view 
+            v-for="c in gameStore.chargeEffects" 
+            :key="c.id"
+            class="charge-effect"
+            :class="`attr-${c.attribute}`"
+            :style="{
+              left: (c.col * 64 + 46) + 'rpx',
+              top: (c.row * 64 + 46) + 'rpx',
+              '--charge-color': c.color
+            }"
+          >
+            <view class="charge-ring charge-ring-outer"></view>
+            <view class="charge-ring charge-ring-inner"></view>
+            <view class="charge-core"></view>
+            <view class="charge-spark charge-spark-1"></view>
+            <view class="charge-spark charge-spark-2"></view>
+            <view class="charge-spark charge-spark-3"></view>
+            <view class="charge-spark charge-spark-4"></view>
+          </view>
+        </view>
+        
+        <!-- 环境交互痕迹层（火焰焦黑、冰面冰晶、毒腐蚀） -->
+        <view class="terrain-marks-layer">
+          <view 
+            v-for="m in gameStore.terrainMarks" 
+            :key="m.id"
+            class="terrain-mark"
+            :class="`mark-${m.type}`"
+            :style="{
+              left: (m.col * 64 + 16 + 60 / 2) + 'rpx',
+              top: (m.row * 64 + 16 + 60 / 2) + 'rpx'
+            }"
+          >
+            <!-- 焦黑：烧焦痕迹 -->
+            <template v-if="m.type === 'scorch'">
+              <view class="scorch-mark scorch-base"></view>
+              <view class="scorch-mark scorch-spot-1"></view>
+              <view class="scorch-mark scorch-spot-2"></view>
+              <view class="scorch-mark scorch-spot-3"></view>
+            </template>
+            <!-- 冰晶：冰霜痕迹 -->
+            <template v-else-if="m.type === 'frost'">
+              <view class="frost-mark frost-crystal frost-crystal-1"></view>
+              <view class="frost-mark frost-crystal frost-crystal-2"></view>
+              <view class="frost-mark frost-crystal frost-crystal-3"></view>
+              <view class="frost-mark frost-glow"></view>
+            </template>
+            <!-- 腐蚀：毒/阴属性痕迹 -->
+            <template v-else-if="m.type === 'poison'">
+              <view class="poison-mark poison-base"></view>
+              <view class="poison-mark poison-bubble poison-bubble-1"></view>
+              <view class="poison-mark poison-bubble poison-bubble-2"></view>
+              <view class="poison-mark poison-bubble poison-bubble-3"></view>
+            </template>
+          </view>
+        </view>
+        
+        <!-- 死亡特效层（角色化作光点消散） -->
+        <view class="death-effects-layer">
+          <view 
+            v-for="d in gameStore.deathEffects" 
+            :key="d.id"
+            class="death-effect"
+            :style="{
+              left: (d.col * 64 + 46) + 'rpx',
+              top: (d.row * 64 + 46) + 'rpx',
+              '--death-color': d.color
+            }"
+          >
+            <view class="death-flash"></view>
+            <view class="death-ring"></view>
+            <view class="death-particle death-particle-1"></view>
+            <view class="death-particle death-particle-2"></view>
+            <view class="death-particle death-particle-3"></view>
+            <view class="death-particle death-particle-4"></view>
+            <view class="death-particle death-particle-5"></view>
+            <view class="death-particle death-particle-6"></view>
+            <view class="death-particle death-particle-7"></view>
+            <view class="death-particle death-particle-8"></view>
+          </view>
         </view>
       </view>
     </scroll-view>
@@ -1040,6 +1142,8 @@ const weatherIcon = computed(() => {
     case 'heavy_snow': return '🌨️'
     case 'mountain_fire': return '🔥'
     case 'sky_fire': return '🔥'
+    case 'fog': return '🌫️'
+    case 'ghost_fog': return '👻'
     default: return '☀️'
   }
 })
@@ -1157,6 +1261,8 @@ const weatherText = computed(() => {
     case 'heavy_snow': return '大雪'
     case 'mountain_fire': return '山火'
     case 'sky_fire': return '天火'
+    case 'fog': return '迷雾'
+    case 'ghost_fog': return '鬼雾'
     default: return '晴朗'
   }
 })
@@ -2205,6 +2311,10 @@ function selectSkill(skill: Skill) {
   lineAttackRanges.value = []
   sweepAttackRanges.value = []
 
+  // 触发蓄力特效：选择技能时在角色身上产生蓄力光环
+  const attr = skill.attribute || selectedCharacter.value.attribute || 'normal'
+  gameStore.triggerChargeEffect(selectedCharacter.value.row, selectedCharacter.value.col, attr)
+
   if (skill.category === '直线') {
     // 直线攻击技能：计算四个方向的攻击范围
     const lineRange = skill.range || 1
@@ -2594,6 +2704,7 @@ function cancelSelection() {
   selectedDirection.value = null
   lineAttackRanges.value = []
   sweepAttackRanges.value = []
+  gameStore.clearChargeEffects()
   showStatPanel.value = false
 }
 
@@ -3185,18 +3296,18 @@ function collectCollectible() {
   pointer-events: none;
   
   &.small {
-    width: 80rpx;
-    height: 80rpx;
+    width: 110rpx;
+    height: 110rpx;
   }
   
   &.medium {
-    width: 100rpx;
-    height: 100rpx;
+    width: 140rpx;
+    height: 140rpx;
   }
   
   &.large {
-    width: 120rpx;
-    height: 120rpx;
+    width: 170rpx;
+    height: 170rpx;
   }
 }
 
@@ -3241,18 +3352,18 @@ function collectCollectible() {
 }
 
 .skill-effect.small .effect-base {
-  width: 60rpx;
-  height: 60rpx;
+  width: 85rpx;
+  height: 85rpx;
 }
 
 .skill-effect.medium .effect-base {
-  width: 80rpx;
-  height: 80rpx;
+  width: 110rpx;
+  height: 110rpx;
 }
 
 .skill-effect.large .effect-base {
-  width: 100rpx;
-  height: 100rpx;
+  width: 140rpx;
+  height: 140rpx;
 }
 
 .skill-effect .effect-core {
@@ -3281,18 +3392,18 @@ function collectCollectible() {
 }
 
 .skill-effect.small .effect-core {
-  width: 30rpx;
-  height: 30rpx;
+  width: 42rpx;
+  height: 42rpx;
 }
 
 .skill-effect.medium .effect-core {
-  width: 40rpx;
-  height: 40rpx;
+  width: 56rpx;
+  height: 56rpx;
 }
 
 .skill-effect.large .effect-core {
-  width: 50rpx;
-  height: 50rpx;
+  width: 72rpx;
+  height: 72rpx;
 }
 
 .skill-effect .effect-icon {
@@ -3322,28 +3433,28 @@ function collectCollectible() {
 }
 
 .skill-effect.small .effect-icon {
-  font-size: 20rpx;
-}
-
-.skill-effect.medium .effect-icon {
   font-size: 28rpx;
 }
 
+.skill-effect.medium .effect-icon {
+  font-size: 40rpx;
+}
+
 .skill-effect.large .effect-icon {
-  font-size: 36rpx;
+  font-size: 52rpx;
 }
 
 .skill-effect .effect-particle {
   position: absolute;
   top: 50%;
   left: 50%;
-  width: 10rpx;
-  height: 10rpx;
+  width: 14rpx;
+  height: 14rpx;
   border-radius: 50%;
   background-color: var(--particle-color);
   animation: particle-fly 1s ease-out forwards;
   animation-delay: var(--particle-delay);
-  box-shadow: 0 0 10rpx var(--particle-color);
+  box-shadow: 0 0 14rpx var(--particle-color);
 }
 
 @keyframes particle-fly {
@@ -3374,24 +3485,24 @@ function collectCollectible() {
     opacity: 1;
   }
   100% {
-    transform: translate(-50%, -50%) scale(2);
+    transform: translate(-50%, -50%) scale(2.5);
     opacity: 0;
   }
 }
 
 .skill-effect.small .effect-ring {
-  width: 50rpx;
-  height: 50rpx;
-}
-
-.skill-effect.medium .effect-ring {
   width: 70rpx;
   height: 70rpx;
 }
 
+.skill-effect.medium .effect-ring {
+  width: 98rpx;
+  height: 98rpx;
+}
+
 .skill-effect.large .effect-ring {
-  width: 90rpx;
-  height: 90rpx;
+  width: 126rpx;
+  height: 126rpx;
 }
 
 .skill-effect .effect-wave {
@@ -3412,29 +3523,29 @@ function collectCollectible() {
     opacity: 0.8;
   }
   100% {
-    transform: translate(-50%, -50%) scale(2.5);
+    transform: translate(-50%, -50%) scale(3);
     opacity: 0;
   }
 }
 
 .skill-effect.small .effect-wave {
-  width: 40rpx;
-  height: 40rpx;
+  width: 56rpx;
+  height: 56rpx;
 }
 
 .skill-effect.medium .effect-wave {
-  width: 60rpx;
-  height: 60rpx;
+  width: 84rpx;
+  height: 84rpx;
 }
 
 .skill-effect.large .effect-wave {
-  width: 80rpx;
-  height: 80rpx;
+  width: 112rpx;
+  height: 112rpx;
 }
 
 .core-fire {
   background: radial-gradient(circle, #ff6b35 0%, #ff0000 70%, transparent 100%);
-  box-shadow: 0 0 30rpx #ff6b35, 0 0 60rpx #ff0000, 0 0 90rpx rgba(255, 0, 0, 0.5);
+  box-shadow: 0 0 45rpx #ff6b35, 0 0 90rpx #ff0000, 0 0 135rpx rgba(255, 0, 0, 0.5);
   animation: fire-burn 0.6s ease-out forwards;
 }
 
@@ -3456,7 +3567,7 @@ function collectCollectible() {
 
 .core-water {
   background: radial-gradient(circle, #3b82f6 0%, #06b6d4 70%, transparent 100%);
-  box-shadow: 0 0 30rpx #3b82f6, 0 0 60rpx #06b6d4, 0 0 90rpx rgba(6, 182, 212, 0.5);
+  box-shadow: 0 0 45rpx #3b82f6, 0 0 90rpx #06b6d4, 0 0 135rpx rgba(6, 182, 212, 0.5);
   animation: water-ripple 0.8s ease-out forwards;
 }
 
@@ -3477,7 +3588,7 @@ function collectCollectible() {
 
 .core-wind {
   background: radial-gradient(circle, #86efac 0%, #22c55e 70%, transparent 100%);
-  box-shadow: 0 0 30rpx #86efac, 0 0 60rpx #22c55e, 0 0 90rpx rgba(34, 197, 94, 0.5);
+  box-shadow: 0 0 45rpx #86efac, 0 0 90rpx #22c55e, 0 0 135rpx rgba(34, 197, 94, 0.5);
   animation: wind-spin 0.6s ease-out forwards;
 }
 
@@ -3494,7 +3605,7 @@ function collectCollectible() {
 
 .core-earth {
   background: radial-gradient(circle, #d97706 0%, #b45309 70%, transparent 100%);
-  box-shadow: 0 0 30rpx #d97706, 0 0 60rpx #b45309, 0 0 90rpx rgba(180, 83, 9, 0.5);
+  box-shadow: 0 0 45rpx #d97706, 0 0 90rpx #b45309, 0 0 135rpx rgba(180, 83, 9, 0.5);
   animation: earth-crack 0.7s ease-out forwards;
 }
 
@@ -3515,7 +3626,7 @@ function collectCollectible() {
 
 .core-metal {
   background: radial-gradient(circle, #a855f7 0%, #6366f1 70%, transparent 100%);
-  box-shadow: 0 0 30rpx #a855f7, 0 0 60rpx #6366f1, 0 0 90rpx rgba(99, 102, 241, 0.5);
+  box-shadow: 0 0 45rpx #a855f7, 0 0 90rpx #6366f1, 0 0 135rpx rgba(99, 102, 241, 0.5);
   animation: metal-shine 0.5s ease-out forwards;
 }
 
@@ -3539,7 +3650,7 @@ function collectCollectible() {
 
 .core-wood {
   background: radial-gradient(circle, #22c55e 0%, #15803d 70%, transparent 100%);
-  box-shadow: 0 0 30rpx #22c55e, 0 0 60rpx #15803d, 0 0 90rpx rgba(21, 128, 61, 0.5);
+  box-shadow: 0 0 45rpx #22c55e, 0 0 90rpx #15803d, 0 0 135rpx rgba(21, 128, 61, 0.5);
   animation: wood-grow 0.9s ease-out forwards;
 }
 
@@ -3560,7 +3671,7 @@ function collectCollectible() {
 
 .core-light {
   background: radial-gradient(circle, #fbbf24 0%, #f59e0b 70%, transparent 100%);
-  box-shadow: 0 0 30rpx #fbbf24, 0 0 60rpx #f59e0b, 0 0 90rpx rgba(245, 158, 11, 0.5);
+  box-shadow: 0 0 45rpx #fbbf24, 0 0 90rpx #f59e0b, 0 0 135rpx rgba(245, 158, 11, 0.5);
   animation: light-flash 0.4s ease-out forwards;
 }
 
@@ -3579,7 +3690,7 @@ function collectCollectible() {
 
 .core-dark {
   background: radial-gradient(circle, #7c3aed 0%, #4c1d95 70%, transparent 100%);
-  box-shadow: 0 0 30rpx #7c3aed, 0 0 60rpx #4c1d95, 0 0 90rpx rgba(76, 29, 149, 0.5);
+  box-shadow: 0 0 45rpx #7c3aed, 0 0 90rpx #4c1d95, 0 0 135rpx rgba(76, 29, 149, 0.5);
   animation: dark-pulse 0.7s ease-out forwards;
 }
 
@@ -3600,7 +3711,7 @@ function collectCollectible() {
 
 .core-yang {
   background: radial-gradient(circle, #fcd34d 0%, #f59e0b 70%, transparent 100%);
-  box-shadow: 0 0 30rpx #fcd34d, 0 0 60rpx #f59e0b, 0 0 90rpx rgba(245, 158, 11, 0.5);
+  box-shadow: 0 0 45rpx #fcd34d, 0 0 90rpx #f59e0b, 0 0 135rpx rgba(245, 158, 11, 0.5);
   animation: yang-glow 0.8s ease-out forwards;
 }
 
@@ -3623,7 +3734,7 @@ function collectCollectible() {
 
 .core-shadow {
   background: radial-gradient(circle, #64748b 0%, #334155 70%, transparent 100%);
-  box-shadow: 0 0 30rpx #64748b, 0 0 60rpx #334155, 0 0 90rpx rgba(51, 65, 85, 0.5);
+  box-shadow: 0 0 45rpx #64748b, 0 0 90rpx #334155, 0 0 135rpx rgba(51, 65, 85, 0.5);
   animation: shadow-fade 0.8s ease-out forwards;
 }
 
@@ -3645,7 +3756,7 @@ function collectCollectible() {
 
 .core-ice {
   background: radial-gradient(circle, #67e8f9 0%, #22d3ee 70%, transparent 100%);
-  box-shadow: 0 0 30rpx #67e8f9, 0 0 60rpx #22d3ee, 0 0 90rpx rgba(34, 211, 238, 0.5);
+  box-shadow: 0 0 45rpx #67e8f9, 0 0 90rpx #22d3ee, 0 0 135rpx rgba(34, 211, 238, 0.5);
   animation: ice-crystal 0.7s ease-out forwards;
 }
 
@@ -5252,10 +5363,10 @@ function collectCollectible() {
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
-  width: 44rpx;
-  height: 44rpx;
-  border: 3rpx solid;
-  border-radius: 4rpx;
+  width: 60rpx;
+  height: 60rpx;
+  border: 4rpx solid;
+  border-radius: 6rpx;
   animation: target-frame 0.6s ease-out forwards;
   z-index: 5;
   pointer-events: none;
@@ -5284,9 +5395,9 @@ function collectCollectible() {
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
-  width: 50rpx;
-  height: 50rpx;
-  border: 4rpx solid;
+  width: 70rpx;
+  height: 70rpx;
+  border: 5rpx solid;
   border-radius: 50%;
   animation: aoe-ring 0.8s ease-out forwards;
   z-index: 4;
@@ -5301,7 +5412,7 @@ function collectCollectible() {
   transform: translate(-50%, -50%);
   width: 100%;
   height: 100%;
-  border: 2rpx solid;
+  border: 3rpx solid;
   border-radius: 50%;
   animation: aoe-ring-inner 0.6s ease-out 0.15s forwards;
   border-color: inherit;
@@ -5316,7 +5427,7 @@ function collectCollectible() {
     opacity: 0.6;
   }
   100% {
-    transform: translate(-50%, -50%) scale(1.8);
+    transform: translate(-50%, -50%) scale(2.2);
     opacity: 0;
   }
 }
@@ -5338,8 +5449,8 @@ function collectCollectible() {
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
-  width: 36rpx;
-  height: 36rpx;
+  width: 48rpx;
+  height: 48rpx;
   z-index: 4;
   pointer-events: none;
   opacity: 0.7;
@@ -5396,13 +5507,13 @@ function collectCollectible() {
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
-  width: 12rpx;
-  height: 12rpx;
+  width: 16rpx;
+  height: 16rpx;
   border-radius: 50%;
   animation: bomb-spark 0.7s ease-out forwards;
   z-index: 5;
   pointer-events: none;
-  box-shadow: 0 0 10rpx currentColor;
+  box-shadow: 0 0 14rpx currentColor;
 }
 
 @keyframes bomb-spark {
@@ -6097,6 +6208,401 @@ function collectCollectible() {
   100% {
     opacity: 0;
     transform: translate(-50%, -50%) scale(0.5);
+  }
+}
+
+/* ============ 元素粒子尾迹层 ============ */
+.trail-particles-layer {
+  position: absolute;
+  top: 16rpx;
+  left: 16rpx;
+  right: 0;
+  bottom: 0;
+  pointer-events: none;
+  z-index: 11;
+}
+
+.trail-particle {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  animation: trail-particle-appear 1.6s ease-out forwards;
+
+  &.small { width: 40rpx; height: 40rpx; }
+  &.medium { width: 60rpx; height: 60rpx; }
+  &.large { width: 80rpx; height: 80rpx; }
+}
+
+.trail-particle .trail-core {
+  position: absolute;
+  top: 50%; left: 50%;
+  width: 40%;
+  height: 40%;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  background: var(--trail-color);
+  box-shadow: 0 0 16rpx var(--trail-color), 0 0 32rpx var(--trail-color);
+  animation: trail-core-pulse 0.6s ease-out forwards;
+}
+
+.trail-particle .trail-glow {
+  position: absolute;
+  top: 50%; left: 50%;
+  width: 100%;
+  height: 100%;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  background: radial-gradient(circle, var(--trail-color) 0%, transparent 70%);
+  opacity: 0.8;
+  animation: trail-glow-expand 1.6s ease-out forwards;
+}
+
+@keyframes trail-particle-appear {
+  0% { transform: translate(-50%, -50%) scale(0.2); opacity: 0; }
+  30% { transform: translate(-50%, -50%) scale(1.2); opacity: 1; }
+  100% { transform: translate(-50%, -50%) scale(1.4); opacity: 0; }
+}
+
+@keyframes trail-core-pulse {
+  0% { transform: translate(-50%, -50%) scale(0.5); opacity: 1; }
+  100% { transform: translate(-50%, -50%) scale(1.5); opacity: 0; }
+}
+
+@keyframes trail-glow-expand {
+  0% { transform: translate(-50%, -50%) scale(0.3); opacity: 0.9; }
+  100% { transform: translate(-50%, -50%) scale(1.8); opacity: 0; }
+}
+
+/* ============ 技能蓄力特效层 ============ */
+.charge-effects-layer {
+  position: absolute;
+  top: 16rpx;
+  left: 16rpx;
+  right: 0;
+  bottom: 0;
+  pointer-events: none;
+  z-index: 12;
+}
+
+.charge-effect {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  width: 120rpx;
+  height: 120rpx;
+  animation: charge-appear 0.8s ease-out forwards;
+}
+
+.charge-effect .charge-ring {
+  position: absolute;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  border: 4rpx solid var(--charge-color);
+  box-shadow: 0 0 12rpx var(--charge-color), inset 0 0 12rpx var(--charge-color);
+}
+
+.charge-effect .charge-ring-outer {
+  width: 120rpx;
+  height: 120rpx;
+  animation: charge-ring-outer 0.8s ease-out forwards;
+}
+
+.charge-effect .charge-ring-inner {
+  width: 80rpx;
+  height: 80rpx;
+  animation: charge-ring-inner 0.6s ease-out forwards;
+}
+
+.charge-effect .charge-core {
+  position: absolute;
+  top: 50%; left: 50%;
+  width: 30rpx;
+  height: 30rpx;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  background: var(--charge-color);
+  box-shadow: 0 0 20rpx var(--charge-color), 0 0 40rpx var(--charge-color);
+  animation: charge-core-pulse 0.8s ease-in-out infinite alternate;
+}
+
+.charge-effect .charge-spark {
+  position: absolute;
+  top: 50%; left: 50%;
+  width: 8rpx;
+  height: 8rpx;
+  border-radius: 50%;
+  background: var(--charge-color);
+  box-shadow: 0 0 8rpx var(--charge-color);
+  animation: charge-spark-fly 0.8s ease-out forwards;
+}
+
+.charge-effect .charge-spark-1 { --angle: 0deg; }
+.charge-effect .charge-spark-2 { --angle: 90deg; }
+.charge-effect .charge-spark-3 { --angle: 180deg; }
+.charge-effect .charge-spark-4 { --angle: 270deg; }
+
+@keyframes charge-appear {
+  0% { transform: translate(-50%, -50%) scale(0.5); opacity: 0; }
+  30% { transform: translate(-50%, -50%) scale(1.2); opacity: 1; }
+  100% { transform: translate(-50%, -50%) scale(1); opacity: 0; }
+}
+
+@keyframes charge-ring-outer {
+  0% { transform: translate(-50%, -50%) scale(0.3); opacity: 1; }
+  100% { transform: translate(-50%, -50%) scale(1.5); opacity: 0; }
+}
+
+@keyframes charge-ring-inner {
+  0% { transform: translate(-50%, -50%) scale(0.5); opacity: 1; }
+  100% { transform: translate(-50%, -50%) scale(1.3); opacity: 0; }
+}
+
+@keyframes charge-core-pulse {
+  0% { transform: translate(-50%, -50%) scale(0.8); filter: brightness(1); }
+  100% { transform: translate(-50%, -50%) scale(1.3); filter: brightness(1.6); }
+}
+
+@keyframes charge-spark-fly {
+  0% {
+    transform: translate(-50%, -50%) rotate(var(--angle)) translateY(0) scale(1);
+    opacity: 1;
+  }
+  100% {
+    transform: translate(-50%, -50%) rotate(var(--angle)) translateY(-40rpx) scale(0.3);
+    opacity: 0;
+  }
+}
+
+/* ============ 环境交互痕迹层 ============ */
+.terrain-marks-layer {
+  position: absolute;
+  top: 16rpx;
+  left: 16rpx;
+  right: 0;
+  bottom: 0;
+  pointer-events: none;
+  z-index: 5;
+}
+
+.terrain-mark {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  width: 60rpx;
+  height: 60rpx;
+  animation: mark-fade-in 0.4s ease-out forwards;
+}
+
+@keyframes mark-fade-in {
+  0% { opacity: 0; transform: translate(-50%, -50%) scale(0.6); }
+  100% { opacity: 0.95; transform: translate(-50%, -50%) scale(1); }
+}
+
+/* 焦黑痕迹 */
+.terrain-mark.mark-scorch .scorch-mark {
+  position: absolute;
+  border-radius: 50%;
+  background: #1a0808;
+  box-shadow: 0 0 8rpx rgba(80, 20, 20, 0.6);
+}
+
+.terrain-mark.mark-scorch .scorch-base {
+  top: 50%; left: 50%;
+  width: 50rpx; height: 50rpx;
+  transform: translate(-50%, -50%);
+  background: radial-gradient(circle, #1a0808 0%, #3d1a0a 60%, transparent 100%);
+  border-radius: 50%;
+}
+
+.terrain-mark.mark-scorch .scorch-spot-1 {
+  top: 30%; left: 30%;
+  width: 12rpx; height: 12rpx;
+  animation: scorch-pulse 3s ease-in-out infinite;
+}
+
+.terrain-mark.mark-scorch .scorch-spot-2 {
+  top: 60%; left: 55%;
+  width: 10rpx; height: 10rpx;
+  animation: scorch-pulse 3s ease-in-out infinite 1s;
+}
+
+.terrain-mark.mark-scorch .scorch-spot-3 {
+  top: 45%; left: 70%;
+  width: 8rpx; height: 8rpx;
+  animation: scorch-pulse 3s ease-in-out infinite 2s;
+}
+
+@keyframes scorch-pulse {
+  0%, 100% { opacity: 0.7; transform: scale(1); }
+  50% { opacity: 1; transform: scale(1.3); }
+}
+
+/* 冰晶痕迹 */
+.terrain-mark.mark-frost .frost-mark {
+  position: absolute;
+  pointer-events: none;
+}
+
+.terrain-mark.mark-frost .frost-crystal {
+  top: 50%; left: 50%;
+  width: 14rpx; height: 14rpx;
+  background: linear-gradient(135deg, #b8f0ff 0%, #67e8f9 50%, #ffffff 100%);
+  box-shadow: 0 0 8rpx #67e8f9, 0 0 16rpx rgba(103, 232, 249, 0.5);
+  transform-origin: center;
+  animation: frost-shimmer 2s ease-in-out infinite;
+}
+
+.terrain-mark.mark-frost .frost-crystal-1 { transform: translate(-50%, -50%) rotate(0deg); }
+.terrain-mark.mark-frost .frost-crystal-2 { transform: translate(-50%, -50%) rotate(60deg); width: 10rpx; height: 10rpx; animation-delay: 0.3s; }
+.terrain-mark.mark-frost .frost-crystal-3 { transform: translate(-50%, -50%) rotate(120deg); width: 8rpx; height: 8rpx; animation-delay: 0.6s; }
+
+.terrain-mark.mark-frost .frost-glow {
+  top: 50%; left: 50%;
+  width: 60rpx; height: 60rpx;
+  transform: translate(-50%, -50%);
+  background: radial-gradient(circle, rgba(184, 240, 255, 0.5) 0%, transparent 70%);
+  border-radius: 50%;
+  animation: frost-glow-pulse 2s ease-in-out infinite;
+}
+
+@keyframes frost-shimmer {
+  0%, 100% { opacity: 0.9; filter: brightness(1); }
+  50% { opacity: 1; filter: brightness(1.3); }
+}
+
+@keyframes frost-glow-pulse {
+  0%, 100% { opacity: 0.6; transform: translate(-50%, -50%) scale(1); }
+  50% { opacity: 0.9; transform: translate(-50%, -50%) scale(1.15); }
+}
+
+/* 腐蚀痕迹 */
+.terrain-mark.mark-poison .poison-mark {
+  position: absolute;
+  border-radius: 50%;
+}
+
+.terrain-mark.mark-poison .poison-base {
+  top: 50%; left: 50%;
+  width: 50rpx; height: 50rpx;
+  transform: translate(-50%, -50%);
+  background: radial-gradient(circle, rgba(80, 20, 120, 0.5) 0%, rgba(120, 50, 160, 0.3) 60%, transparent 100%);
+}
+
+.terrain-mark.mark-poison .poison-bubble {
+  background: #a855f7;
+  box-shadow: 0 0 6rpx #a855f7, 0 0 12rpx rgba(168, 85, 247, 0.6);
+  animation: poison-bubble-rise 3s ease-in-out infinite;
+}
+
+.terrain-mark.mark-poison .poison-bubble-1 {
+  top: 55%; left: 40%;
+  width: 10rpx; height: 10rpx;
+}
+
+.terrain-mark.mark-poison .poison-bubble-2 {
+  top: 40%; left: 60%;
+  width: 8rpx; height: 8rpx;
+  animation-delay: 0.8s;
+}
+
+.terrain-mark.mark-poison .poison-bubble-3 {
+  top: 50%; left: 70%;
+  width: 6rpx; height: 6rpx;
+  animation-delay: 1.6s;
+}
+
+@keyframes poison-bubble-rise {
+  0% { transform: translateY(0); opacity: 0.8; }
+  50% { transform: translateY(-8rpx); opacity: 1; }
+  100% { transform: translateY(-16rpx); opacity: 0; }
+}
+
+/* ============ 死亡特效层 ============ */
+.death-effects-layer {
+  position: absolute;
+  top: 16rpx;
+  left: 16rpx;
+  right: 0;
+  bottom: 0;
+  pointer-events: none;
+  z-index: 20;
+}
+
+.death-effect {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  width: 120rpx;
+  height: 120rpx;
+}
+
+.death-effect .death-flash {
+  position: absolute;
+  top: 50%; left: 50%;
+  width: 80rpx;
+  height: 80rpx;
+  transform: translate(-50%, -50%);
+  background: radial-gradient(circle, var(--death-color) 0%, transparent 70%);
+  border-radius: 50%;
+  animation: death-flash 0.6s ease-out forwards;
+}
+
+.death-effect .death-ring {
+  position: absolute;
+  top: 50%; left: 50%;
+  width: 60rpx;
+  height: 60rpx;
+  transform: translate(-50%, -50%);
+  border: 4rpx solid var(--death-color);
+  border-radius: 50%;
+  box-shadow: 0 0 16rpx var(--death-color);
+  animation: death-ring 1.4s ease-out forwards;
+}
+
+.death-effect .death-particle {
+  position: absolute;
+  top: 50%; left: 50%;
+  width: 10rpx;
+  height: 10rpx;
+  border-radius: 50%;
+  background: var(--death-color);
+  box-shadow: 0 0 10rpx var(--death-color), 0 0 20rpx var(--death-color);
+  transform: translate(-50%, -50%);
+  animation: death-particle-fly 1.5s ease-out forwards;
+}
+
+.death-effect .death-particle-1 { --angle: 0deg; --dist: 50rpx; }
+.death-effect .death-particle-2 { --angle: 45deg; --dist: 48rpx; animation-delay: 0.05s; }
+.death-effect .death-particle-3 { --angle: 90deg; --dist: 52rpx; animation-delay: 0.1s; }
+.death-effect .death-particle-4 { --angle: 135deg; --dist: 46rpx; animation-delay: 0.15s; }
+.death-effect .death-particle-5 { --angle: 180deg; --dist: 50rpx; animation-delay: 0.2s; }
+.death-effect .death-particle-6 { --angle: 225deg; --dist: 48rpx; animation-delay: 0.25s; }
+.death-effect .death-particle-7 { --angle: 270deg; --dist: 52rpx; animation-delay: 0.3s; }
+.death-effect .death-particle-8 { --angle: 315deg; --dist: 46rpx; animation-delay: 0.35s; }
+
+@keyframes death-flash {
+  0% { transform: translate(-50%, -50%) scale(0.3); opacity: 0; }
+  30% { transform: translate(-50%, -50%) scale(1.5); opacity: 1; }
+  100% { transform: translate(-50%, -50%) scale(2.5); opacity: 0; }
+}
+
+@keyframes death-ring {
+  0% { transform: translate(-50%, -50%) scale(0.3); opacity: 1; }
+  100% { transform: translate(-50%, -50%) scale(2.5); opacity: 0; border-width: 2rpx; }
+}
+
+@keyframes death-particle-fly {
+  0% {
+    transform: translate(-50%, -50%) rotate(var(--angle)) translateY(0) scale(1);
+    opacity: 1;
+  }
+  50% {
+    opacity: 1;
+  }
+  100% {
+    transform: translate(-50%, -50%) rotate(var(--angle)) translateY(calc(var(--dist) * -1)) scale(0.2);
+    opacity: 0;
   }
 }
 </style>

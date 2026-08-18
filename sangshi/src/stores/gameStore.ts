@@ -47,14 +47,87 @@ export const useGameStore = defineStore('game', () => {
     size: 'small' | 'medium' | 'large'
     timestamp: number
     attribute: Attribute
-    skillType: 'attack' | 'heal' | 'support' | 'summon' | 'special'
+    skillType?: 'attack' | 'heal' | 'support' | 'summon' | 'special'
     particles?: { x: number; y: number; delay: number }[]
     category?: '指定' | 'aoe' | '直线' | '横扫' | '轰炸' | '陷阵' | 'heal' | 'support' | 'summon' | 'special'
     direction?: 'up' | 'down' | 'left' | 'right'
     fromRow?: number
     fromCol?: number
+    type?: 'explosion' | 'beam'
   }
+  
+  interface TrailParticle {
+    id: string
+    row: number
+    col: number
+    color: string
+    timestamp: number
+    attribute: Attribute
+    size: 'small' | 'medium' | 'large'
+  }
+  
+  interface ChargeEffect {
+    id: string
+    row: number
+    col: number
+    color: string
+    timestamp: number
+    attribute: Attribute
+  }
+  
+  interface TerrainMark {
+    id: string
+    row: number
+    col: number
+    type: 'scorch' | 'frost' | 'poison'
+    timestamp: number
+  }
+  
+  interface DeathEffect {
+    id: string
+    row: number
+    col: number
+    color: string
+    timestamp: number
+  }
+  
   const skillEffects = ref<SkillEffect[]>([])
+  const trailParticles = ref<TrailParticle[]>([])
+  const chargeEffects = ref<ChargeEffect[]>([])
+  const terrainMarks = ref<TerrainMark[]>([])
+  const deathEffects = ref<DeathEffect[]>([])
+  
+  // 批量清理过期特效的定时器
+  let effectCleanupTimer: ReturnType<typeof setInterval> | null = null
+  function cleanupExpiredEffects() {
+    const now = Date.now()
+    const lifetime = 1700 // 特效寿命 1.7s，覆盖所有CSS动画时长
+    let removed = false
+    const remaining = skillEffects.value.filter(e => {
+      const alive = now - e.timestamp < lifetime
+      if (!alive) removed = true
+      return alive
+    })
+    if (removed) {
+      skillEffects.value = remaining
+    }
+    // 如果没有特效了，停止清理定时器
+    if (skillEffects.value.length === 0 && effectCleanupTimer) {
+      clearInterval(effectCleanupTimer)
+      effectCleanupTimer = null
+    }
+  }
+  function ensureEffectCleanupTimer() {
+    if (!effectCleanupTimer) {
+      effectCleanupTimer = setInterval(cleanupExpiredEffects, 300)
+    }
+  }
+  function stopEffectCleanupTimer() {
+    if (effectCleanupTimer) {
+      clearInterval(effectCleanupTimer)
+      effectCleanupTimer = null
+    }
+  }
   
   function triggerSkillEffect(row: number, col: number, attribute: Attribute, size: 'small' | 'medium' | 'large' = 'medium', skillType: 'attack' | 'heal' | 'support' | 'summon' | 'special' = 'attack', category?: '指定' | 'aoe' | '直线' | '横扫' | '轰炸' | '陷阵' | 'heal' | 'support' | 'summon' | 'special', fromRow?: number, fromCol?: number) {
     const color = ATTRIBUTE_CONFIG[attribute]?.color || ATTRIBUTE_CONFIG.normal.color
@@ -76,17 +149,12 @@ export const useGameStore = defineStore('game', () => {
       fromRow,
       fromCol
     })
-    setTimeout(() => {
-      const idx = skillEffects.value.findIndex(e => e.id === effectId)
-      if (idx !== -1) {
-        skillEffects.value.splice(idx, 1)
-      }
-    }, 1500)
+    ensureEffectCleanupTimer()
   }
   
-  function generateParticles(attribute: Attribute, skillType: string): { x: number; y: number; delay: number }[] {
+  function generateParticles(attribute: Attribute, skillType: string, reduced: boolean = false): { x: number; y: number; delay: number }[] {
     const particles: { x: number; y: number; delay: number }[] = []
-    const particleCount = skillType === 'attack' ? 8 : skillType === 'heal' ? 6 : 4
+    const particleCount = reduced ? (skillType === 'attack' ? 4 : 3) : (skillType === 'attack' ? 8 : skillType === 'heal' ? 6 : 4)
     
     for (let i = 0; i < particleCount; i++) {
       const angle = (i / particleCount) * Math.PI * 2
@@ -113,6 +181,11 @@ export const useGameStore = defineStore('game', () => {
     
     const effectIds: string[] = []
     const timestamp = Date.now()
+    const isLargeAOE = areaRange >= 3
+    const isMediumAOE = areaRange >= 2
+    const reducedParticles = isMediumAOE
+    // 对于大范围AOE，跳过部分格子以减少DOM压力
+    const skipEveryOther = isLargeAOE
     
     for (let dr = -areaRange; dr <= areaRange; dr++) {
       for (let dc = -areaRange; dc <= areaRange; dc++) {
@@ -123,9 +196,12 @@ export const useGameStore = defineStore('game', () => {
             ? Math.abs(dr) + Math.abs(dc) <= areaRange
             : Math.abs(dr) <= areaRange && Math.abs(dc) <= areaRange
           if (isValid) {
+            // 对于大范围AOE，每隔一格创建特效
+            if (skipEveryOther && (Math.abs(dr) + Math.abs(dc)) % 2 === 1) continue
+            
             const color = ATTRIBUTE_CONFIG[attribute]?.color || ATTRIBUTE_CONFIG.normal.color
             const effectId = `skill_${timestamp}_${Math.random().toString(36).substr(2, 9)}`
-            const particles = generateParticles(attribute, skillType)
+            const particles = generateParticles(attribute, skillType, reducedParticles)
             const isBombing = category === '轰炸'
             const isXianZhen = category === '陷阵'
             const delay = isBombing ? Math.random() * 0.4 : isXianZhen ? Math.random() * 0.3 : Math.max(Math.abs(dr), Math.abs(dc)) * 0.08
@@ -149,15 +225,7 @@ export const useGameStore = defineStore('game', () => {
         }
       }
     }
-    
-    setTimeout(() => {
-      effectIds.forEach(effectId => {
-        const idx = skillEffects.value.findIndex(e => e.id === effectId)
-        if (idx !== -1) {
-          skillEffects.value.splice(idx, 1)
-        }
-      })
-    }, 1500)
+    ensureEffectCleanupTimer()
   }
 
   function triggerAreaEffects(
@@ -198,15 +266,7 @@ export const useGameStore = defineStore('game', () => {
       })
       effectIds.push(effectId)
     }
-    
-    setTimeout(() => {
-      effectIds.forEach(effectId => {
-        const idx = skillEffects.value.findIndex(e => e.id === effectId)
-        if (idx !== -1) {
-          skillEffects.value.splice(idx, 1)
-        }
-      })
-    }, 1500)
+    ensureEffectCleanupTimer()
   }
 
   function processAOEAttackSkill(
@@ -214,7 +274,8 @@ export const useGameStore = defineStore('game', () => {
     skill: Skill,
     centerRow: number,
     centerCol: number,
-    charTemplate: Character | undefined
+    charTemplate: Character | undefined,
+    forceCategory?: 'aoe' | '轰炸' | '陷阵'
   ) {
     if (!battleMap.value) return
 
@@ -223,7 +284,7 @@ export const useGameStore = defineStore('game', () => {
     const attribute = skill.attribute || 'normal'
     const skillType = skill.type as 'attack' | 'heal' | 'support' | 'summon' | 'special' || 'attack'
     const isBombing = skill.targetCountTag === '轰炸'
-    const aoeCategory = isBombing ? '轰炸' as const : 'aoe' as const
+    const aoeCategory = forceCategory || (isBombing ? '轰炸' as const : 'aoe' as const)
 
     triggerAOEEffects(centerRow, centerCol, areaRange, attribute, rangeType, skillType, aoeCategory)
 
@@ -339,6 +400,7 @@ export const useGameStore = defineStore('game', () => {
 
       if (target.hp <= 0) {
         triggerDefeatAnimation(target.row, target.col, 'kill')
+        triggerDeathEffect(target.row, target.col, attribute)
         removeCharacterFromBattle(target.id, target.isPlayer)
         defeatedNames.push(targetTemplate?.name || target.characterId)
       }
@@ -421,15 +483,12 @@ export const useGameStore = defineStore('game', () => {
                   id: splashEffectId,
                   row: r,
                   col: c,
-                  type: 'explosion',
                   color: splashColor,
                   size: 'medium',
-                  createdAt: Date.now()
+                  timestamp: Date.now(),
+                  type: 'explosion'
                 })
-                setTimeout(() => {
-                  const idx = skillEffects.value.findIndex(e => e.id === splashEffectId)
-                  if (idx !== -1) skillEffects.value.splice(idx, 1)
-                }, 800)
+                ensureEffectCleanupTimer()
               }
             }
           }
@@ -459,6 +518,20 @@ export const useGameStore = defineStore('game', () => {
         triggerHitFlash(target.row, target.col, attribute)
         showFloatingText(target.row, target.col, splashDamage, 'damage', attribute, true)
         damageResults.push(`溅射对【${targetTemplate?.name || target.characterId}】造成${splashDamage}点伤害`)
+
+        if (skill.statusEffect) {
+          addStatusToCharacter(target, skill.statusEffect, true, skill.statusEffectDuration || 0)
+          triggerStatusApplyEffect(target.row, target.col, skill.statusEffect)
+          damageResults.push(`溅射使【${targetTemplate?.name || target.characterId}】陷入【${STATUS_CONFIG[skill.statusEffect]?.name || skill.statusEffect}】状态`)
+        }
+        if (skill.statusEffects && skill.statusEffects.length > 0) {
+          skill.statusEffects.forEach((status, index) => {
+            const duration = skill.statusEffectsDurations?.[index] || 0
+            addStatusToCharacter(target, status, true, duration)
+            triggerStatusApplyEffect(target.row, target.col, status)
+            damageResults.push(`溅射使【${targetTemplate?.name || target.characterId}】陷入【${STATUS_CONFIG[status]?.name || status}】状态`)
+          })
+        }
 
         if (target.hp <= 0) {
           triggerDefeatAnimation(target.row, target.col, 'kill')
@@ -642,36 +715,8 @@ export const useGameStore = defineStore('game', () => {
 
     triggerAreaEffects(linePositions, attribute, skillType, '直线', direction, attacker.row, attacker.col)
 
-    // 直线技能依次穿透特效：按位置顺序依次触发命中特效
-    const sortedLinePositions = [...linePositions].sort((a, b) => {
-      // 按距离攻击者的顺序排序
-      const distA = Math.abs(a.row - attacker.row) + Math.abs(a.col - attacker.col)
-      const distB = Math.abs(b.row - attacker.row) + Math.abs(b.col - attacker.col)
-      return distA - distB
-    })
-
-    // 为每个格子添加穿透特效（带有延迟）
-    sortedLinePositions.forEach((pos, index) => {
-      const effectId = `line_penetrate_${Date.now()}_${index}_${Math.random().toString(36).substr(2, 6)}`
-      const color = ATTRIBUTE_CONFIG[attribute]?.color || '#fff'
-      const delay = index * 0.08
-      
-      setTimeout(() => {
-        skillEffects.value.push({
-          id: effectId,
-          row: pos.row,
-          col: pos.col,
-          type: 'beam',
-          color,
-          size: 'medium',
-          createdAt: Date.now()
-        })
-        setTimeout(() => {
-          const idx = skillEffects.value.findIndex(e => e.id === effectId)
-          if (idx !== -1) skillEffects.value.splice(idx, 1)
-        }, 400)
-      }, delay * 1000)
-    })
+    // 元素粒子尾迹：直线技能路径上生成粒子
+    triggerTrailEffect(linePositions, attribute, 'medium')
 
     const enemyTargets = attacker.isPlayer
       ? battleMap.value.enemies.filter(enemy => 
@@ -743,6 +788,7 @@ export const useGameStore = defineStore('game', () => {
 
       if (target.hp <= 0) {
         triggerDefeatAnimation(target.row, target.col, 'kill')
+        triggerDeathEffect(target.row, target.col, attribute)
         removeCharacterFromBattle(target.id, target.isPlayer)
         defeatedNames.push(targetTemplate?.name || target.characterId)
       }
@@ -913,6 +959,9 @@ export const useGameStore = defineStore('game', () => {
 
     triggerAreaEffects(sweepPositions, attribute, skillType, '横扫', direction, attacker.row, attacker.col)
 
+    // 元素粒子尾迹：横扫技能路径上生成粒子
+    triggerTrailEffect(sweepPositions, attribute, 'small')
+
     const enemyTargets = attacker.isPlayer
       ? battleMap.value.enemies.filter(enemy => 
           sweepPositions.some(pos => pos.row === enemy.row && pos.col === enemy.col)
@@ -983,6 +1032,7 @@ export const useGameStore = defineStore('game', () => {
 
       if (target.hp <= 0) {
         triggerDefeatAnimation(target.row, target.col, 'kill')
+        triggerDeathEffect(target.row, target.col, attribute)
         removeCharacterFromBattle(target.id, target.isPlayer)
         defeatedNames.push(targetTemplate?.name || target.characterId)
       }
@@ -1462,6 +1512,7 @@ export const useGameStore = defineStore('game', () => {
 
     if (skill.selfDefeat) {
       triggerDefeatAnimation(attacker.row, attacker.col, 'self')
+      triggerDeathEffect(attacker.row, attacker.col, attribute)
       attacker.hp = 0
       removeCharacterFromBattle(attacker.id, attacker.isPlayer)
       battleLog.value.push(`【${charTemplate?.name || attacker.characterId}】使用技能后战败退场！`)
@@ -1553,7 +1604,89 @@ export const useGameStore = defineStore('game', () => {
       }
     }
   }
-  
+
+  function processXianZhenSkill(
+    attacker: BattleCharacter,
+    skill: Skill,
+    targetId: string | undefined,
+    charTemplate: Character | undefined
+  ): boolean {
+    if (!battleMap.value) return false
+
+    let centerRow = attacker.row
+    let centerCol = attacker.col
+    const skillRange = skill.range || 4
+    const areaRange = skill.areaRange || 1
+    const rangeType = skill.rangeType || 'diamond'
+    const skillAttr = skill.attribute || 'normal'
+    const skillType = skill.type as 'attack' | 'heal' | 'support' | 'summon' | 'special'
+    const attackerName = charTemplate?.name || attacker.characterId
+
+    // 解析目标位置
+    if (targetId && targetId.startsWith('pos_')) {
+      const [, rowStr, colStr] = targetId.split('_')
+      centerRow = parseInt(rowStr)
+      centerCol = parseInt(colStr)
+    } else {
+      battleLog.value.push(`【${attackerName}】的【${skill.name}】需要选择一个目标格子！`)
+      attacker.mp += skill.mpCost
+      return false
+    }
+
+    // 验证目标格子合法性
+    const targetTile = battleMap.value.tiles[centerRow]?.[centerCol]
+    if (!targetTile || targetTile.terrain !== 'empty') {
+      battleLog.value.push(`【${attackerName}】的【${skill.name}】需要选择一个空格子！`)
+      attacker.mp += skill.mpCost
+      return false
+    }
+
+    const occupiedByPlayer = battleMap.value.players.some(p => p.row === centerRow && p.col === centerCol)
+    const occupiedByEnemy = battleMap.value.enemies.some(e => e.row === centerRow && e.col === centerCol)
+    const occupiedByBuilding = battleMap.value.buildings.some(b => b.row === centerRow && b.col === centerCol)
+    if (occupiedByPlayer || occupiedByEnemy || occupiedByBuilding) {
+      battleLog.value.push(`【${attackerName}】的【${skill.name}】需要选择一个没有其他单位的空格子！`)
+      attacker.mp += skill.mpCost
+      return false
+    }
+
+    // 1. 触发攻击特效（瞬移前在原位置触发）
+    triggerSkillEffect(attacker.row, attacker.col, skillAttr, 'large', skillType, '陷阵', centerRow, centerCol)
+
+    // 2. 对范围内敌人造成伤害，同时触发陷阵特效（通过 forceCategory 参数）
+    processAOEAttackSkill(attacker, skill, centerRow, centerCol, charTemplate, '陷阵')
+
+    // 3. 触发瞬移特效（从原位置消失，在目标位置出现）
+    setTimeout(() => {
+      if (!battleMap.value) return
+
+      triggerSkillEffect(attacker.row, attacker.col, skillAttr, 'medium', skillType, '陷阵')
+
+      attacker.row = centerRow
+      attacker.col = centerCol
+
+      triggerSkillEffect(centerRow, centerCol, skillAttr, 'large', skillType, '陷阵')
+
+      battleLog.value.push(`【${attackerName}】使用【${skill.name}】瞬移至(${centerRow},${centerCol})！`)
+    }, 300)
+
+    // 陷阵技能同时消耗移动和行动（瞬移等同于移动）
+    attacker.hasMoved = true
+    attacker.hasActed = true
+    if (attacker.isPlayer) {
+      const attackerChar = player.value.characters.find(c => c.id === attacker.characterId)
+      if (attackerChar) {
+        const playerSkill = attackerChar.skills.find(s => s.id === skill.id)
+        if (playerSkill) playerSkill.currentCooldown = skill.cooldown || 1
+      }
+    } else {
+      if (!attacker.skillCooldowns) attacker.skillCooldowns = {}
+      attacker.skillCooldowns[skill.id] = skill.cooldown || 1
+    }
+    triggerStatusOnAction(attacker)
+    return true
+  }
+
   // 飘字特效相关
   interface FloatingText {
     id: string
@@ -1632,6 +1765,102 @@ export const useGameStore = defineStore('game', () => {
       const idx = defeatRecords.value.findIndex(d => d.id === id)
       if (idx !== -1) defeatRecords.value.splice(idx, 1)
     }, 1500)
+  }
+
+  // ============ 新增视觉特效系统 ============
+  // 1. 元素粒子尾迹（直线/横扫/投射物路径上的元素粒子）
+  function triggerTrailEffect(
+    positions: { row: number; col: number }[],
+    attribute: Attribute,
+    size: 'small' | 'medium' | 'large' = 'medium'
+  ) {
+    const color = ATTRIBUTE_CONFIG[attribute]?.color || '#fff'
+    const timestamp = Date.now()
+    const newParticles: TrailParticle[] = positions.map((pos, i) => ({
+      id: `trail_${timestamp}_${i}_${Math.random().toString(36).substr(2, 5)}`,
+      row: pos.row,
+      col: pos.col,
+      color,
+      timestamp: timestamp + i * 60,
+      attribute,
+      size
+    }))
+    trailParticles.value.push(...newParticles)
+    // 1.8s 后自动清除（配合 CSS 动画时长）
+    setTimeout(() => {
+      newParticles.forEach(p => {
+        const idx = trailParticles.value.findIndex(t => t.id === p.id)
+        if (idx !== -1) trailParticles.value.splice(idx, 1)
+      })
+    }, 1800)
+  }
+
+  // 2. 技能蓄力特效（选择目标时角色头顶/身上的蓄力光效）
+  function triggerChargeEffect(row: number, col: number, attribute: Attribute) {
+    const color = ATTRIBUTE_CONFIG[attribute]?.color || '#fff'
+    const id = `charge_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`
+    chargeEffects.value.push({
+      id,
+      row,
+      col,
+      color,
+      timestamp: Date.now(),
+      attribute
+    })
+    setTimeout(() => {
+      const idx = chargeEffects.value.findIndex(e => e.id === id)
+      if (idx !== -1) chargeEffects.value.splice(idx, 1)
+    }, 800)
+  }
+
+  function clearChargeEffects() {
+    chargeEffects.value = []
+  }
+
+  // 3. 环境交互痕迹（火焰留焦黑、冰留冰晶、毒留腐蚀）
+  function triggerTerrainMark(row: number, col: number, type: 'scorch' | 'frost' | 'poison', durationMs = 6000) {
+    if (!battleMap.value) return
+    // 限制同格同类型最多一个，避免堆积
+    const existing = terrainMarks.value.findIndex(m => m.row === row && m.col === col && m.type === type)
+    if (existing !== -1) {
+      const old = terrainMarks.value[existing]
+      const idx = terrainMarks.value.findIndex(m => m.id === old.id)
+      if (idx !== -1) terrainMarks.value.splice(idx, 1)
+    }
+    const id = `mark_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`
+    terrainMarks.value.push({ id, row, col, type, timestamp: Date.now() })
+    setTimeout(() => {
+      const idx = terrainMarks.value.findIndex(m => m.id === id)
+      if (idx !== -1) terrainMarks.value.splice(idx, 1)
+    }, durationMs)
+  }
+
+  // 4. 死亡特效（角色化作光点消散）
+  function triggerDeathEffect(row: number, col: number, attribute: Attribute = 'normal') {
+    const color = ATTRIBUTE_CONFIG[attribute]?.color || '#ffd86b'
+    const id = `death_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`
+    deathEffects.value.push({ id, row, col, color, timestamp: Date.now() })
+    setTimeout(() => {
+      const idx = deathEffects.value.findIndex(d => d.id === id)
+      if (idx !== -1) deathEffects.value.splice(idx, 1)
+    }, 1600)
+  }
+
+  // 统一处理：击中地形痕迹（火/冰/阴/暗 触发对应环境痕迹）
+  function applyTerrainMarkByAttribute(row: number, col: number, attribute: Attribute) {
+    if (attribute === 'fire') {
+      triggerTerrainMark(row, col, 'scorch')
+    } else if (attribute === 'ice') {
+      triggerTerrainMark(row, col, 'frost')
+    } else if (attribute === 'yin' || attribute === 'dark') {
+      triggerTerrainMark(row, col, 'poison')
+    }
+  }
+
+  // 统一处理：目标死亡时触发死亡特效
+  function handleTargetDefeated(row: number, col: number, attribute: Attribute, defeatType: 'kill' | 'self') {
+    triggerDefeatAnimation(row, col, defeatType)
+    triggerDeathEffect(row, col, attribute)
   }
   
   // 3. 攻击轨迹投射物动画
@@ -1940,7 +2169,7 @@ export const useGameStore = defineStore('game', () => {
     player.value = {
       id: 'player_1',
       name: '玩家',
-      gold: 15000,
+      gold: 6000,
       day: 1,
       phase: 'day',
       characters,
@@ -3643,7 +3872,7 @@ export const useGameStore = defineStore('game', () => {
     const rand = Math.random()
     let newWeather: WeatherType = 'normal'
 
-    // 10% 小雪，10% 中雪，10% 大雪，10% 山火，10% 天火，10% 迷雾
+    // 10% 小雪，10% 中雪，10% 大雪，10% 山火，10% 天火，10% 迷雾，10% 鬼雾
     if (rand < 0.10) {
       newWeather = 'light_snow'
     } else if (rand < 0.20) {
@@ -3656,6 +3885,8 @@ export const useGameStore = defineStore('game', () => {
       newWeather = 'sky_fire'
     } else if (rand < 0.60) {
       newWeather = 'fog'
+    } else if (rand < 0.70) {
+      newWeather = 'ghost_fog'
     }
 
     battleMap.value.weather = newWeather
@@ -3670,7 +3901,8 @@ export const useGameStore = defineStore('game', () => {
       heavy_snow: '大雪',
       mountain_fire: '山火',
       sky_fire: '天火',
-      fog: '迷雾'
+      fog: '迷雾',
+      ghost_fog: '鬼雾'
     }
     battleLog.value.push(`天气变为：${weatherNames[newWeather]}`)
   }
@@ -3827,24 +4059,27 @@ export const useGameStore = defineStore('game', () => {
     const { width, height, weather } = battleMap.value
     battleMap.value.fogAreas = []
 
-    if (weather !== 'fog') return
+    if (weather !== 'fog' && weather !== 'ghost_fog') return
 
     const fogAreas: FogArea[] = []
     const usedPositions = new Set<string>()
 
-    // 迷雾：3个2x2大小的区域
-    const areaCount = 3
-    const areaSize = 2
+    let config: { areaCount: number; areaSize: number }
+    if (weather === 'ghost_fog') {
+      config = { areaCount: 2, areaSize: 3 }
+    } else {
+      config = { areaCount: 3, areaSize: 2 }
+    }
 
-    for (let i = 0; i < areaCount; i++) {
+    for (let i = 0; i < config.areaCount; i++) {
       let attempts = 0
       while (attempts < 50) {
-        const startRow = Math.floor(Math.random() * (height - areaSize + 1))
-        const startCol = Math.floor(Math.random() * (width - areaSize + 1))
+        const startRow = Math.floor(Math.random() * (height - config.areaSize + 1))
+        const startCol = Math.floor(Math.random() * (width - config.areaSize + 1))
 
         let valid = true
-        for (let r = 0; r < areaSize; r++) {
-          for (let c = 0; c < areaSize; c++) {
+        for (let r = 0; r < config.areaSize; r++) {
+          for (let c = 0; c < config.areaSize; c++) {
             const key = `${startRow + r},${startCol + c}`
             if (usedPositions.has(key)) {
               valid = false
@@ -3855,8 +4090,8 @@ export const useGameStore = defineStore('game', () => {
         }
 
         if (valid) {
-          for (let r = 0; r < areaSize; r++) {
-            for (let c = 0; c < areaSize; c++) {
+          for (let r = 0; r < config.areaSize; r++) {
+            for (let c = 0; c < config.areaSize; c++) {
               const row = startRow + r
               const col = startCol + c
               const key = `${row},${col}`
@@ -4195,6 +4430,7 @@ export const useGameStore = defineStore('game', () => {
       battleLog.value.push(`【${template?.name || char.characterId}】因【中毒】损失${damage}点生命值`);
       if (char.hp <= 0) {
         triggerDefeatAnimation(char.row, char.col, 'self')
+        triggerDeathEffect(char.row, char.col, template?.attribute || 'normal')
         removeCharacterFromBattle(char.id, char.isPlayer);
         if (battleMap.value?.tiles[char.row]?.[char.col]) {
           battleMap.value.tiles[char.row][char.col].character = null;
@@ -4221,6 +4457,7 @@ export const useGameStore = defineStore('game', () => {
         battleLog.value.push(`【${template?.name || char.characterId}】因【燃烧】损失${hpDamage}点生命值和${mpDamage}点法力值`);
         if (char.hp <= 0) {
           triggerDefeatAnimation(char.row, char.col, 'self')
+          triggerDeathEffect(char.row, char.col, template?.attribute || 'normal')
           removeCharacterFromBattle(char.id, char.isPlayer);
           if (battleMap.value.tiles[char.row]?.[char.col]) {
             battleMap.value.tiles[char.row][char.col].character = null;
@@ -4237,6 +4474,7 @@ export const useGameStore = defineStore('game', () => {
         battleLog.value.push(`【${template?.name || char.characterId}】因【流血】损失${damage}点生命值`);
         if (char.hp <= 0) {
           triggerDefeatAnimation(char.row, char.col, 'self')
+          triggerDeathEffect(char.row, char.col, template?.attribute || 'normal')
           removeCharacterFromBattle(char.id, char.isPlayer);
           if (battleMap.value.tiles[char.row]?.[char.col]) {
             battleMap.value.tiles[char.row][char.col].character = null;
@@ -4252,6 +4490,7 @@ export const useGameStore = defineStore('game', () => {
         battleLog.value.push(`【${template?.name || char.characterId}】因【消散】损失${damage}点生命值`);
         if (char.hp <= 0) {
           triggerDefeatAnimation(char.row, char.col, 'self')
+          triggerDeathEffect(char.row, char.col, template?.attribute || 'normal')
           removeCharacterFromBattle(char.id, char.isPlayer);
           if (battleMap.value.tiles[char.row]?.[char.col]) {
             battleMap.value.tiles[char.row][char.col].character = null;
@@ -4346,7 +4585,7 @@ export const useGameStore = defineStore('game', () => {
     const distance = Math.abs(row - char.row) + Math.abs(col - char.col)
     char.movedDistance = (char.movedDistance || 0) + distance
 
-    // 记录旧位置用于轨迹特效
+    // 记录旧位置用于轨迹特效和日志
     const oldRow = char.row
     const oldCol = char.col
 
@@ -4354,6 +4593,11 @@ export const useGameStore = defineStore('game', () => {
     char.row = row
     char.col = col
     char.hasMoved = true
+
+    // 添加移动日志
+    const charTemplate = findCharacterTemplateInStore(char.characterId)
+    const charName = charTemplate?.name || char.characterId
+    battleLog.value.push(`【${charName}】从(${oldRow},${oldCol})移动到(${row},${col})`)
 
     // 触发移动轨迹粒子
     triggerMoveTrail(oldRow, oldCol, row, col, char.isPlayer)
@@ -4618,6 +4862,7 @@ export const useGameStore = defineStore('game', () => {
     if (target.hp <= 0) {
       // 被击败退场动画
       triggerDefeatAnimation(target.row, target.col, 'kill')
+      triggerDeathEffect(target.row, target.col, attackerAttribute)
       removeCharacterFromBattle(target.id, target.isPlayer)
       battleMap.value.tiles[target.row][target.col].character = null
       const finalTargetTemplate = findCharacterTemplateInStore(target.characterId)
@@ -5572,81 +5817,15 @@ export const useGameStore = defineStore('game', () => {
       return true
     }
 
-    // 陷阵技能处理：选择空格子，对范围内敌人造成伤害，自身瞬移到目标位置
+    // 陷阵技能处理：统一调用 processXianZhenSkill
     if (skill.category === '陷阵') {
-      let centerRow = attacker.row
-      let centerCol = attacker.col
-      
-      if (targetId && targetId.startsWith('pos_')) {
-        const [, rowStr, colStr] = targetId.split('_')
-        centerRow = parseInt(rowStr)
-        centerCol = parseInt(colStr)
-        
-        // 验证目标格子是空格子
-        const targetTile = battleMap.value?.tiles[centerRow]?.[centerCol]
-        if (!targetTile || targetTile.terrain !== 'empty') {
-          battleLog.value.push(`【${charTemplate?.name || attacker.characterId}】的【${skill.name}】需要选择一个空格子！`)
-          attacker.mp += skill.mpCost
-          return false
-        }
-        
-        // 检查目标格子是否被其他角色占据
-        const occupiedByPlayer = battleMap.value.players.some(p => p.row === centerRow && p.col === centerCol)
-        const occupiedByEnemy = battleMap.value.enemies.some(e => e.row === centerRow && e.col === centerCol)
-        const occupiedByBuilding = battleMap.value.buildings.some(b => b.row === centerRow && b.col === centerCol)
-        if (occupiedByPlayer || occupiedByEnemy || occupiedByBuilding) {
-          battleLog.value.push(`【${charTemplate?.name || attacker.characterId}】的【${skill.name}】需要选择一个没有其他单位的空格子！`)
-          attacker.mp += skill.mpCost
-          return false
-        }
-        
-        const skillAttr = skill.attribute || 'normal'
-        const skillType = skill.type as 'attack' | 'heal' | 'support' | 'summon' | 'special'
-        
-        // 1. 先触发攻击特效（瞬移前在原位置触发）
-        triggerSkillEffect(attacker.row, attacker.col, skillAttr, 'large', skillType, '陷阵', centerRow, centerCol)
-        
-        // 2. 对范围内敌人造成伤害
-        processAOEAttackSkill(attacker, skill, centerRow, centerCol, charTemplate)
-        
-        // 3. 在目标位置触发陷阵特效
-        triggerAOEEffects(centerRow, centerCol, skill.areaRange || 1, skillAttr, skill.rangeType || 'diamond', skillType, '陷阵')
-        
-        // 4. 触发瞬移特效（从原位置消失，在目标位置出现）
-        setTimeout(() => {
-          if (!battleMap.value) return
-          
-          // 在原位置触发消失特效
-          triggerSkillEffect(attacker.row, attacker.col, skillAttr, 'medium', skillType, '陷阵')
-          
-          // 瞬移：更新攻击者位置
-          attacker.row = centerRow
-          attacker.col = centerCol
-          
-          // 在新位置触发出现特效
-          triggerSkillEffect(centerRow, centerCol, skillAttr, 'large', skillType, '陷阵')
-          
-          battleLog.value.push(`【${charTemplate?.name || attacker.characterId}】使用【${skill.name}】瞬移至(${centerRow},${centerCol})！`)
-        }, 300)
-        
-        attacker.hasActed = true
-        if (attacker.isPlayer) {
-          const attackerChar = player.value.characters.find(c => c.id === attacker.characterId)
-          if (attackerChar) {
-            const playerSkill = attackerChar.skills.find(s => s.id === skillId)
-            if (playerSkill) playerSkill.currentCooldown = skill.cooldown || 1
-          }
-        } else {
-          if (!attacker.skillCooldowns) attacker.skillCooldowns = {}
-          attacker.skillCooldowns[skillId] = skill.cooldown || 1
-        }
-        triggerStatusOnAction(attacker)
+      const result = processXianZhenSkill(attacker, skill, targetId, charTemplate)
+      if (result) {
         return true
+      } else {
+        // processXianZhenSkill 内部已处理 MP 退还和日志，直接返回 false
+        return false
       }
-      
-      battleLog.value.push(`【${charTemplate?.name || attacker.characterId}】的【${skill.name}】需要选择一个目标格子！`)
-      attacker.mp += skill.mpCost
-      return false
     }
 
     // 特殊处理「爱的抱抱」「爱的飞吻」「爱的回忆」「余音绕梁」「疯魔琴心」等治疗技能
@@ -9745,7 +9924,84 @@ export const useGameStore = defineStore('game', () => {
     
     return minDistance === Infinity ? 999 : minDistance
   }
-  
+
+  function evaluateXianZhenSkillForAI(
+    char: BattleCharacter,
+    skill: Skill,
+    fromRow: number,
+    fromCol: number
+  ): { bestPos: { row: number; col: number } | null; maxDamage: number } {
+    if (!battleMap.value) return { bestPos: null, maxDamage: 0 }
+
+    const skillRange = skill.range || 4
+    const areaRange = skill.areaRange || 1
+    const rangeType = skill.rangeType || 'diamond'
+    const attackPower = computeAttackPower(char)
+    const enemies = char.isPlayer ? battleMap.value.enemies : battleMap.value.players
+    const buildings = battleMap.value.buildings
+
+    const candidatePositions: { pos: { row: number; col: number }; totalDamage: number }[] = []
+
+    for (let dr = -skillRange; dr <= skillRange; dr++) {
+      for (let dc = -skillRange; dc <= skillRange; dc++) {
+        const dist = Math.abs(dr) + Math.abs(dc)
+        if (dist <= 0 || dist > skillRange) continue
+
+        const r = fromRow + dr
+        const c = fromCol + dc
+
+        if (r < 0 || r >= battleMap.value.height || c < 0 || c >= battleMap.value.width) continue
+
+        const tile = battleMap.value.tiles[r]?.[c]
+        if (!tile || tile.terrain !== 'empty') continue
+
+        const occupiedByPlayer = battleMap.value.players.some(p => p.row === r && p.col === c)
+        const occupiedByEnemy = battleMap.value.enemies.some(e => e.row === r && e.col === c)
+        const occupiedByBuilding = battleMap.value.buildings.some(b => b.row === r && b.col === c)
+        if (occupiedByPlayer || occupiedByEnemy || occupiedByBuilding) continue
+
+        let totalDamage = 0
+        for (const enemy of enemies) {
+          const distToEnemy = Math.abs(enemy.row - r) + Math.abs(enemy.col - c)
+          const inRange = rangeType === 'diamond' ? distToEnemy <= areaRange
+            : Math.abs(enemy.row - r) <= areaRange && Math.abs(enemy.col - c) <= areaRange
+          if (inRange) {
+            const defense = computeDefensePower(enemy)
+            const damage = Math.max(1, Math.floor(skill.power / 100 * attackPower - defense))
+            totalDamage += damage
+          }
+        }
+
+        for (const building of buildings) {
+          const distToBuilding = Math.abs(building.row - r) + Math.abs(building.col - c)
+          const inRange = rangeType === 'diamond' ? distToBuilding <= areaRange
+            : Math.abs(building.row - r) <= areaRange && Math.abs(building.col - c) <= areaRange
+          if (inRange && building.isPlayer !== char.isPlayer) {
+            const damage = Math.max(1, Math.floor(skill.power / 100 * attackPower))
+            totalDamage += damage
+          }
+        }
+
+        if (totalDamage > 0) {
+          candidatePositions.push({ pos: { row: r, col: c }, totalDamage })
+        }
+      }
+    }
+
+    if (candidatePositions.length > 0) {
+      candidatePositions.sort((a, b) => b.totalDamage - a.totalDamage)
+      return { bestPos: candidatePositions[0].pos, maxDamage: candidatePositions[0].totalDamage }
+    }
+    return { bestPos: null, maxDamage: 0 }
+  }
+
+  function executeXianZhenSkillAI(char: BattleCharacter, skill: Skill, targetPos: { row: number; col: number }) {
+    const targetId = `pos_${targetPos.row}_${targetPos.col}`
+    console.log(`[AI] ${char.id} | using skill ${skill.name} at pos(${targetPos.row},${targetPos.col})`)
+    useSkill(skill.id, char.id, targetId)
+    console.log(`[AI] ${char.id} | skill used successfully`)
+  }
+
   // 全军出击模式
   async function executeAttackMode(char: BattleCharacter) {
     try {
@@ -10541,6 +10797,17 @@ export const useGameStore = defineStore('game', () => {
           }
           continue
         }
+
+        // 陷阵技能处理：统一调用 evaluateXianZhenSkillForAI
+        if (skill.category === '陷阵') {
+          const result = evaluateXianZhenSkillForAI(char, skill, pos.row, pos.col)
+          if (result.bestPos && result.maxDamage > maxDamage) {
+            maxDamage = result.maxDamage
+            bestTarget = { row: result.bestPos.row, col: result.bestPos.col } as any
+            bestSkill = skill
+          }
+          continue
+        }
         
         if (skill.type === 'attack') {
           const skillTargets = getSkillAttackTargets(char, skill)
@@ -11112,6 +11379,13 @@ export const useGameStore = defineStore('game', () => {
             console.log(`[AI] ${char.id} | using skill ${bestSkill.name} in direction ${bestTarget.direction}`)
             useSkill(bestSkill.id, char.id, bestTarget.direction)
             console.log(`[AI] ${char.id} | skill used successfully`)
+          } else if (bestSkill.category === '陷阵') {
+            // 陷阵技能：统一调用 executeXianZhenSkillAI
+            if (bestTarget && 'row' in bestTarget && 'col' in bestTarget) {
+              executeXianZhenSkillAI(char, bestSkill, { row: bestTarget.row, col: bestTarget.col })
+            } else {
+              console.log(`[AI] ${char.id} | no valid target position for ${bestSkill.name}, skipping skill`)
+            }
           } else if (bestSkill.category === 'aoe' && bestSkill.targetCountTag !== '轰炸') {
             // 以自身为中心的AOE技能（非轰炸类）：传null，使用自身位置
             console.log(`[AI] ${char.id} | using skill ${bestSkill.name} (self-centered AOE)`)
@@ -11710,6 +11984,13 @@ export const useGameStore = defineStore('game', () => {
               } else {
                 console.log(`[AI] ${char.id} | no valid empty tiles for ${bestSkill.name}, skipping skill`)
               }
+            }
+          } else if (bestSkill.category === '陷阵') {
+            // 陷阵技能：统一调用 executeXianZhenSkillAI
+            if (bestTarget && 'row' in bestTarget && 'col' in bestTarget) {
+              executeXianZhenSkillAI(char, bestSkill, { row: bestTarget.row, col: bestTarget.col })
+            } else {
+              console.log(`[AI] ${char.id} | no valid target position for ${bestSkill.name}, skipping skill`)
             }
           } else if (bestSkill.id === 'an_ye_jin_sheng') {
             const skillTargets = getSkillAttackTargets(char, bestSkill)
@@ -12839,6 +13120,16 @@ export const useGameStore = defineStore('game', () => {
     triggerMoveTrail,
     getProjectileTypeForSkill,
     getProjectileTypeForNormalAttack,
+    // ============ 新增视觉特效导出 ============
+    trailParticles,
+    triggerTrailEffect,
+    chargeEffects,
+    triggerChargeEffect,
+    clearChargeEffects,
+    terrainMarks,
+    triggerTerrainMark,
+    deathEffects,
+    triggerDeathEffect,
     // ============
     factionCommand,
     gatheringPoints,

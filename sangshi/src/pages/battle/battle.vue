@@ -60,7 +60,7 @@
     
     <scroll-view class="battle-scroll" scroll-x scroll-y>
       <view class="battle-map-container">
-        <view class="battle-map" :style="mapStyle">
+        <view class="battle-map" :class="mapShakeClass" :style="mapStyle">
           <view 
             v-for="(row, rowIndex) in gameStore.battleMap?.tiles" 
             :key="rowIndex"
@@ -202,55 +202,67 @@
               effect.size, 
               `attr-${effect.attribute}`, 
               `type-${effect.skillType}`,
-              effect.category ? `cat-${effect.category}` : ''
+              effect.category ? `cat-${effect.category}` : '',
+              effect.isMinimal ? 'is-minimal' : ''
             ]"
             :style="{
               left: (effect.col * 64 + 46) + 'rpx',
               top: (effect.row * 64 + 46) + 'rpx'
             }"
           >
-            <!-- 基础光晕 -->
+            <!-- 基础光晕（所有特效都渲染） -->
             <view class="effect-base" :style="{ backgroundColor: effect.color }"></view>
             
-            <!-- 属性专属核心特效 -->
-            <view class="effect-core" :class="`core-${effect.attribute}`"></view>
-            
-            <!-- 属性专属图标（仅非AOE/陷阵类显示以减少DOM） -->
-            <text v-if="effect.category !== 'aoe' && effect.category !== '陷阵' && effect.category !== '轰炸'" class="effect-icon" :class="`icon-${effect.attribute}`">{{ getAttributeIcon(effect.attribute) }}</text>
-            
-            <!-- 粒子特效（AOE/陷阵类减少粒子数量显示） -->
-            <view 
-              v-for="(particle, idx) in effect.particles" 
-              :key="idx"
-              class="effect-particle"
-              :style="{
-                '--particle-x': particle.x + 'rpx',
-                '--particle-y': particle.y + 'rpx',
-                '--particle-delay': particle.delay + 's',
-                '--particle-color': effect.color
-              }"
-            ></view>
-            
-            <!-- 技能类型光环 -->
-            <view class="effect-ring" :class="`ring-${effect.skillType}`" :style="{ borderColor: effect.color }"></view>
-            
-            <!-- 二次扩散波纹（仅指定/非AOE类显示） -->
-            <view v-if="effect.category !== 'aoe' && effect.category !== '陷阵'" class="effect-wave" :style="{ borderColor: effect.color }"></view>
-            
-            <!-- 指定技能：目标锁定框 -->
-            <view v-if="effect.category === '指定'" class="effect-target-frame" :style="{ borderColor: effect.color }"></view>
-            
-            <!-- AOE技能：中心爆炸环 -->
-            <view v-if="effect.category === 'aoe'" class="effect-aoe-ring" :style="{ borderColor: effect.color }"></view>
-            
-            <!-- 横扫/直线技能：方向指示 -->
-            <view v-if="effect.category === '横扫' || effect.category === '直线'" class="effect-direction-indicator" :class="effect.direction" :style="{ borderColor: effect.color }"></view>
-            
-            <!-- 轰炸技能：随机火花 -->
-            <view v-if="effect.category === '轰炸'" class="effect-bomb-spark" :style="{ backgroundColor: effect.color }"></view>
-            
-            <!-- 陷阵技能：瞬移光环 -->
-            <view v-if="effect.category === '陷阵'" class="effect-xianzhen-ring" :style="{ borderColor: effect.color }"></view>
+            <!-- 以下层在 isMinimal 时全部跳过，仅保留 effect-base 一层 -->
+            <template v-if="!effect.isMinimal">
+              <!-- 属性专属核心特效 -->
+              <view class="effect-core" :class="`core-${effect.attribute}`"></view>
+              
+              <!-- 属性专属图标（仅非AOE/陷阵类显示以减少DOM） -->
+              <text v-if="effect.category !== 'aoe' && effect.category !== '陷阵' && effect.category !== '轰炸'" class="effect-icon" :class="`icon-${effect.attribute}`">{{ getAttributeIcon(effect.attribute) }}</text>
+              
+              <!-- 粒子特效 -->
+              <view 
+                v-for="(particle, idx) in effect.particles" 
+                :key="idx"
+                class="effect-particle"
+                :style="{
+                  '--particle-x': particle.x + 'rpx',
+                  '--particle-y': particle.y + 'rpx',
+                  '--particle-delay': particle.delay + 's',
+                  '--particle-color': effect.color
+                }"
+              ></view>
+              
+              <!-- 技能类型光环（AOE 类由 effect-aoe-ring 承担，跳过以减少DOM） -->
+              <view v-if="effect.category !== 'aoe'" class="effect-ring" :class="`ring-${effect.skillType}`" :style="{ borderColor: effect.color }"></view>
+              
+              <!-- 二次扩散波纹（仅指定/非AOE类显示） -->
+              <view v-if="effect.category !== 'aoe' && effect.category !== '陷阵'" class="effect-wave" :style="{ borderColor: effect.color }"></view>
+              
+              <!-- 指定技能：目标锁定框 -->
+              <view v-if="effect.category === '指定'" class="effect-target-frame" :style="{ borderColor: effect.color }"></view>
+              
+              <!-- AOE技能：中心爆炸环 -->
+              <view v-if="effect.category === 'aoe'" class="effect-aoe-ring" :style="{ borderColor: effect.color }"></view>
+
+              <!-- AOE技能：中心冲击波（仅中心格显示，快速扩散的白色冲击环） -->
+              <view
+                v-if="effect.isCenter"
+                class="effect-shockwave"
+                :class="effect.shockwaveScale === 'large' ? 'shockwave-large' : ''"
+                :style="{ borderColor: effect.color }"
+              ></view>
+              
+              <!-- 横扫/直线技能：方向指示 -->
+              <view v-if="effect.category === '横扫' || effect.category === '直线'" class="effect-direction-indicator" :class="effect.direction" :style="{ borderColor: effect.color }"></view>
+              
+              <!-- 轰炸技能：随机火花 -->
+              <view v-if="effect.category === '轰炸'" class="effect-bomb-spark" :style="{ backgroundColor: effect.color }"></view>
+              
+              <!-- 陷阵技能：瞬移光环 -->
+              <view v-if="effect.category === '陷阵'" class="effect-xianzhen-ring" :style="{ borderColor: effect.color }"></view>
+            </template>
           </view>
         </view>
         
@@ -464,10 +476,11 @@
         
         <!-- 死亡特效层（角色化作光点消散） -->
         <view class="death-effects-layer">
-          <view 
-            v-for="d in gameStore.deathEffects" 
+          <view
+            v-for="d in gameStore.deathEffects"
             :key="d.id"
             class="death-effect"
+            :class="`death-attr-${d.attribute}`"
             :style="{
               left: (d.col * 64 + 46) + 'rpx',
               top: (d.row * 64 + 46) + 'rpx',
@@ -1274,6 +1287,12 @@ const mapStyle = computed(() => {
     width: `${map.width * 60}rpx`,
     height: `${map.height * 60}rpx`,
   }
+})
+
+// 地图级震屏：tick 奇偶交替切换动画类名（-0 / -1），保证连续触发时 CSS 动画能重新播放
+const mapShakeClass = computed(() => {
+  if (!gameStore.mapShakeTick) return ''
+  return `map-shake-${gameStore.mapShakeIntensity}-${gameStore.mapShakeTick % 2}`
 })
 
 watch(() => gameStore.isInBattle, (isInBattle) => {
@@ -6604,5 +6623,202 @@ function collectCollectible() {
     transform: translate(-50%, -50%) rotate(var(--angle)) translateY(calc(var(--dist) * -1)) scale(0.2);
     opacity: 0;
   }
+}
+
+/* ============ 地图级震屏（重击/AOE/击杀时整个地图抖动） ============ */
+/* tick 奇偶交替切换类名（-0 / -1），保证连续触发时动画能重新播放 */
+.battle-map.map-shake-light-0,
+.battle-map.map-shake-light-1 {
+  will-change: transform;
+  animation: map-shake-light 0.3s ease-out;
+}
+.battle-map.map-shake-heavy-0,
+.battle-map.map-shake-heavy-1 {
+  will-change: transform;
+  animation: map-shake-heavy 0.4s ease-out;
+}
+@keyframes map-shake-light {
+  0%, 100% { transform: translate(0, 0); }
+  20% { transform: translate(-4rpx, 2rpx); }
+  40% { transform: translate(4rpx, -2rpx); }
+  60% { transform: translate(-3rpx, -2rpx); }
+  80% { transform: translate(3rpx, 2rpx); }
+}
+@keyframes map-shake-heavy {
+  0%, 100% { transform: translate(0, 0); }
+  15% { transform: translate(-8rpx, 4rpx); }
+  30% { transform: translate(8rpx, -4rpx); }
+  45% { transform: translate(-6rpx, -4rpx); }
+  60% { transform: translate(6rpx, 4rpx); }
+  75% { transform: translate(-4rpx, 2rpx); }
+  90% { transform: translate(4rpx, -2rpx); }
+}
+
+/* ============ AOE 中心冲击波 ============ */
+.skill-effect .effect-shockwave {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 120rpx;
+  height: 120rpx;
+  border: 8rpx solid #ffffff;
+  border-radius: 50%;
+  transform: translate(-50%, -50%) scale(0.2);
+  animation: effect-shockwave 0.5s ease-out forwards;
+}
+/* 大范围 AOE（areaRange >= 3）使用更大的扩散 */
+.skill-effect .effect-shockwave.shockwave-large {
+  border-width: 10rpx;
+  animation-name: effect-shockwave-large;
+}
+@keyframes effect-shockwave {
+  0% { transform: translate(-50%, -50%) scale(0.2); opacity: 0.95; border-width: 8rpx; }
+  100% { transform: translate(-50%, -50%) scale(3); opacity: 0; border-width: 2rpx; }
+}
+@keyframes effect-shockwave-large {
+  0% { transform: translate(-50%, -50%) scale(0.2); opacity: 1; border-width: 10rpx; }
+  100% { transform: translate(-50%, -50%) scale(4.5); opacity: 0; border-width: 1rpx; }
+}
+
+/* ============ 死亡特效按属性分化 ============ */
+/* 火：爆炸消散 —— 粒子更快更远地炸开，闪光更强更亮 */
+.death-effect.death-attr-fire .death-flash {
+  animation: death-flash-fire 0.5s ease-out forwards;
+}
+.death-effect.death-attr-fire .death-particle {
+  animation: death-particle-burst 0.9s ease-out forwards;
+}
+@keyframes death-flash-fire {
+  0% { transform: translate(-50%, -50%) scale(0.3); opacity: 0; }
+  25% { transform: translate(-50%, -50%) scale(1.8); opacity: 1; }
+  100% { transform: translate(-50%, -50%) scale(3.2); opacity: 0; }
+}
+@keyframes death-particle-burst {
+  0% {
+    transform: translate(-50%, -50%) rotate(var(--angle)) translateY(0) scale(1);
+    opacity: 1;
+  }
+  30% { opacity: 1; }
+  100% {
+    transform: translate(-50%, -50%) rotate(var(--angle)) translateY(calc(var(--dist) * -2.2)) scale(0.1);
+    opacity: 0;
+  }
+}
+
+/* 冰：菱形碎裂 —— 粒子变为菱形碎片，先炸开再旋转坠落消散 */
+.death-effect.death-attr-ice .death-particle {
+  width: 14rpx;
+  height: 14rpx;
+  border-radius: 2rpx;
+  animation: death-particle-shatter 1.2s cubic-bezier(0.2, 0.6, 0.4, 1) forwards;
+}
+.death-effect.death-attr-ice .death-ring {
+  border-radius: 8rpx;
+  animation: death-ring-shatter 1.2s ease-out forwards;
+}
+@keyframes death-particle-shatter {
+  0% {
+    transform: translate(-50%, -50%) rotate(calc(var(--angle) + 45deg)) translateY(0) scale(0.6);
+    opacity: 1;
+  }
+  35% {
+    transform: translate(-50%, -50%) rotate(calc(var(--angle) + 45deg)) translateY(calc(var(--dist) * -0.9)) scale(1.1);
+    opacity: 1;
+  }
+  100% {
+    transform: translate(-50%, -50%) rotate(calc(var(--angle) + 90deg)) translateY(calc(var(--dist) * -0.4)) scale(0.3);
+    opacity: 0;
+  }
+}
+@keyframes death-ring-shatter {
+  0% { transform: translate(-50%, -50%) scale(0.3) rotate(0deg); opacity: 1; border-radius: 8rpx; }
+  60% { transform: translate(-50%, -50%) scale(1.6) rotate(20deg); opacity: 0.7; border-radius: 8rpx; }
+  100% { transform: translate(-50%, -50%) scale(2.4) rotate(45deg); opacity: 0; border-radius: 8rpx; }
+}
+
+/* 暗/阴：溶解下沉 —— 粒子缓缓下沉并溶解消散 */
+.death-effect.death-attr-dark .death-particle,
+.death-effect.death-attr-yin .death-particle {
+  animation: death-particle-dissolve 1.5s ease-in forwards;
+}
+.death-effect.death-attr-dark .death-flash,
+.death-effect.death-attr-yin .death-flash {
+  animation: death-flash-dissolve 1s ease-in forwards;
+}
+@keyframes death-particle-dissolve {
+  0% { transform: translate(-50%, -50%) translateY(0) scale(1); opacity: 1; }
+  40% { transform: translate(-50%, -50%) translateY(6rpx) scale(0.9); opacity: 0.9; }
+  100% { transform: translate(-50%, -50%) translateY(30rpx) scale(0.2); opacity: 0; }
+}
+@keyframes death-flash-dissolve {
+  0% { transform: translate(-50%, -50%) scale(0.3); opacity: 0.8; }
+  100% { transform: translate(-50%, -50%) scale(0.8) translateY(15rpx); opacity: 0; }
+}
+
+/* ============ GPU 合成层提示 + 重绘隔离 ============ */
+/* 特效层：contain 隔离重绘范围，will-change 提升为独立合成层，
+   使层内瞬时动画的重绘不会波及地图格子与其余 UI */
+.skill-effects-layer,
+.floating-texts-layer,
+.projectiles-layer,
+.hit-sparks-layer,
+.status-apply-layer,
+.summon-effects-layer,
+.move-trail-layer,
+.trail-particles-layer,
+.charge-effects-layer,
+.terrain-marks-layer,
+.death-effects-layer {
+  contain: layout style;
+  will-change: transform, opacity;
+  backface-visibility: hidden;
+}
+
+/* 瞬时动画元素：提前提升为合成层，transform/opacity 动画期间零重绘。
+   注意：大量重复的小粒子不单独开合成层，避免移动端 GPU 内存不足导致卡顿。 */
+.skill-effect,
+.skill-effect .effect-base,
+.skill-effect .effect-core,
+.skill-effect .effect-ring,
+.skill-effect .effect-wave,
+.skill-effect .effect-aoe-ring,
+.skill-effect .effect-target-frame,
+.skill-effect .effect-direction-indicator,
+.skill-effect .effect-bomb-spark,
+.skill-effect .effect-xianzhen-ring,
+.skill-effect .effect-shockwave,
+.floating-text,
+.projectile,
+.projectile .projectile-body,
+.projectile .projectile-trail,
+.hit-spark,
+.status-apply-effect,
+.status-apply-effect .status-apply-ring,
+.summon-effect,
+.summon-effect .summon-pillar,
+.summon-effect .summon-circle,
+.summon-effect .summon-ring,
+.trail-particle,
+.charge-effect,
+.charge-effect .charge-ring,
+.charge-effect .charge-core,
+.death-effect,
+.death-effect .death-flash,
+.death-effect .death-ring {
+  will-change: transform, opacity;
+}
+
+/* 粒子子元素：数量多、尺寸小、生命周期短，由父容器合成层统一承载，
+   避免单帧创建数百个 GPU 合成层造成渲染管线阻塞。 */
+.skill-effect .effect-particle,
+.hit-spark .spark-particle,
+.summon-effect .summon-particle,
+.move-trail-particle,
+.trail-particle .trail-core,
+.trail-particle .trail-glow,
+.charge-effect .charge-spark,
+.death-effect .death-particle {
+  will-change: auto;
+  backface-visibility: hidden;
 }
 </style>

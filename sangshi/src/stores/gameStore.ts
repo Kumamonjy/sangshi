@@ -27,7 +27,7 @@ export const useGameStore = defineStore('game', () => {
     if (existingIndex !== -1) {
       shakingTargets.value.splice(existingIndex, 1)
     }
-    
+
     const target = { row, col, type }
     shakingTargets.value.push(target)
     setTimeout(() => {
@@ -36,6 +36,23 @@ export const useGameStore = defineStore('game', () => {
         shakingTargets.value.splice(idx, 1)
       }
     }, 300)
+  }
+
+  // ============ 地图级震屏（重击/AOE/击杀时整个地图抖动） ============
+  // mapShakeTick 交替奇偶，使 CSS 动画类名在 0/1 间切换，连续触发时动画能重新播放
+  const mapShakeTick = ref(0)
+  const mapShakeIntensity = ref<'light' | 'heavy'>('light')
+  let mapShakeResetTimer: ReturnType<typeof setTimeout> | null = null
+
+  function triggerMapShake(intensity: 'light' | 'heavy' = 'light') {
+    mapShakeIntensity.value = intensity
+    mapShakeTick.value++
+    if (mapShakeResetTimer) clearTimeout(mapShakeResetTimer)
+    // 动画结束后移除震屏 class（同时释放 will-change 占用的合成层）
+    mapShakeResetTimer = setTimeout(() => {
+      mapShakeTick.value = 0
+      mapShakeResetTimer = null
+    }, 500)
   }
   
   // 技能光效相关
@@ -54,6 +71,9 @@ export const useGameStore = defineStore('game', () => {
     fromRow?: number
     fromCol?: number
     type?: 'explosion' | 'beam'
+    isCenter?: boolean
+    shockwaveScale?: 'normal' | 'large'
+    isMinimal?: boolean
   }
   
   interface TrailParticle {
@@ -88,6 +108,8 @@ export const useGameStore = defineStore('game', () => {
     row: number
     col: number
     color: string
+    // 致死属性：用于按属性分化死亡特效（火=爆炸消散 / 冰=菱形碎裂 / 暗·阴=溶解下沉）
+    attribute: Attribute
     timestamp: number
   }
   
@@ -97,22 +119,75 @@ export const useGameStore = defineStore('game', () => {
   const terrainMarks = ref<TerrainMark[]>([])
   const deathEffects = ref<DeathEffect[]>([])
   
-  // 批量清理过期特效的定时器
+  // ===== 统一特效清理机制 + 特效数量分级 =====
+  // 分级阈值：特效总量 >= WARN 时新特效粒子减半；>= LIMIT 时不再生成粒子、AOE 只保留中心格
+  // 箭雨等 AOE 一波能到 150+，阈值提前以更早进入降级
+  const EFFECT_COUNT_WARN = 40
+  const EFFECT_COUNT_LIMIT = 70
+  // 技能光效队列上限，超出时丢弃最旧的，防止 DOM 无限堆积
+  const EFFECT_MAX_QUEUE = 160
+
+  // 统一清理定时器：每 300ms 扫描一次所有特效数组，按时间戳批量清除过期特效
   let effectCleanupTimer: ReturnType<typeof setInterval> | null = null
+
+  function totalActiveEffectCount(): number {
+    return skillEffects.value.length + trailParticles.value.length + hitSparkEffects.value.length
+      + deathEffects.value.length + projectiles.value.length + statusApplyEffects.value.length
+      + summonEffects.value.length + floatingTexts.value.length + chargeEffects.value.length
+      + moveTrailEffects.value.length + terrainMarks.value.length
+  }
+
+  // 当前特效负载等级：0=空闲 1=中载(粒子减半) 2=高载(不再生成粒子)
+  function effectLoadLevel(): 0 | 1 | 2 {
+    const total = totalActiveEffectCount()
+    if (total >= EFFECT_COUNT_LIMIT) return 2
+    if (total >= EFFECT_COUNT_WARN) return 1
+    return 0
+  }
+
+  // 队列超限时裁剪最旧的技能光效
+  function trimSkillEffects() {
+    if (skillEffects.value.length > EFFECT_MAX_QUEUE) {
+      skillEffects.value.splice(0, skillEffects.value.length - EFFECT_MAX_QUEUE)
+    }
+  }
+
+  function sweepByTimestamp<T extends { timestamp: number }>(list: { value: T[] }, lifetime: number, now: number) {
+    const len = list.value.length
+    if (len === 0) return
+    // 修复：检查最旧元素（index=0），而非最新元素
+    // 若最旧元素尚未过期，则全部元素都未过期，无需 filter
+    const oldest = list.value[0]
+    if (now - oldest.timestamp < lifetime) return
+    // 最旧元素已过期，必须过滤所有元素
+    const remaining = list.value.filter(e => now - e.timestamp < lifetime)
+    if (remaining.length !== len) list.value = remaining
+  }
+
   function cleanupExpiredEffects() {
     const now = Date.now()
-    const lifetime = 1700 // 特效寿命 1.7s，覆盖所有CSS动画时长
-    let removed = false
-    const remaining = skillEffects.value.filter(e => {
-      const alive = now - e.timestamp < lifetime
-      if (!alive) removed = true
-      return alive
-    })
-    if (removed) {
-      skillEffects.value = remaining
+    // 技能光效寿命缩短至 1000ms，避免多角色连动时前一个技能残留
+    sweepByTimestamp(skillEffects, 1000, now)
+    sweepByTimestamp(trailParticles, 1200, now)
+    sweepByTimestamp(chargeEffects, 600, now)
+    sweepByTimestamp(deathEffects, 1500, now)
+    sweepByTimestamp(statusApplyEffects, 800, now)
+    sweepByTimestamp(summonEffects, 1200, now)
+    sweepByTimestamp(hitSparkEffects, 400, now)
+    sweepByTimestamp(hitFlashTargets, 300, now)
+    sweepByTimestamp(defeatRecords, 1200, now)
+    sweepByTimestamp(floatingTexts, 900, now)
+    sweepByTimestamp(moveTrailEffects, 500, now)
+    // 投射物寿命与其飞行时长挂钩（duration + 200ms 余量）
+    {
+      const remaining = projectiles.value.filter(p => now - p.timestamp < (p.duration || 300) + 200)
+      if (remaining.length !== projectiles.value.length) projectiles.value = remaining
     }
-    // 如果没有特效了，停止清理定时器
-    if (skillEffects.value.length === 0 && effectCleanupTimer) {
+    // 所有特效都清空后停止定时器，避免空转
+    if (totalActiveEffectCount() === 0
+      && hitFlashTargets.value.length === 0 && defeatRecords.value.length === 0
+      && terrainMarks.value.length === 0 && shakingTargets.value.length === 0
+      && effectCleanupTimer) {
       clearInterval(effectCleanupTimer)
       effectCleanupTimer = null
     }
@@ -130,11 +205,14 @@ export const useGameStore = defineStore('game', () => {
   }
   
   function triggerSkillEffect(row: number, col: number, attribute: Attribute, size: 'small' | 'medium' | 'large' = 'medium', skillType: 'attack' | 'heal' | 'support' | 'summon' | 'special' = 'attack', category?: '指定' | 'aoe' | '直线' | '横扫' | '轰炸' | '陷阵' | 'heal' | 'support' | 'summon' | 'special', fromRow?: number, fromCol?: number) {
+    // 新技能触发前强制清理过期特效，防止前一位角色的特效残留
+    cleanupExpiredEffects()
     const color = ATTRIBUTE_CONFIG[attribute]?.color || ATTRIBUTE_CONFIG.normal.color
     const effectId = `skill_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
     
     const particles = generateParticles(attribute, skillType)
-    
+
+    trimSkillEffects()
     skillEffects.value.push({
       id: effectId,
       row,
@@ -152,10 +230,33 @@ export const useGameStore = defineStore('game', () => {
     ensureEffectCleanupTimer()
   }
   
-  function generateParticles(attribute: Attribute, skillType: string, reduced: boolean = false): { x: number; y: number; delay: number }[] {
+  function generateParticles(
+    attribute: Attribute,
+    skillType: string,
+    reduced: boolean = false,
+    aoeRange?: number
+  ): { x: number; y: number; delay: number }[] {
+    const load = effectLoadLevel()
+    if (load === 2) return []
+    if (load === 1) reduced = true
+
+    let baseCount: number
+    if (aoeRange && aoeRange >= 3) {
+      baseCount = 1
+    } else if (aoeRange && aoeRange >= 2) {
+      baseCount = 1
+    } else if (skillType === 'attack') {
+      baseCount = 4
+    } else if (skillType === 'heal') {
+      baseCount = 3
+    } else {
+      baseCount = 2
+    }
+
+    const particleCount = reduced ? Math.min(baseCount, 2) : baseCount
+    if (particleCount <= 0) return []
+
     const particles: { x: number; y: number; delay: number }[] = []
-    const particleCount = reduced ? (skillType === 'attack' ? 4 : 3) : (skillType === 'attack' ? 8 : skillType === 'heal' ? 6 : 4)
-    
     for (let i = 0; i < particleCount; i++) {
       const angle = (i / particleCount) * Math.PI * 2
       const speed = 30 + Math.random() * 40
@@ -179,51 +280,90 @@ export const useGameStore = defineStore('game', () => {
   ) {
     if (!battleMap.value) return
     
-    const effectIds: string[] = []
+    // AOE技能触发前强制清理过期特效
+    cleanupExpiredEffects()
+    
     const timestamp = Date.now()
     const isLargeAOE = areaRange >= 3
     const isMediumAOE = areaRange >= 2
-    const reducedParticles = isMediumAOE
-    // 对于大范围AOE，跳过部分格子以减少DOM压力
-    const skipEveryOther = isLargeAOE
-    
-    for (let dr = -areaRange; dr <= areaRange; dr++) {
-      for (let dc = -areaRange; dc <= areaRange; dc++) {
-        const r = centerRow + dr
-        const c = centerCol + dc
-        if (r >= 0 && r < battleMap.value.height && c >= 0 && c < battleMap.value.width) {
+    const load = effectLoadLevel()
+    const color = ATTRIBUTE_CONFIG[attribute]?.color || ATTRIBUTE_CONFIG.normal.color
+    const isBombing = category === '轰炸'
+    const isXianZhen = category === '陷阵'
+
+    const batch: typeof skillEffects.value = []
+    const addedPositions = new Set<string>()
+
+    const addEffect = (r: number, c: number, opts: { isCenter?: boolean; isMinimal?: boolean; particles?: { x: number; y: number; delay: number }[] }) => {
+      if (r < 0 || r >= battleMap.value!.height || c < 0 || c >= battleMap.value!.width) return
+      const key = `${r}_${c}`
+      if (addedPositions.has(key)) return
+      addedPositions.add(key)
+
+      const effectId = `skill_${timestamp}_${Math.random().toString(36).substr(2, 9)}`
+      const finalParticles = opts.isMinimal ? [] : (opts.particles || [])
+
+      batch.push({
+        id: effectId,
+        row: r,
+        col: c,
+        color,
+        size: (isBombing || isXianZhen) ? 'small' : 'medium',
+        timestamp,
+        attribute,
+        skillType,
+        particles: finalParticles,
+        category,
+        fromRow: centerRow,
+        fromCol: centerCol,
+        isCenter: !!opts.isCenter,
+        shockwaveScale: isLargeAOE ? 'large' : 'normal',
+        isMinimal: !!opts.isMinimal
+      })
+    }
+
+    // 中心格：完整特效
+    addEffect(centerRow, centerCol, {
+      isCenter: true,
+      isMinimal: false,
+      particles: generateParticles(attribute, skillType, true, areaRange)
+    })
+
+    if (isLargeAOE || isMediumAOE) {
+      // 中/大范围 AOE：仅渲染中心 + 4 个方向格（共 5 格），其余全部跳过
+      // 非中心格设为 isMinimal，模板中只渲染一层 effect-base
+      const dirs = [[-1, 0], [1, 0], [0, -1], [0, 1]]
+      for (const [dr, dc] of dirs) {
+        addEffect(centerRow + dr, centerCol + dc, { isMinimal: true })
+      }
+    } else {
+      // 小范围 AOE (areaRange=1)：保持原逻辑，但跳过非中心格粒子
+      for (let dr = -areaRange; dr <= areaRange; dr++) {
+        for (let dc = -areaRange; dc <= areaRange; dc++) {
+          const r = centerRow + dr
+          const c = centerCol + dc
+          if (r < 0 || r >= battleMap.value.height || c < 0 || c >= battleMap.value.width) continue
           const isValid = rangeType === 'diamond'
             ? Math.abs(dr) + Math.abs(dc) <= areaRange
             : Math.abs(dr) <= areaRange && Math.abs(dc) <= areaRange
-          if (isValid) {
-            // 对于大范围AOE，每隔一格创建特效
-            if (skipEveryOther && (Math.abs(dr) + Math.abs(dc)) % 2 === 1) continue
-            
-            const color = ATTRIBUTE_CONFIG[attribute]?.color || ATTRIBUTE_CONFIG.normal.color
-            const effectId = `skill_${timestamp}_${Math.random().toString(36).substr(2, 9)}`
-            const particles = generateParticles(attribute, skillType, reducedParticles)
-            const isBombing = category === '轰炸'
-            const isXianZhen = category === '陷阵'
-            const delay = isBombing ? Math.random() * 0.4 : isXianZhen ? Math.random() * 0.3 : Math.max(Math.abs(dr), Math.abs(dc)) * 0.08
-            
-            skillEffects.value.push({
-              id: effectId,
-              row: r,
-              col: c,
-              color,
-              size: (isBombing || isXianZhen) ? 'small' : 'medium',
-              timestamp,
-              attribute,
-              skillType,
-              particles,
-              category,
-              fromRow: centerRow,
-              fromCol: centerCol
-            })
-            effectIds.push(effectId)
-          }
+          if (!isValid) continue
+          const isCenter = r === centerRow && c === centerCol
+          if (isCenter) continue
+          addEffect(r, c, {
+            isMinimal: false,
+            particles: generateParticles(attribute, skillType, true, areaRange)
+          })
         }
       }
+    }
+
+    if (batch.length > 0) {
+      trimSkillEffects()
+      skillEffects.value = [...skillEffects.value, ...batch]
+    }
+
+    if (skillType === 'attack' || category === '轰炸' || category === '陷阵') {
+      triggerMapShake(isLargeAOE ? 'heavy' : 'light')
     }
     ensureEffectCleanupTimer()
   }
@@ -239,17 +379,19 @@ export const useGameStore = defineStore('game', () => {
   ) {
     if (!battleMap.value) return
     
-    const effectIds: string[] = []
+    // 横扫/直线技能触发前强制清理过期特效
+    cleanupExpiredEffects()
+    
     const timestamp = Date.now()
     const color = ATTRIBUTE_CONFIG[attribute]?.color || ATTRIBUTE_CONFIG.normal.color
+    const batch: typeof skillEffects.value = []
     
     for (let i = 0; i < positions.length; i++) {
       const pos = positions[i]
       const effectId = `skill_${timestamp}_${Math.random().toString(36).substr(2, 9)}`
       const particles = generateParticles(attribute, skillType)
-      const sweepDelay = category === '横扫' || category === '直线' ? i * 0.05 : 0
       
-      skillEffects.value.push({
+      batch.push({
         id: effectId,
         row: pos.row,
         col: pos.col,
@@ -264,7 +406,9 @@ export const useGameStore = defineStore('game', () => {
         fromRow,
         fromCol
       })
-      effectIds.push(effectId)
+    }
+    if (batch.length > 0) {
+      skillEffects.value = [...skillEffects.value, ...batch]
     }
     ensureEffectCleanupTimer()
   }
@@ -353,6 +497,17 @@ export const useGameStore = defineStore('game', () => {
       }
     }
 
+    // ========== 批量收集 per-target 特效数据 ==========
+    // 避免在 forEach 循环中逐个 push 响应式数组（每 push 触发一次 Vue 更新）
+    // 改为收集到本地数组，循环结束后一次性写入
+    const batchTimestamp = Date.now()
+    const batchHitFlashes: HitFlashTarget[] = []
+    const batchFloatingTexts: FloatingText[] = []
+    const batchStatusEffects: StatusApplyEffect[] = []
+    const batchDefeats: DefeatRecord[] = []
+    const batchDeaths: typeof deathEffects.value = []
+    const batchShakes: ShakingTarget[] = []
+
     enemyTargets.forEach(target => {
       const targetTemplate = findCharacterTemplateInStore(target.characterId)
       const defense = computeDefensePower(target)
@@ -378,29 +533,55 @@ export const useGameStore = defineStore('game', () => {
       attacker.totalDamage += damage
       totalDamage += damage
 
-      triggerShake(target.row, target.col, 'character')
-      triggerHitFlash(target.row, target.col, attribute)
-      showFloatingText(target.row, target.col, damage, 'damage', attribute, true)
-      triggerSkillEffect(target.row, target.col, attribute, 'medium', skillType)
+      // 收集震屏特效（批量）
+      batchShakes.push({ row: target.row, col: target.col, type: 'character' as const })
+      // 收集受击闪白（批量）
+      batchHitFlashes.push({
+        id: `hitflash_${batchTimestamp}_${Math.random().toString(36).substr(2, 6)}`,
+        row: target.row, col: target.col, timestamp: batchTimestamp
+      })
+      // 收集飘字（批量）
+      batchFloatingTexts.push({
+        id: `float_${batchTimestamp}_${Math.random().toString(36).substr(2, 9)}`,
+        row: target.row, col: target.col, value: damage,
+        type: 'damage' as const, attribute, isShaking: true, sign: '-',
+        timestamp: batchTimestamp
+      })
       damageResults.push(`对【${targetTemplate?.name || target.characterId}】造成${damage}点伤害`)
 
       if (skill.statusEffect) {
         addStatusToCharacter(target, skill.statusEffect, true, skill.statusEffectDuration || 0)
-        triggerStatusApplyEffect(target.row, target.col, skill.statusEffect)
+        batchStatusEffects.push({
+          id: `status_${batchTimestamp}_${Math.random().toString(36).substr(2, 6)}`,
+          row: target.row, col: target.col, statusType: skill.statusEffect,
+          isPositive: POSITIVE_STATUSES.includes(skill.statusEffect), timestamp: batchTimestamp
+        })
         damageResults.push(`使【${targetTemplate?.name || target.characterId}】陷入【${STATUS_CONFIG[skill.statusEffect]?.name || skill.statusEffect}】状态`)
       }
       if (skill.statusEffects && skill.statusEffects.length > 0) {
         skill.statusEffects.forEach((status, index) => {
           const duration = skill.statusEffectsDurations?.[index] || 0
           addStatusToCharacter(target, status, true, duration)
-          triggerStatusApplyEffect(target.row, target.col, status)
+          batchStatusEffects.push({
+            id: `status_${batchTimestamp}_${Math.random().toString(36).substr(2, 6)}`,
+            row: target.row, col: target.col, statusType: status,
+            isPositive: POSITIVE_STATUSES.includes(status), timestamp: batchTimestamp
+          })
           damageResults.push(`使【${targetTemplate?.name || target.characterId}】陷入【${STATUS_CONFIG[status]?.name || status}】状态`)
         })
       }
 
       if (target.hp <= 0) {
-        triggerDefeatAnimation(target.row, target.col, 'kill')
-        triggerDeathEffect(target.row, target.col, attribute)
+        batchDefeats.push({
+          id: `defeat_${batchTimestamp}_${Math.random().toString(36).substr(2, 6)}`,
+          row: target.row, col: target.col, defeatType: 'kill' as const, timestamp: batchTimestamp
+        })
+        // 死亡特效批量收集
+        const deathColor = ATTRIBUTE_CONFIG[attribute]?.color || '#ffd86b'
+        batchDeaths.push({
+          id: `death_${batchTimestamp}_${Math.random().toString(36).substr(2, 6)}`,
+          row: target.row, col: target.col, color: deathColor, attribute, timestamp: batchTimestamp
+        })
         removeCharacterFromBattle(target.id, target.isPlayer)
         defeatedNames.push(targetTemplate?.name || target.characterId)
       }
@@ -420,25 +601,79 @@ export const useGameStore = defineStore('game', () => {
       attacker.totalDamage += damage
       totalDamage += damage
 
-      triggerShake(building.row, building.col, 'building')
-      triggerHitFlash(building.row, building.col)
-      showFloatingText(building.row, building.col, damage, 'damage')
-      triggerSkillEffect(building.row, building.col, attribute, 'medium', skillType)
+      batchShakes.push({ row: building.row, col: building.col, type: 'building' as const })
+      batchHitFlashes.push({
+        id: `hitflash_${batchTimestamp}_${Math.random().toString(36).substr(2, 6)}`,
+        row: building.row, col: building.col, timestamp: batchTimestamp
+      })
+      batchFloatingTexts.push({
+        id: `float_${batchTimestamp}_${Math.random().toString(36).substr(2, 9)}`,
+        row: building.row, col: building.col, value: damage,
+        type: 'damage' as const, attribute: undefined, isShaking: false, sign: '-',
+        timestamp: batchTimestamp
+      })
       damageResults.push(`对【${building.name}】造成${damage}点伤害`)
 
       trySpawnZombieFromHeart(building)
 
       if (building.hp <= 0) {
         removeBuildingFromBattle(building.id)
-        triggerDefeatAnimation(building.row, building.col, 'kill')
+        batchDefeats.push({
+          id: `defeat_${batchTimestamp}_${Math.random().toString(36).substr(2, 6)}`,
+          row: building.row, col: building.col, defeatType: 'kill' as const, timestamp: batchTimestamp
+        })
         battleMap.value!.tiles[building.row]![building.col]!.building = null
         destroyedBuildings.push(building.name)
       }
     })
 
+    // ========== 批量写入（单次响应式触发） ==========
+    if (batchHitFlashes.length > 0) {
+      hitFlashTargets.value = [...hitFlashTargets.value, ...batchHitFlashes]
+    }
+    if (batchFloatingTexts.length > 0) {
+      floatingTexts.value = [...floatingTexts.value, ...batchFloatingTexts]
+    }
+    if (batchStatusEffects.length > 0) {
+      statusApplyEffects.value = [...statusApplyEffects.value, ...batchStatusEffects]
+    }
+    if (batchDefeats.length > 0) {
+      defeatRecords.value = [...defeatRecords.value, ...batchDefeats]
+    }
+    if (batchDeaths.length > 0) {
+      deathEffects.value = [...deathEffects.value, ...batchDeaths]
+      // 任意单位死亡触发地图轻震
+      triggerMapShake('light')
+    }
+    // 震屏批量写入（处理去重 + 定时器）
+    if (batchShakes.length > 0) {
+      // 去重：相同位置只保留最后一个
+      const seen = new Set<string>()
+      const uniqueShakes: ShakingTarget[] = []
+      for (let i = batchShakes.length - 1; i >= 0; i--) {
+        const key = `${batchShakes[i].row}_${batchShakes[i].col}_${batchShakes[i].type}`
+        if (!seen.has(key)) {
+          seen.add(key)
+          uniqueShakes.unshift(batchShakes[i])
+        }
+      }
+      shakingTargets.value = [...shakingTargets.value.filter(t => 
+        !uniqueShakes.some(u => u.row === t.row && u.col === t.col && u.type === t.type)
+      ), ...uniqueShakes]
+      // 统一设置定时器清理
+      uniqueShakes.forEach(s => {
+        setTimeout(() => {
+          const idx = shakingTargets.value.findIndex(t => t.row === s.row && t.col === s.col && t.type === s.type)
+          if (idx !== -1) shakingTargets.value.splice(idx, 1)
+        }, 300)
+      })
+    }
+
+    ensureEffectCleanupTimer()
+
     obstaclePositions.forEach(pos => {
       battleMap.value.tiles[pos.row]![pos.col]!.terrain = 'empty'
-      triggerShake(pos.row, pos.col, 'character')
+      // 障碍物清除属于环境变化，不触发角色震屏，避免多目标时额外动画开销
     })
     if (obstaclePositions.length > 0) {
       damageResults.push(`清除了${obstaclePositions.length}个障碍物`)
@@ -470,6 +705,8 @@ export const useGameStore = defineStore('game', () => {
 
       // 溅射特效
       if (splashTargets.length > 0 || splashBuildings.length > 0) {
+        const splashBatch: typeof skillEffects.value = []
+        const splashTimestamp = Date.now()
         for (let dr = -splashRange; dr <= splashRange; dr++) {
           for (let dc = -splashRange; dc <= splashRange; dc++) {
             const dist = Math.abs(dr) + Math.abs(dc)
@@ -478,24 +715,36 @@ export const useGameStore = defineStore('game', () => {
               const c = centerCol + dc
               if (r >= 0 && r < battleMap.value.height && c >= 0 && c < battleMap.value.width) {
                 const splashColor = ATTRIBUTE_CONFIG[attribute]?.color || '#ff6b35'
-                const splashEffectId = `splash_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
-                skillEffects.value.push({
+                const splashEffectId = `splash_${splashTimestamp}_${Math.random().toString(36).substr(2, 9)}`
+                splashBatch.push({
                   id: splashEffectId,
                   row: r,
                   col: c,
                   color: splashColor,
                   size: 'medium',
-                  timestamp: Date.now(),
+                  timestamp: splashTimestamp,
+                  attribute,
                   type: 'explosion'
                 })
-                ensureEffectCleanupTimer()
               }
             }
           }
         }
+        if (splashBatch.length > 0) {
+          trimSkillEffects()
+          skillEffects.value = [...skillEffects.value, ...splashBatch]
+          ensureEffectCleanupTimer()
+        }
       }
 
-      // 溅射伤害（50%伤害）
+      // 溅射伤害（50%伤害）—— 批量收集特效
+      const splashBatchTimestamp = Date.now()
+      const splashHitFlashes: HitFlashTarget[] = []
+      const splashFloatingTexts: FloatingText[] = []
+      const splashStatusEffects: StatusApplyEffect[] = []
+      const splashDefeats: DefeatRecord[] = []
+      const splashShakes: ShakingTarget[] = []
+
       splashTargets.forEach(target => {
         const targetTemplate = findCharacterTemplateInStore(target.characterId)
         const defense = computeDefensePower(target)
@@ -514,27 +763,46 @@ export const useGameStore = defineStore('game', () => {
         attacker.totalDamage += splashDamage
         totalDamage += splashDamage
 
-        triggerShake(target.row, target.col, 'character')
-        triggerHitFlash(target.row, target.col, attribute)
-        showFloatingText(target.row, target.col, splashDamage, 'damage', attribute, true)
+        splashShakes.push({ row: target.row, col: target.col, type: 'character' as const })
+        splashHitFlashes.push({
+          id: `hitflash_${splashBatchTimestamp}_${Math.random().toString(36).substr(2, 6)}`,
+          row: target.row, col: target.col, timestamp: splashBatchTimestamp
+        })
+        splashFloatingTexts.push({
+          id: `float_${splashBatchTimestamp}_${Math.random().toString(36).substr(2, 9)}`,
+          row: target.row, col: target.col, value: splashDamage,
+          type: 'damage' as const, attribute, isShaking: true, sign: '-',
+          timestamp: splashBatchTimestamp
+        })
         damageResults.push(`溅射对【${targetTemplate?.name || target.characterId}】造成${splashDamage}点伤害`)
 
         if (skill.statusEffect) {
           addStatusToCharacter(target, skill.statusEffect, true, skill.statusEffectDuration || 0)
-          triggerStatusApplyEffect(target.row, target.col, skill.statusEffect)
+          splashStatusEffects.push({
+            id: `status_${splashBatchTimestamp}_${Math.random().toString(36).substr(2, 6)}`,
+            row: target.row, col: target.col, statusType: skill.statusEffect,
+            isPositive: POSITIVE_STATUSES.includes(skill.statusEffect), timestamp: splashBatchTimestamp
+          })
           damageResults.push(`溅射使【${targetTemplate?.name || target.characterId}】陷入【${STATUS_CONFIG[skill.statusEffect]?.name || skill.statusEffect}】状态`)
         }
         if (skill.statusEffects && skill.statusEffects.length > 0) {
           skill.statusEffects.forEach((status, index) => {
             const duration = skill.statusEffectsDurations?.[index] || 0
             addStatusToCharacter(target, status, true, duration)
-            triggerStatusApplyEffect(target.row, target.col, status)
+            splashStatusEffects.push({
+              id: `status_${splashBatchTimestamp}_${Math.random().toString(36).substr(2, 6)}`,
+              row: target.row, col: target.col, statusType: status,
+              isPositive: POSITIVE_STATUSES.includes(status), timestamp: splashBatchTimestamp
+            })
             damageResults.push(`溅射使【${targetTemplate?.name || target.characterId}】陷入【${STATUS_CONFIG[status]?.name || status}】状态`)
           })
         }
 
         if (target.hp <= 0) {
-          triggerDefeatAnimation(target.row, target.col, 'kill')
+          splashDefeats.push({
+            id: `defeat_${splashBatchTimestamp}_${Math.random().toString(36).substr(2, 6)}`,
+            row: target.row, col: target.col, defeatType: 'kill' as const, timestamp: splashBatchTimestamp
+          })
           removeCharacterFromBattle(target.id, target.isPlayer)
           defeatedNames.push(targetTemplate?.name || target.characterId)
         }
@@ -549,16 +817,59 @@ export const useGameStore = defineStore('game', () => {
         attacker.totalDamage += splashDamage
         totalDamage += splashDamage
 
-        triggerShake(building.row, building.col, 'building')
-        showFloatingText(building.row, building.col, splashDamage, 'damage')
+        splashShakes.push({ row: building.row, col: building.col, type: 'building' as const })
+        splashFloatingTexts.push({
+          id: `float_${splashBatchTimestamp}_${Math.random().toString(36).substr(2, 9)}`,
+          row: building.row, col: building.col, value: splashDamage,
+          type: 'damage' as const, attribute: undefined, isShaking: false, sign: '-',
+          timestamp: splashBatchTimestamp
+        })
         damageResults.push(`溅射对【${building.name}】造成${splashDamage}点伤害`)
 
         if (building.hp <= 0) {
           removeBuildingFromBattle(building.id)
+          splashDefeats.push({
+            id: `defeat_${splashBatchTimestamp}_${Math.random().toString(36).substr(2, 6)}`,
+            row: building.row, col: building.col, defeatType: 'kill' as const, timestamp: splashBatchTimestamp
+          })
           battleMap.value!.tiles[building.row]![building.col]!.building = null
           destroyedBuildings.push(building.name)
         }
       })
+
+      // 批量写入溅射特效
+      if (splashHitFlashes.length > 0) {
+        hitFlashTargets.value = [...hitFlashTargets.value, ...splashHitFlashes]
+      }
+      if (splashFloatingTexts.length > 0) {
+        floatingTexts.value = [...floatingTexts.value, ...splashFloatingTexts]
+      }
+      if (splashStatusEffects.length > 0) {
+        statusApplyEffects.value = [...statusApplyEffects.value, ...splashStatusEffects]
+      }
+      if (splashDefeats.length > 0) {
+        defeatRecords.value = [...defeatRecords.value, ...splashDefeats]
+      }
+      if (splashShakes.length > 0) {
+        const seen = new Set<string>()
+        const uniqueShakes: ShakingTarget[] = []
+        for (let i = splashShakes.length - 1; i >= 0; i--) {
+          const key = `${splashShakes[i].row}_${splashShakes[i].col}_${splashShakes[i].type}`
+          if (!seen.has(key)) {
+            seen.add(key)
+            uniqueShakes.unshift(splashShakes[i])
+          }
+        }
+        shakingTargets.value = [...shakingTargets.value.filter(t => 
+          !uniqueShakes.some(u => u.row === t.row && u.col === t.col && u.type === t.type)
+        ), ...uniqueShakes]
+        uniqueShakes.forEach(s => {
+          setTimeout(() => {
+            const idx = shakingTargets.value.findIndex(t => t.row === s.row && t.col === s.col && t.type === s.type)
+            if (idx !== -1) shakingTargets.value.splice(idx, 1)
+          }, 300)
+        })
+      }
     }
 
     if (skill.lifesteal && totalDamage > 0) {
@@ -735,6 +1046,15 @@ export const useGameStore = defineStore('game', () => {
       battleMap.value.tiles[pos.row]?.[pos.col]?.terrain === 'obstacle'
     )
 
+    // ========== 批量收集 per-target 特效数据 ==========
+    const batchTimestamp = Date.now()
+    const batchHitFlashes: HitFlashTarget[] = []
+    const batchFloatingTexts: FloatingText[] = []
+    const batchStatusEffects: StatusApplyEffect[] = []
+    const batchDefeats: DefeatRecord[] = []
+    const batchDeaths: typeof deathEffects.value = []
+    const batchShakes: ShakingTarget[] = []
+
     enemyTargets.forEach(target => {
       const targetTemplate = findCharacterTemplateInStore(target.characterId)
       const defense = computeDefensePower(target)
@@ -756,15 +1076,27 @@ export const useGameStore = defineStore('game', () => {
       attacker.totalDamage += damage
       totalDamage += damage
 
-      triggerShake(target.row, target.col, 'character')
-      triggerHitFlash(target.row, target.col, attribute)
-      showFloatingText(target.row, target.col, damage, 'damage', attribute, true)
-      triggerSkillEffect(target.row, target.col, attribute, 'medium', skillType)
+      batchShakes.push({ row: target.row, col: target.col, type: 'character' as const })
+      batchHitFlashes.push({
+        id: `hitflash_${batchTimestamp}_${Math.random().toString(36).substr(2, 6)}`,
+        row: target.row, col: target.col, timestamp: batchTimestamp
+      })
+      batchFloatingTexts.push({
+        id: `float_${batchTimestamp}_${Math.random().toString(36).substr(2, 9)}`,
+        row: target.row, col: target.col, value: damage,
+        type: 'damage' as const, attribute, isShaking: true, sign: '-',
+        timestamp: batchTimestamp
+      })
+      // 注：不再调用 triggerSkillEffect —— triggerAreaEffects 已覆盖路径光效
       damageResults.push(`对【${targetTemplate?.name || target.characterId}】造成${damage}点伤害`)
 
       if (skill.statusEffect) {
         addStatusToCharacter(target, skill.statusEffect, true, skill.statusEffectDuration || 0)
-        triggerStatusApplyEffect(target.row, target.col, skill.statusEffect)
+        batchStatusEffects.push({
+          id: `status_${batchTimestamp}_${Math.random().toString(36).substr(2, 6)}`,
+          row: target.row, col: target.col, statusType: skill.statusEffect,
+          isPositive: POSITIVE_STATUSES.includes(skill.statusEffect), timestamp: batchTimestamp
+        })
         damageResults.push(`使【${targetTemplate?.name || target.characterId}】陷入【${STATUS_CONFIG[skill.statusEffect]?.name || skill.statusEffect}】状态`)
       }
 
@@ -772,7 +1104,11 @@ export const useGameStore = defineStore('game', () => {
         skill.statusEffects.forEach((effect, index) => {
           const duration = skill.statusEffectsDurations?.[index] || 0
           addStatusToCharacter(target, effect, true, duration)
-          triggerStatusApplyEffect(target.row, target.col, effect)
+          batchStatusEffects.push({
+            id: `status_${batchTimestamp}_${Math.random().toString(36).substr(2, 6)}`,
+            row: target.row, col: target.col, statusType: effect,
+            isPositive: POSITIVE_STATUSES.includes(effect), timestamp: batchTimestamp
+          })
           damageResults.push(`使【${targetTemplate?.name || target.characterId}】陷入【${STATUS_CONFIG[effect]?.name || effect}】状态`)
         })
       }
@@ -787,8 +1123,15 @@ export const useGameStore = defineStore('game', () => {
       }
 
       if (target.hp <= 0) {
-        triggerDefeatAnimation(target.row, target.col, 'kill')
-        triggerDeathEffect(target.row, target.col, attribute)
+        batchDefeats.push({
+          id: `defeat_${batchTimestamp}_${Math.random().toString(36).substr(2, 6)}`,
+          row: target.row, col: target.col, defeatType: 'kill' as const, timestamp: batchTimestamp
+        })
+        const deathColor = ATTRIBUTE_CONFIG[attribute]?.color || '#ffd86b'
+        batchDeaths.push({
+          id: `death_${batchTimestamp}_${Math.random().toString(36).substr(2, 6)}`,
+          row: target.row, col: target.col, color: deathColor, attribute, timestamp: batchTimestamp
+        })
         removeCharacterFromBattle(target.id, target.isPlayer)
         defeatedNames.push(targetTemplate?.name || target.characterId)
       }
@@ -810,15 +1153,23 @@ export const useGameStore = defineStore('game', () => {
       attacker.totalDamage += damage
       totalDamage += damage
 
-      triggerShake(building.row, building.col, 'building')
-      showFloatingText(building.row, building.col, damage, 'damage')
-      triggerSkillEffect(building.row, building.col, attribute, 'medium', skillType)
+      batchShakes.push({ row: building.row, col: building.col, type: 'building' as const })
+      batchFloatingTexts.push({
+        id: `float_${batchTimestamp}_${Math.random().toString(36).substr(2, 9)}`,
+        row: building.row, col: building.col, value: damage,
+        type: 'damage' as const, attribute: undefined, isShaking: false, sign: '-',
+        timestamp: batchTimestamp
+      })
       damageResults.push(`对【${building.name}】造成${damage}点伤害`)
 
       trySpawnZombieFromHeart(building)
 
       if (building.hp <= 0) {
         removeBuildingFromBattle(building.id)
+        batchDefeats.push({
+          id: `defeat_${batchTimestamp}_${Math.random().toString(36).substr(2, 6)}`,
+          row: building.row, col: building.col, defeatType: 'kill' as const, timestamp: batchTimestamp
+        })
         battleMap.value!.tiles[building.row]![building.col]!.building = null
         destroyedBuildings.push(building.name)
       }
@@ -826,11 +1177,51 @@ export const useGameStore = defineStore('game', () => {
 
     obstaclePositions.forEach(pos => {
       battleMap.value.tiles[pos.row]![pos.col]!.terrain = 'empty'
-      triggerShake(pos.row, pos.col, 'character')
+      batchShakes.push({ row: pos.row, col: pos.col, type: 'character' as const })
     })
     if (obstaclePositions.length > 0) {
       damageResults.push(`清除了${obstaclePositions.length}个障碍物`)
     }
+
+    // ========== 批量写入（单次响应式触发） ==========
+    if (batchHitFlashes.length > 0) {
+      hitFlashTargets.value = [...hitFlashTargets.value, ...batchHitFlashes]
+    }
+    if (batchFloatingTexts.length > 0) {
+      floatingTexts.value = [...floatingTexts.value, ...batchFloatingTexts]
+    }
+    if (batchStatusEffects.length > 0) {
+      statusApplyEffects.value = [...statusApplyEffects.value, ...batchStatusEffects]
+    }
+    if (batchDefeats.length > 0) {
+      defeatRecords.value = [...defeatRecords.value, ...batchDefeats]
+    }
+    if (batchDeaths.length > 0) {
+      deathEffects.value = [...deathEffects.value, ...batchDeaths]
+      triggerMapShake('light')
+    }
+    if (batchShakes.length > 0) {
+      const seen = new Set<string>()
+      const uniqueShakes: ShakingTarget[] = []
+      for (let i = batchShakes.length - 1; i >= 0; i--) {
+        const key = `${batchShakes[i].row}_${batchShakes[i].col}_${batchShakes[i].type}`
+        if (!seen.has(key)) {
+          seen.add(key)
+          uniqueShakes.unshift(batchShakes[i])
+        }
+      }
+      shakingTargets.value = [...shakingTargets.value.filter(t => 
+        !uniqueShakes.some(u => u.row === t.row && u.col === t.col && u.type === t.type)
+      ), ...uniqueShakes]
+      uniqueShakes.forEach(s => {
+        setTimeout(() => {
+          const idx = shakingTargets.value.findIndex(t => t.row === s.row && t.col === s.col && t.type === s.type)
+          if (idx !== -1) shakingTargets.value.splice(idx, 1)
+        }, 300)
+      })
+    }
+
+    ensureEffectCleanupTimer()
 
     if (skill.lifesteal && totalDamage > 0) {
       const healAmount = Math.floor(totalDamage * skill.lifesteal)
@@ -979,6 +1370,15 @@ export const useGameStore = defineStore('game', () => {
       battleMap.value.tiles[pos.row]?.[pos.col]?.terrain === 'obstacle'
     )
 
+    // ========== 批量收集 per-target 特效数据 ==========
+    const batchTimestamp = Date.now()
+    const batchHitFlashes: HitFlashTarget[] = []
+    const batchFloatingTexts: FloatingText[] = []
+    const batchStatusEffects: StatusApplyEffect[] = []
+    const batchDefeats: DefeatRecord[] = []
+    const batchDeaths: typeof deathEffects.value = []
+    const batchShakes: ShakingTarget[] = []
+
     enemyTargets.forEach(target => {
       const targetTemplate = findCharacterTemplateInStore(target.characterId)
       const defense = computeDefensePower(target)
@@ -1000,15 +1400,26 @@ export const useGameStore = defineStore('game', () => {
       attacker.totalDamage += damage
       totalDamage += damage
 
-      triggerShake(target.row, target.col, 'character')
-      triggerHitFlash(target.row, target.col, attribute)
-      showFloatingText(target.row, target.col, damage, 'damage', attribute, true)
-      triggerSkillEffect(target.row, target.col, attribute, 'medium', skillType)
+      batchShakes.push({ row: target.row, col: target.col, type: 'character' as const })
+      batchHitFlashes.push({
+        id: `hitflash_${batchTimestamp}_${Math.random().toString(36).substr(2, 6)}`,
+        row: target.row, col: target.col, timestamp: batchTimestamp
+      })
+      batchFloatingTexts.push({
+        id: `float_${batchTimestamp}_${Math.random().toString(36).substr(2, 9)}`,
+        row: target.row, col: target.col, value: damage,
+        type: 'damage' as const, attribute, isShaking: true, sign: '-',
+        timestamp: batchTimestamp
+      })
       damageResults.push(`对【${targetTemplate?.name || target.characterId}】造成${damage}点伤害`)
 
       if (skill.statusEffect) {
         addStatusToCharacter(target, skill.statusEffect, true, skill.statusEffectDuration || 0)
-        triggerStatusApplyEffect(target.row, target.col, skill.statusEffect)
+        batchStatusEffects.push({
+          id: `status_${batchTimestamp}_${Math.random().toString(36).substr(2, 6)}`,
+          row: target.row, col: target.col, statusType: skill.statusEffect,
+          isPositive: POSITIVE_STATUSES.includes(skill.statusEffect), timestamp: batchTimestamp
+        })
         damageResults.push(`使【${targetTemplate?.name || target.characterId}】陷入【${STATUS_CONFIG[skill.statusEffect]?.name || skill.statusEffect}】状态`)
       }
 
@@ -1016,7 +1427,11 @@ export const useGameStore = defineStore('game', () => {
         skill.statusEffects.forEach((effect, index) => {
           const duration = skill.statusEffectsDurations?.[index] || 0
           addStatusToCharacter(target, effect, true, duration)
-          triggerStatusApplyEffect(target.row, target.col, effect)
+          batchStatusEffects.push({
+            id: `status_${batchTimestamp}_${Math.random().toString(36).substr(2, 6)}`,
+            row: target.row, col: target.col, statusType: effect,
+            isPositive: POSITIVE_STATUSES.includes(effect), timestamp: batchTimestamp
+          })
           damageResults.push(`使【${targetTemplate?.name || target.characterId}】陷入【${STATUS_CONFIG[effect]?.name || effect}】状态`)
         })
       }
@@ -1031,8 +1446,15 @@ export const useGameStore = defineStore('game', () => {
       }
 
       if (target.hp <= 0) {
-        triggerDefeatAnimation(target.row, target.col, 'kill')
-        triggerDeathEffect(target.row, target.col, attribute)
+        batchDefeats.push({
+          id: `defeat_${batchTimestamp}_${Math.random().toString(36).substr(2, 6)}`,
+          row: target.row, col: target.col, defeatType: 'kill' as const, timestamp: batchTimestamp
+        })
+        const deathColor = ATTRIBUTE_CONFIG[attribute]?.color || '#ffd86b'
+        batchDeaths.push({
+          id: `death_${batchTimestamp}_${Math.random().toString(36).substr(2, 6)}`,
+          row: target.row, col: target.col, color: deathColor, attribute, timestamp: batchTimestamp
+        })
         removeCharacterFromBattle(target.id, target.isPlayer)
         defeatedNames.push(targetTemplate?.name || target.characterId)
       }
@@ -1054,15 +1476,23 @@ export const useGameStore = defineStore('game', () => {
       attacker.totalDamage += damage
       totalDamage += damage
 
-      triggerShake(building.row, building.col, 'building')
-      showFloatingText(building.row, building.col, damage, 'damage')
-      triggerSkillEffect(building.row, building.col, attribute, 'medium', skillType)
+      batchShakes.push({ row: building.row, col: building.col, type: 'building' as const })
+      batchFloatingTexts.push({
+        id: `float_${batchTimestamp}_${Math.random().toString(36).substr(2, 9)}`,
+        row: building.row, col: building.col, value: damage,
+        type: 'damage' as const, attribute: undefined, isShaking: false, sign: '-',
+        timestamp: batchTimestamp
+      })
       damageResults.push(`对【${building.name}】造成${damage}点伤害`)
 
       trySpawnZombieFromHeart(building)
 
       if (building.hp <= 0) {
         removeBuildingFromBattle(building.id)
+        batchDefeats.push({
+          id: `defeat_${batchTimestamp}_${Math.random().toString(36).substr(2, 6)}`,
+          row: building.row, col: building.col, defeatType: 'kill' as const, timestamp: batchTimestamp
+        })
         battleMap.value!.tiles[building.row]![building.col]!.building = null
         destroyedBuildings.push(building.name)
       }
@@ -1070,11 +1500,51 @@ export const useGameStore = defineStore('game', () => {
 
     obstaclePositions.forEach(pos => {
       battleMap.value.tiles[pos.row]![pos.col]!.terrain = 'empty'
-      triggerShake(pos.row, pos.col, 'character')
+      batchShakes.push({ row: pos.row, col: pos.col, type: 'character' as const })
     })
     if (obstaclePositions.length > 0) {
       damageResults.push(`清除了${obstaclePositions.length}个障碍物`)
     }
+
+    // ========== 批量写入（单次响应式触发） ==========
+    if (batchHitFlashes.length > 0) {
+      hitFlashTargets.value = [...hitFlashTargets.value, ...batchHitFlashes]
+    }
+    if (batchFloatingTexts.length > 0) {
+      floatingTexts.value = [...floatingTexts.value, ...batchFloatingTexts]
+    }
+    if (batchStatusEffects.length > 0) {
+      statusApplyEffects.value = [...statusApplyEffects.value, ...batchStatusEffects]
+    }
+    if (batchDefeats.length > 0) {
+      defeatRecords.value = [...defeatRecords.value, ...batchDefeats]
+    }
+    if (batchDeaths.length > 0) {
+      deathEffects.value = [...deathEffects.value, ...batchDeaths]
+      triggerMapShake('light')
+    }
+    if (batchShakes.length > 0) {
+      const seen = new Set<string>()
+      const uniqueShakes: ShakingTarget[] = []
+      for (let i = batchShakes.length - 1; i >= 0; i--) {
+        const key = `${batchShakes[i].row}_${batchShakes[i].col}_${batchShakes[i].type}`
+        if (!seen.has(key)) {
+          seen.add(key)
+          uniqueShakes.unshift(batchShakes[i])
+        }
+      }
+      shakingTargets.value = [...shakingTargets.value.filter(t => 
+        !uniqueShakes.some(u => u.row === t.row && u.col === t.col && u.type === t.type)
+      ), ...uniqueShakes]
+      uniqueShakes.forEach(s => {
+        setTimeout(() => {
+          const idx = shakingTargets.value.findIndex(t => t.row === s.row && t.col === s.col && t.type === s.type)
+          if (idx !== -1) shakingTargets.value.splice(idx, 1)
+        }, 300)
+      })
+    }
+
+    ensureEffectCleanupTimer()
 
     if (skill.lifesteal && totalDamage > 0) {
       const healAmount = Math.floor(totalDamage * skill.lifesteal)
@@ -1718,12 +2188,7 @@ export const useGameStore = defineStore('game', () => {
       sign: finalSign,
       timestamp: Date.now()
     })
-    setTimeout(() => {
-      const idx = floatingTexts.value.findIndex(t => t.id === textId)
-      if (idx !== -1) {
-        floatingTexts.value.splice(idx, 1)
-      }
-    }, 1200)
+    ensureEffectCleanupTimer()
   }
   
   // ========== 新视觉特效系统 ==========
@@ -1737,15 +2202,14 @@ export const useGameStore = defineStore('game', () => {
   }
   const hitFlashTargets = ref<HitFlashTarget[]>([])
   
-  function triggerHitFlash(row: number, col: number, attribute: Attribute = 'normal') {
+  function triggerHitFlash(row: number, col: number, attribute: Attribute = 'normal', skipSpark: boolean = false) {
     const id = `hitflash_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`
     hitFlashTargets.value.push({ id, row, col, timestamp: Date.now() })
-    // 触发粒子飞溅特效
-    triggerHitSpark(row, col, attribute)
-    setTimeout(() => {
-      const idx = hitFlashTargets.value.findIndex(t => t.id === id)
-      if (idx !== -1) hitFlashTargets.value.splice(idx, 1)
-    }, 400)
+    // AOE 等多目标命中时，范围特效已经覆盖受击反馈，不再重复触发粒子飞溅
+    if (!skipSpark) {
+      triggerHitSpark(row, col, attribute)
+    }
+    ensureEffectCleanupTimer()
   }
   
   // 2. 击杀/退场动画
@@ -1761,10 +2225,7 @@ export const useGameStore = defineStore('game', () => {
   function triggerDefeatAnimation(row: number, col: number, defeatType: 'kill' | 'self') {
     const id = `defeat_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`
     defeatRecords.value.push({ id, row, col, defeatType, timestamp: Date.now() })
-    setTimeout(() => {
-      const idx = defeatRecords.value.findIndex(d => d.id === id)
-      if (idx !== -1) defeatRecords.value.splice(idx, 1)
-    }, 1500)
+    ensureEffectCleanupTimer()
   }
 
   // ============ 新增视觉特效系统 ============
@@ -1786,13 +2247,8 @@ export const useGameStore = defineStore('game', () => {
       size
     }))
     trailParticles.value.push(...newParticles)
-    // 1.8s 后自动清除（配合 CSS 动画时长）
-    setTimeout(() => {
-      newParticles.forEach(p => {
-        const idx = trailParticles.value.findIndex(t => t.id === p.id)
-        if (idx !== -1) trailParticles.value.splice(idx, 1)
-      })
-    }, 1800)
+    // 过期清除统一交给 cleanupExpiredEffects 定时器（1.9s 寿命）
+    ensureEffectCleanupTimer()
   }
 
   // 2. 技能蓄力特效（选择目标时角色头顶/身上的蓄力光效）
@@ -1807,10 +2263,7 @@ export const useGameStore = defineStore('game', () => {
       timestamp: Date.now(),
       attribute
     })
-    setTimeout(() => {
-      const idx = chargeEffects.value.findIndex(e => e.id === id)
-      if (idx !== -1) chargeEffects.value.splice(idx, 1)
-    }, 800)
+    ensureEffectCleanupTimer()
   }
 
   function clearChargeEffects() {
@@ -1835,15 +2288,14 @@ export const useGameStore = defineStore('game', () => {
     }, durationMs)
   }
 
-  // 4. 死亡特效（角色化作光点消散）
+  // 4. 死亡特效（按致死属性分化：火=爆炸消散 / 冰=菱形碎裂 / 暗·阴=溶解下沉 / 其他=光点消散）
   function triggerDeathEffect(row: number, col: number, attribute: Attribute = 'normal') {
     const color = ATTRIBUTE_CONFIG[attribute]?.color || '#ffd86b'
     const id = `death_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`
-    deathEffects.value.push({ id, row, col, color, timestamp: Date.now() })
-    setTimeout(() => {
-      const idx = deathEffects.value.findIndex(d => d.id === id)
-      if (idx !== -1) deathEffects.value.splice(idx, 1)
-    }, 1600)
+    deathEffects.value.push({ id, row, col, color, attribute, timestamp: Date.now() })
+    // 任意单位死亡都让地图轻震，增强打击反馈
+    triggerMapShake('light')
+    ensureEffectCleanupTimer()
   }
 
   // 统一处理：击中地形痕迹（火/冰/阴/暗 触发对应环境痕迹）
@@ -1861,6 +2313,8 @@ export const useGameStore = defineStore('game', () => {
   function handleTargetDefeated(row: number, col: number, attribute: Attribute, defeatType: 'kill' | 'self') {
     triggerDefeatAnimation(row, col, defeatType)
     triggerDeathEffect(row, col, attribute)
+    // 战斗击杀额外触发重震屏（triggerDeathEffect 内的轻震会被本次覆盖）
+    if (defeatType === 'kill') triggerMapShake('heavy')
   }
   
   // 3. 攻击轨迹投射物动画
@@ -1886,10 +2340,7 @@ export const useGameStore = defineStore('game', () => {
       duration: Math.max(200, Math.abs(toRow - fromRow) * 80 + Math.abs(toCol - fromCol) * 80),
       timestamp: Date.now()
     })
-    setTimeout(() => {
-      const idx = projectiles.value.findIndex(p => p.id === id)
-      if (idx !== -1) projectiles.value.splice(idx, 1)
-    }, 600)
+    ensureEffectCleanupTimer()
   }
   
   // 4. 状态施加视觉反馈
@@ -1907,10 +2358,7 @@ export const useGameStore = defineStore('game', () => {
     const isPositive = POSITIVE_STATUSES.includes(statusType)
     const id = `status_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`
     statusApplyEffects.value.push({ id, row, col, statusType, isPositive, timestamp: Date.now() })
-    setTimeout(() => {
-      const idx = statusApplyEffects.value.findIndex(s => s.id === id)
-      if (idx !== -1) statusApplyEffects.value.splice(idx, 1)
-    }, 1200)
+    ensureEffectCleanupTimer()
   }
   
   // 5. 召唤出场特效
@@ -1926,10 +2374,7 @@ export const useGameStore = defineStore('game', () => {
   function triggerSummonEffect(row: number, col: number, attribute: Attribute = 'light') {
     const id = `summon_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`
     summonEffects.value.push({ id, row, col, attribute, timestamp: Date.now() })
-    setTimeout(() => {
-      const idx = summonEffects.value.findIndex(s => s.id === id)
-      if (idx !== -1) summonEffects.value.splice(idx, 1)
-    }, 1500)
+    ensureEffectCleanupTimer()
   }
   
   // 6. 移动轨迹粒子
@@ -1962,10 +2407,7 @@ export const useGameStore = defineStore('game', () => {
     
     const id = `movetrail_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`
     moveTrailEffects.value.push({ id, particles, isPlayer, timestamp: Date.now() })
-    setTimeout(() => {
-      const idx = moveTrailEffects.value.findIndex(t => t.id === id)
-      if (idx !== -1) moveTrailEffects.value.splice(idx, 1)
-    }, 600)
+    ensureEffectCleanupTimer()
   }
   
   // 7. 受击粒子飞溅特效
@@ -1986,9 +2428,11 @@ export const useGameStore = defineStore('game', () => {
   const hitSparkEffects = ref<HitSparkEffect[]>([])
   
   function triggerHitSpark(row: number, col: number, attribute: Attribute = 'normal') {
-    const particleCount = 8
+    // 特效数量分级：中负载粒子减半，高负载只保留 3 颗
+    const load = effectLoadLevel()
+    const particleCount = load === 2 ? 3 : load === 1 ? 4 : 8
     const particles: HitSparkParticle[] = []
-    
+
     for (let i = 0; i < particleCount; i++) {
       const angle = (i / particleCount) * Math.PI * 2 + Math.random() * 0.5
       const distance = 15 + Math.random() * 20
@@ -1999,13 +2443,10 @@ export const useGameStore = defineStore('game', () => {
         delay: Math.random() * 0.1
       })
     }
-    
+
     const id = `hitspark_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`
     hitSparkEffects.value.push({ id, row, col, attribute, particles, timestamp: Date.now() })
-    setTimeout(() => {
-      const idx = hitSparkEffects.value.findIndex(s => s.id === id)
-      if (idx !== -1) hitSparkEffects.value.splice(idx, 1)
-    }, 500)
+    ensureEffectCleanupTimer()
   }
   
   // 投射物类型判断：指定哪些技能类型有投射物
@@ -3399,7 +3840,10 @@ export const useGameStore = defineStore('game', () => {
       playerShaQi: 0,
       enemyReiki: 0,
       enemyShaQi: 0,
+      battleEnded: false,
     }
+    // 重置结算调度标志，确保新战斗可以正常触发结算
+    endBattleScheduled = false
     updateWeather()
 
     console.log('战场玩家角色:', players);
@@ -3438,6 +3882,8 @@ export const useGameStore = defineStore('game', () => {
   
   async function endBattle(victory: boolean, isEscape: boolean = false) {
     if (!player.value || !battleMap.value) return;
+    if (battleMap.value.battleEnded && !isEscape) return;
+    battleMap.value.battleEnded = true;
 
     const enemyCount = battleMap.value.initialEnemyCount;
     const enemyLevel = battleMap.value.enemyLevel;
@@ -9698,20 +10144,40 @@ export const useGameStore = defineStore('game', () => {
     checkBattleEnd()
   }
 
+  // 结算调度标志：防止同一结果重复触发 endBattle
+  // 注意：battleEnded 由 endBattle 自己置位，这里不能提前置位，
+  // 否则 endBattle 开头的 guard（battleEnded && !isEscape）会导致结算被跳过、战斗卡死
+  let endBattleScheduled = false
+
   function checkBattleEnd(): boolean {
     if (!battleMap.value) return false
+    if (battleMap.value.battleEnded || endBattleScheduled) return false
 
     // 检查是否还有敌方建筑
     const hasEnemyBuildings = battleMap.value.buildings.some(b => !b.isPlayer)
-    
+
     if (battleMap.value.enemies.length === 0 && !hasEnemyBuildings) {
-      setTimeout(async () => await endBattle(true), 500)
+      scheduleEndBattle(true)
       return true
     } else if (battleMap.value.players.length === 0) {
-      setTimeout(async () => await endBattle(false), 500)
+      scheduleEndBattle(false)
       return true
     }
     return false
+  }
+
+  function scheduleEndBattle(victory: boolean) {
+    if (endBattleScheduled) return
+    endBattleScheduled = true
+    setTimeout(async () => {
+      try {
+        await endBattle(victory)
+      } catch (err) {
+        // 结算流程异常时不能让战斗永久卡死：释放调度标志，允许后续重试
+        console.error('[Battle] 结算流程执行失败:', err)
+        endBattleScheduled = false
+      }
+    }, 500)
   }
 
   function toggleSpeed() {
@@ -13130,6 +13596,10 @@ export const useGameStore = defineStore('game', () => {
     triggerTerrainMark,
     deathEffects,
     triggerDeathEffect,
+    // 地图级震屏
+    mapShakeTick,
+    mapShakeIntensity,
+    triggerMapShake,
     // ============
     factionCommand,
     gatheringPoints,

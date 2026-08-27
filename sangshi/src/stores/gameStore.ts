@@ -453,20 +453,18 @@ export const useGameStore = defineStore('game', () => {
       ? battleMap.value.enemies.filter(enemy => {
           const dr = enemy.row - centerRow
           const dc = enemy.col - centerCol
-          if (rangeType === 'diamond') {
-            return Math.abs(dr) + Math.abs(dc) <= areaRange
-          } else {
-            return Math.abs(dr) <= areaRange && Math.abs(dc) <= areaRange
-          }
+          const inRange = rangeType === 'diamond'
+            ? Math.abs(dr) + Math.abs(dc) <= areaRange
+            : Math.abs(dr) <= areaRange && Math.abs(dc) <= areaRange
+          return inRange && isCellVisibleToActor(attacker, enemy.row, enemy.col)
         })
       : battleMap.value.players.filter(playerChar => {
           const dr = playerChar.row - centerRow
           const dc = playerChar.col - centerCol
-          if (rangeType === 'diamond') {
-            return Math.abs(dr) + Math.abs(dc) <= areaRange
-          } else {
-            return Math.abs(dr) <= areaRange && Math.abs(dc) <= areaRange
-          }
+          const inRange = rangeType === 'diamond'
+            ? Math.abs(dr) + Math.abs(dc) <= areaRange
+            : Math.abs(dr) <= areaRange && Math.abs(dc) <= areaRange
+          return inRange && isCellVisibleToActor(attacker, playerChar.row, playerChar.col)
         })
 
     const enemyBuildings = battleMap.value.buildings.filter(building => {
@@ -478,7 +476,7 @@ export const useGameStore = defineStore('game', () => {
       } else {
         inRange = Math.abs(dr) <= areaRange && Math.abs(dc) <= areaRange
       }
-      return inRange && building.isPlayer !== attacker.isPlayer
+      return inRange && building.isPlayer !== attacker.isPlayer && isCellVisibleToActor(attacker, building.row, building.col)
     })
 
     const obstaclePositions: { row: number; col: number }[] = []
@@ -687,20 +685,20 @@ export const useGameStore = defineStore('game', () => {
             const dr = enemy.row - centerRow
             const dc = enemy.col - centerCol
             const dist = Math.abs(dr) + Math.abs(dc)
-            return dist > areaRange && dist <= splashRange
+            return dist > areaRange && dist <= splashRange && isCellVisibleToActor(attacker, enemy.row, enemy.col)
           })
         : battleMap.value.players.filter(playerChar => {
             const dr = playerChar.row - centerRow
             const dc = playerChar.col - centerCol
             const dist = Math.abs(dr) + Math.abs(dc)
-            return dist > areaRange && dist <= splashRange
+            return dist > areaRange && dist <= splashRange && isCellVisibleToActor(attacker, playerChar.row, playerChar.col)
           })
 
       splashBuildings = battleMap.value.buildings.filter(building => {
         const dr = building.row - centerRow
         const dc = building.col - centerCol
         const dist = Math.abs(dr) + Math.abs(dc)
-        return dist > areaRange && dist <= splashRange && building.isPlayer !== attacker.isPlayer
+        return dist > areaRange && dist <= splashRange && building.isPlayer !== attacker.isPlayer && isCellVisibleToActor(attacker, building.row, building.col)
       })
 
       // 溅射特效
@@ -1031,15 +1029,18 @@ export const useGameStore = defineStore('game', () => {
 
     const enemyTargets = attacker.isPlayer
       ? battleMap.value.enemies.filter(enemy => 
-          linePositions.some(pos => pos.row === enemy.row && pos.col === enemy.col)
+          linePositions.some(pos => pos.row === enemy.row && pos.col === enemy.col) &&
+          isCellVisibleToActor(attacker, enemy.row, enemy.col)
         )
       : battleMap.value.players.filter(playerChar => 
-          linePositions.some(pos => pos.row === playerChar.row && pos.col === playerChar.col)
+          linePositions.some(pos => pos.row === playerChar.row && pos.col === playerChar.col) &&
+          isCellVisibleToActor(attacker, playerChar.row, playerChar.col)
         )
 
     const enemyBuildings = battleMap.value.buildings.filter(building => 
       linePositions.some(pos => pos.row === building.row && pos.col === building.col) &&
-      building.isPlayer !== attacker.isPlayer
+      building.isPlayer !== attacker.isPlayer &&
+      isCellVisibleToActor(attacker, building.row, building.col)
     )
 
     const obstaclePositions = linePositions.filter(pos => 
@@ -1355,15 +1356,18 @@ export const useGameStore = defineStore('game', () => {
 
     const enemyTargets = attacker.isPlayer
       ? battleMap.value.enemies.filter(enemy => 
-          sweepPositions.some(pos => pos.row === enemy.row && pos.col === enemy.col)
+          sweepPositions.some(pos => pos.row === enemy.row && pos.col === enemy.col) &&
+          isCellVisibleToActor(attacker, enemy.row, enemy.col)
         )
       : battleMap.value.players.filter(playerChar => 
-          sweepPositions.some(pos => pos.row === playerChar.row && pos.col === playerChar.col)
+          sweepPositions.some(pos => pos.row === playerChar.row && pos.col === playerChar.col) &&
+          isCellVisibleToActor(attacker, playerChar.row, playerChar.col)
         )
 
     const enemyBuildings = battleMap.value.buildings.filter(building => 
       sweepPositions.some(pos => pos.row === building.row && pos.col === building.col) &&
-      building.isPlayer !== attacker.isPlayer
+      building.isPlayer !== attacker.isPlayer &&
+      isCellVisibleToActor(attacker, building.row, building.col)
     )
 
     const obstaclePositions = sweepPositions.filter(pos => 
@@ -3410,7 +3414,7 @@ export const useGameStore = defineStore('game', () => {
     })
   }
 
-  function startBattle(mode: 'offensive' | 'defensive', terrain: string, difficulty: 'easy' | 'normal' | 'hard' | 'nightmare' | 'deadly' = 'normal', selectedCharacterIds?: string[], selectedFactions?: string[]) {
+  function startBattle(mode: 'offensive' | 'defensive' | 'zombie', terrain: string, difficulty: 'easy' | 'normal' | 'hard' | 'nightmare' | 'deadly' = 'normal', selectedCharacterIds?: string[], selectedFactions?: string[]) {
     if (!player.value) return
 
     // 重置战斗结果状态，防止上一局的结果影响新战斗
@@ -3467,7 +3471,7 @@ export const useGameStore = defineStore('game', () => {
     const getBuildingHp = (baseHp: number) => Math.floor(baseHp * (1 + 0.1 * (buildingLevel - 1)))
     console.log('建筑等级:', buildingLevel)
     
-    if (mode === 'defensive') {
+    if (mode === 'defensive' || mode === 'zombie') {
       const homeOffsetRow = Math.floor((config.height - 9) / 2)
       const homeOffsetCol = Math.floor((config.width - 9) / 2)
       
@@ -3556,8 +3560,8 @@ export const useGameStore = defineStore('game', () => {
     // 预先收集玩家出生区域的所有有效空位
     let validPositions: {row: number, col: number}[] = []
     
-    if (mode === 'defensive') {
-      // 防御模式：在中央9x9区域收集空位
+    if (mode === 'defensive' || mode === 'zombie') {
+      // 防御模式/丧尸围城：在中央9x9区域收集空位
       const homeOffsetRow = Math.floor((config.height - 9) / 2)
       const homeOffsetCol = Math.floor((config.width - 9) / 2)
       for (let r = homeOffsetRow; r < homeOffsetRow + 9 && r < config.height; r++) {
@@ -3664,8 +3668,8 @@ export const useGameStore = defineStore('game', () => {
       while (!placed && attempts < 100) {
         let row: number, col: number
         
-        if (mode === 'defensive') {
-          // 防御模式：在地图四周边缘随机放置
+        if (mode === 'defensive' || mode === 'zombie') {
+          // 防御模式/丧尸围城：在地图四周边缘随机放置
           const edge = Math.floor(Math.random() * 4) // 0=上,1=右,2=下,3=左
           switch (edge) {
             case 0: // 上边
@@ -3832,6 +3836,8 @@ export const useGameStore = defineStore('game', () => {
       snowAreas: [],
       fireAreas: [],
       fogAreas: [],
+      visibilityEnabled: mode === 'zombie',
+      visibilityGrid: Array.from({ length: config.height }, () => Array(config.width).fill(mode !== 'zombie')),
       enemyLevel,
       initialEnemyCount: enemies.length,
       defeatedCharacters: [],
@@ -3845,6 +3851,9 @@ export const useGameStore = defineStore('game', () => {
     // 重置结算调度标志，确保新战斗可以正常触发结算
     endBattleScheduled = false
     updateWeather()
+    if (mode === 'zombie') {
+      calculateVisibility()
+    }
 
     console.log('战场玩家角色:', players);
 
@@ -4499,6 +4508,61 @@ export const useGameStore = defineStore('game', () => {
     return isSnowArea(char.row, char.col)
   }
 
+  function calculateVisibility() {
+    if (!battleMap.value || !battleMap.value.visibilityEnabled) return
+
+    const map = battleMap.value
+    const { width, height } = map
+    const grid = Array.from({ length: height }, () => Array(width).fill(false))
+
+    const markVisible = (row: number, col: number, range: number) => {
+      for (let r = Math.max(0, row - range); r <= Math.min(height - 1, row + range); r++) {
+        for (let c = Math.max(0, col - range); c <= Math.min(width - 1, col + range); c++) {
+          const dist = Math.abs(r - row) + Math.abs(c - col)
+          if (dist <= range) {
+            grid[r][c] = true
+          }
+        }
+      }
+    }
+
+    for (const char of map.players) {
+      if (char.hp > 0) {
+        const visionRange = Math.max(char.attackRange || 1, char.moveRange || 1) + 1
+        markVisible(char.row, char.col, visionRange)
+      }
+    }
+
+    for (const b of map.buildings) {
+      if (b.hp > 0 && b.isPlayer) {
+        markVisible(b.row, b.col, 4)
+      }
+    }
+
+    map.visibilityGrid = grid
+  }
+
+  function getCellVisibility(row: number, col: number): boolean {
+    if (!battleMap.value) return true
+    if (!battleMap.value.visibilityEnabled) return true
+    if (row < 0 || row >= battleMap.value.height || col < 0 || col >= battleMap.value.width) return false
+    return battleMap.value.visibilityGrid[row][col]
+  }
+
+  function isCellVisibleToActor(actor: BattleCharacter | BattleBuilding, row: number, col: number): boolean {
+    if (!battleMap.value || !battleMap.value.visibilityEnabled) return true
+    const visionRange = 'moveRange' in actor
+      ? (Math.max(actor.attackRange || 1, actor.moveRange || 1) + 1)
+      : 4
+    const dist = Math.abs(actor.row - row) + Math.abs(actor.col - col)
+    return dist <= visionRange
+  }
+
+  function filterVisibleTargets<T extends { row: number; col: number }>(actor: BattleCharacter | BattleBuilding, targets: T[]): T[] {
+    if (!battleMap.value || !battleMap.value.visibilityEnabled) return targets
+    return targets.filter(t => isCellVisibleToActor(actor, t.row, t.col))
+  }
+
   function generateFogAreas() {
     if (!battleMap.value) return
 
@@ -5054,6 +5118,9 @@ export const useGameStore = defineStore('game', () => {
     // 触发中毒（操作时触发的状态）
     triggerStatusOnAction(char)
 
+    // 更新视野
+    calculateVisibility()
+
     return true
   }
 
@@ -5151,14 +5218,14 @@ export const useGameStore = defineStore('game', () => {
     if (char.isPlayer) {
       battleMap.value.enemies.forEach(enemy => {
         const dist = Math.abs(enemy.row - char.row) + Math.abs(enemy.col - char.col)
-        if (dist <= attackRange) {
+        if (dist <= attackRange && isCellVisibleToActor(char, enemy.row, enemy.col)) {
           targets.push(enemy)
         }
       })
       battleMap.value.buildings.forEach(building => {
         if (!building.isPlayer) {
           const dist = Math.abs(building.row - char.row) + Math.abs(building.col - char.col)
-          if (dist <= attackRange) {
+          if (dist <= attackRange && isCellVisibleToActor(char, building.row, building.col)) {
             targets.push(building)
           }
         }
@@ -5166,7 +5233,7 @@ export const useGameStore = defineStore('game', () => {
     } else {
       battleMap.value.players.forEach(player => {
         const dist = Math.abs(player.row - char.row) + Math.abs(player.col - char.col)
-        if (dist <= attackRange) {
+        if (dist <= attackRange && isCellVisibleToActor(char, player.row, player.col)) {
           targets.push(player)
         }
       })
@@ -5174,7 +5241,7 @@ export const useGameStore = defineStore('game', () => {
       battleMap.value.buildings.forEach(building => {
         if (building.isPlayer) {
           const dist = Math.abs(building.row - char.row) + Math.abs(building.col - char.col)
-          if (dist <= attackRange) {
+          if (dist <= attackRange && isCellVisibleToActor(char, building.row, building.col)) {
             targets.push(building)
           }
         }
@@ -5224,7 +5291,7 @@ export const useGameStore = defineStore('game', () => {
 
     targets.forEach(target => {
       const dist = Math.abs(target.row - char.row) + Math.abs(target.col - char.col)
-      if (dist <= attackRange) {
+      if (dist <= attackRange && isCellVisibleToActor(char, target.row, target.col)) {
         attackable.push(target)
       }
     })
@@ -7342,17 +7409,17 @@ export const useGameStore = defineStore('game', () => {
       const enemyChars = attacker.isPlayer 
         ? battleMap.value.enemies.filter(enemy => {
             const dist = Math.abs(enemy.row - centerRow) + Math.abs(enemy.col - centerCol)
-            return dist <= areaRange
+            return dist <= areaRange && isCellVisibleToActor(attacker, enemy.row, enemy.col)
           })
         : battleMap.value.players.filter(playerChar => {
             const dist = Math.abs(playerChar.row - centerRow) + Math.abs(playerChar.col - centerCol)
-            return dist <= areaRange
+            return dist <= areaRange && isCellVisibleToActor(attacker, playerChar.row, playerChar.col)
           })
       
       // 收集敌方建筑（曼哈顿距离 <= areaRange）
       const enemyBuildings = battleMap.value.buildings.filter(building => {
         const dist = Math.abs(building.row - centerRow) + Math.abs(building.col - centerCol)
-        return dist <= areaRange && building.isPlayer !== attacker.isPlayer
+        return dist <= areaRange && building.isPlayer !== attacker.isPlayer && isCellVisibleToActor(attacker, building.row, building.col)
       })
       
       // 收集范围内的障碍物位置（曼哈顿距离 <= areaRange）
@@ -7868,19 +7935,19 @@ export const useGameStore = defineStore('game', () => {
         ? battleMap.value.enemies.filter(enemy => {
             const rowDiff = Math.abs(enemy.row - attacker.row)
             const colDiff = Math.abs(enemy.col - attacker.col)
-            return rowDiff <= areaRange && colDiff <= areaRange
+            return rowDiff <= areaRange && colDiff <= areaRange && isCellVisibleToActor(attacker, enemy.row, enemy.col)
           })
         : battleMap.value.players.filter(playerChar => {
             const rowDiff = Math.abs(playerChar.row - attacker.row)
             const colDiff = Math.abs(playerChar.col - attacker.col)
-            return rowDiff <= areaRange && colDiff <= areaRange
+            return rowDiff <= areaRange && colDiff <= areaRange && isCellVisibleToActor(attacker, playerChar.row, playerChar.col)
           })
 
       // 收集范围内的敌方建筑
       const enemyBuildings = battleMap.value.buildings.filter(building => {
         const rowDiff = Math.abs(building.row - attacker.row)
         const colDiff = Math.abs(building.col - attacker.col)
-        return rowDiff <= areaRange && colDiff <= areaRange && building.isPlayer !== attacker.isPlayer
+        return rowDiff <= areaRange && colDiff <= areaRange && building.isPlayer !== attacker.isPlayer && isCellVisibleToActor(attacker, building.row, building.col)
       })
 
       // 收集范围内的障碍物位置（正方形范围）
@@ -9723,19 +9790,19 @@ export const useGameStore = defineStore('game', () => {
         ? battleMap.value.enemies.filter(enemy => {
             const rowDiff = Math.abs(enemy.row - attacker.row)
             const colDiff = Math.abs(enemy.col - attacker.col)
-            return rowDiff <= areaRange && colDiff <= areaRange
+            return rowDiff <= areaRange && colDiff <= areaRange && isCellVisibleToActor(attacker, enemy.row, enemy.col)
           })
         : battleMap.value.players.filter(playerChar => {
             const rowDiff = Math.abs(playerChar.row - attacker.row)
             const colDiff = Math.abs(playerChar.col - attacker.col)
-            return rowDiff <= areaRange && colDiff <= areaRange
+            return rowDiff <= areaRange && colDiff <= areaRange && isCellVisibleToActor(attacker, playerChar.row, playerChar.col)
           })
 
       // 收集范围内的敌方建筑
       const enemyBuildings = battleMap.value.buildings.filter(building => {
         const rowDiff = Math.abs(building.row - attacker.row)
         const colDiff = Math.abs(building.col - attacker.col)
-        return rowDiff <= areaRange && colDiff <= areaRange && building.isPlayer !== attacker.isPlayer
+        return rowDiff <= areaRange && colDiff <= areaRange && building.isPlayer !== attacker.isPlayer && isCellVisibleToActor(attacker, building.row, building.col)
       })
 
       // 计算攻击力（包含装备加成和技能效果）
@@ -10278,7 +10345,7 @@ export const useGameStore = defineStore('game', () => {
     const enemies = char.isPlayer ? battleMap.value.enemies : battleMap.value.players
     for (const enemy of enemies) {
       const distance = Math.abs(enemy.row - char.row) + Math.abs(enemy.col - char.col)
-      if (distance <= skillRange) {
+      if (distance <= skillRange && isCellVisibleToActor(char, enemy.row, enemy.col)) {
         targets.push(enemy)
       }
     }
@@ -10287,7 +10354,7 @@ export const useGameStore = defineStore('game', () => {
     for (const building of battleMap.value.buildings) {
       if (building.isPlayer !== char.isPlayer) {
         const distance = Math.abs(building.row - char.row) + Math.abs(building.col - char.col)
-        if (distance <= skillRange) {
+        if (distance <= skillRange && isCellVisibleToActor(char, building.row, building.col)) {
           targets.push(building)
         }
       }
@@ -10314,7 +10381,7 @@ export const useGameStore = defineStore('game', () => {
   function getBestSkillTargets(char: BattleCharacter, skill: Skill): (BattleCharacter | BattleBuilding)[] {
     if (!battleMap.value) return []
     const allTargets = getSkillAttackTargets(char, skill)
-    const validTargets = allTargets.filter((t: any) => !t.isObstacle)
+    const validTargets = allTargets.filter((t: any) => !t.isObstacle && isCellVisibleToActor(char, t.row, t.col))
     
     const attackPower = computeAttackPower(char)
     
@@ -10535,6 +10602,12 @@ export const useGameStore = defineStore('game', () => {
     const originalRow = char.row
     const originalCol = char.col
     
+    // 丧尸围城模式：过滤可见目标
+    const allEnemies = char.isPlayer ? battleMap.value.enemies : battleMap.value.players
+    const visibleEnemies = filterVisibleTargets(char, allEnemies)
+    const visibleEnemyBuildings = filterVisibleTargets(char, battleMap.value.buildings.filter(b => char.isPlayer ? !b.isPlayer : b.isPlayer))
+    const hasVisibleTargets = visibleEnemies.length > 0 || visibleEnemyBuildings.length > 0
+    
     let bestMove: { row: number; col: number } | null = null
     let bestTarget: (BattleCharacter | BattleBuilding) | null = null
     let bestSkill: Skill | null = null
@@ -10550,6 +10623,9 @@ export const useGameStore = defineStore('game', () => {
     const statusAttackRange = getStatusAttackRange(char)
     
     for (const pos of moveRange) {
+      // 丧尸围城模式：视野内无目标时跳过所有评估
+      if (battleMap.value?.visibilityEnabled && !hasVisibleTargets) break
+      
       char.row = pos.row
       char.col = pos.col
       
@@ -10560,8 +10636,7 @@ export const useGameStore = defineStore('game', () => {
       }
       
       // 检查普攻对敌人的伤害
-      const enemies = char.isPlayer ? battleMap.value.enemies : battleMap.value.players
-      for (const enemy of enemies) {
+      for (const enemy of visibleEnemies) {
         const dist = Math.abs(enemy.row - char.row) + Math.abs(enemy.col - char.col)
         if (dist <= effectiveAttackRange) {
           const damage = calculateDamage(char, enemy)
@@ -12354,13 +12429,13 @@ export const useGameStore = defineStore('game', () => {
             const target = allChars.find(c => c.id === bestTarget.id)
             if (target) {
               const distance = Math.abs(target.row - char.row) + Math.abs(target.col - char.col)
-              targetStillValid = distance <= attackRange
+              targetStillValid = distance <= attackRange && isCellVisibleToActor(char, target.row, target.col)
             }
           } else if ('hp' in bestTarget && 'maxHp' in bestTarget) {
             const building = battleMap.value.buildings.find(b => b.id === bestTarget.id)
             if (building) {
               const distance = Math.abs(building.row - char.row) + Math.abs(building.col - char.col)
-              targetStillValid = distance <= attackRange
+              targetStillValid = distance <= attackRange && isCellVisibleToActor(char, building.row, building.col)
             }
           }
           
@@ -12713,9 +12788,19 @@ export const useGameStore = defineStore('game', () => {
     
     // 如果不能造成伤害，移动到最近的敌人或建筑并防御
     if (!char.hasActed) {
+      // 丧尸围城模式：视野内无目标时不移动
+      if (battleMap.value?.visibilityEnabled && !hasVisibleTargets) {
+        console.log(`[AI] ${char.id} | no visible targets, staying in place`)
+        char.isDefending = true
+        char.hasActed = true
+        const template = findCharacterTemplateInStore(char.characterId)
+        battleLog.value.push(`【${template?.name || char.characterId}】视野内无目标，原地防御`)
+        return
+      }
+      
       console.log(`[AI] ${char.id} | cannot attack, moving to nearest enemy or building`)
-      const enemies = char.isPlayer ? battleMap.value.enemies : battleMap.value.players
-      const enemyBuildings = battleMap.value.buildings.filter(b => char.isPlayer ? !b.isPlayer : b.isPlayer)
+      const enemies = visibleEnemies
+      const enemyBuildings = visibleEnemyBuildings
       
       let nearestTarget: (BattleCharacter | BattleBuilding) | null = null
       let minDistance = Infinity
@@ -12908,6 +12993,11 @@ export const useGameStore = defineStore('game', () => {
   async function executeGatherMode(char: BattleCharacter) {
     if (!battleMap.value) return
     
+    // 丧尸围城模式：计算可见目标
+    const allEnemiesForGather = char.isPlayer ? battleMap.value.enemies : battleMap.value.players
+    const visibleEnemies = filterVisibleTargets(char, allEnemiesForGather)
+    const visibleEnemyBuildings = filterVisibleTargets(char, battleMap.value.buildings.filter(b => char.isPlayer ? !b.isPlayer : b.isPlayer))
+    
     const nearestPoint = getNearestGatherPoint(char)
     if (!nearestPoint) {
       // 如果没有集结点，切换到攻击模式
@@ -12969,20 +13059,16 @@ export const useGameStore = defineStore('game', () => {
               attackBuilding(char.id, target.id)
             }
           } else {
-            // 不能攻击：仅在没有敌人和建筑时才防御
-            const enemies = char.isPlayer ? battleMap.value.enemies : battleMap.value.players
-            const enemyBuildings = battleMap.value.buildings.filter(b => char.isPlayer ? !b.isPlayer : b.isPlayer)
-            if (enemies.length === 0 && enemyBuildings.length === 0) {
+            // 不能攻击：视野内无目标时防御，否则等待下次机会
+            if (battleMap.value?.visibilityEnabled && visibleEnemies.length === 0 && visibleEnemyBuildings.length === 0) {
               defend(char.id)
             }
           }
         }
       }
     } else if (!char.hasActed) {
-      // 不能移动：仅在没有敌人和建筑时才防御
-      const enemies = char.isPlayer ? battleMap.value.enemies : battleMap.value.players
-      const enemyBuildings = battleMap.value.buildings.filter(b => char.isPlayer ? !b.isPlayer : b.isPlayer)
-      if (enemies.length === 0 && enemyBuildings.length === 0) {
+      // 不能移动：视野内无目标时防御
+      if (battleMap.value?.visibilityEnabled && visibleEnemies.length === 0 && visibleEnemyBuildings.length === 0) {
         defend(char.id)
       }
     }
@@ -13405,9 +13491,10 @@ export const useGameStore = defineStore('game', () => {
         attackRange = Math.min(attackRange, 1)
       }
       const enemies = battleMap.value.enemies.filter(e => e.hp > 0)
+      const visibleEnemiesForBuilding = filterVisibleTargets(building, enemies)
       
       // 找到攻击范围内的敌人
-      const targets = enemies.filter(enemy => {
+      const targets = visibleEnemiesForBuilding.filter(enemy => {
         const dist = Math.abs(enemy.row - building.row) + Math.abs(enemy.col - building.col)
         return dist <= attackRange
       })
@@ -13492,6 +13579,11 @@ export const useGameStore = defineStore('game', () => {
 
     battleMap.value.turn++
     battleMap.value.battlePhase = 'player'
+    
+    // 丧尸围城模式：每回合开始更新视野
+    if (battleMap.value.visibilityEnabled) {
+      calculateVisibility()
+    }
     
     // 灵气阵营：人界、神界、仙界；煞气阵营：魔界、鬼界、妖界
     const reikiFactions = ['human', 'god', 'immortal']
@@ -13654,6 +13746,8 @@ export const useGameStore = defineStore('game', () => {
     isSnowArea,
     isFireArea,
     isFogArea,
+    getCellVisibility,
+    calculateVisibility,
     isCharacterInSnow,
     isCharacterInFire,
     isCharacterInFog,

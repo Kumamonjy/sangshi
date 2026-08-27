@@ -68,6 +68,10 @@
           已选择 {{ selectedFactions.length }} 个阵营
         </text>
       </view>
+      <view v-if="selectedMode === 'zombie'" class="mode-hint">
+        <text class="hint-icon">⚠️</text>
+        <text class="hint-text">丧尸围城模式仅可选择鬼界阵营</text>
+      </view>
       <view class="faction-list">
         <view 
           v-for="faction in allFactions" 
@@ -75,7 +79,7 @@
           class="faction-item"
           :class="{ 
             active: selectedFactions.includes(faction.id),
-            disabled: !faction.enabled
+            disabled: !faction.enabled || (selectedMode === 'zombie' && faction.id !== 'ghost')
           }"
           @click="toggleFactionSelection(faction.id, faction.enabled)"
         >
@@ -83,6 +87,7 @@
           <view class="faction-info">
             <text class="faction-name">{{ faction.name }}</text>
             <text v-if="!faction.enabled" class="faction-status">敬请期待</text>
+            <text v-else-if="selectedMode === 'zombie' && faction.id !== 'ghost'" class="faction-status">模式限定</text>
             <text v-else class="faction-status">可选</text>
           </view>
           <view v-if="selectedFactions.includes(faction.id)" class="faction-check">
@@ -165,7 +170,7 @@ import { getExpRequired, DIFFICULTY_CONFIG, INITIAL_CHARACTERS, HIREABLE_CHARACT
 
 const gameStore = useGameStore()
 
-const selectedMode = ref<'offensive' | 'defensive'>('offensive')
+const selectedMode = ref<'offensive' | 'defensive' | 'zombie'>('offensive')
 const selectedDifficulty = ref<'easy' | 'normal' | 'hard' | 'nightmare' | 'deadly'>('normal')
 const selectedTerrain = ref('plain')
 const selectedCharacterIds = ref<string[]>([])
@@ -175,6 +180,7 @@ const maxCharacters = 15
 const gameModes = [
   { id: 'offensive' as const, name: '主动进攻', icon: '🗡️', desc: '主动出击，击败敌人' },
   { id: 'defensive' as const, name: '家园防御', icon: '🏠', desc: '保护家园，抵御入侵' },
+  { id: 'zombie' as const, name: '丧尸围城', icon: '🧟', desc: '视野受限，丧尸肆虐' },
 ]
 
 const allFactions = [
@@ -230,6 +236,17 @@ function toggleCharacterSelection(char: any) {
 }
 
 function toggleFactionSelection(factionId: string, enabled: boolean) {
+  if (selectedMode.value === 'zombie') {
+    if (factionId !== 'ghost') {
+      uni.showToast({ title: '丧尸围城模式仅可选择鬼界阵营', icon: 'none' })
+      return
+    }
+    // zombie mode: ghost is always selected, cannot be deselected
+    if (selectedFactions.value.length <= 1) {
+      uni.showToast({ title: '至少选择一个阵营', icon: 'none' })
+      return
+    }
+  }
   if (!enabled) {
     uni.showToast({ title: '该阵营暂未开放', icon: 'none' })
     return
@@ -246,6 +263,12 @@ function toggleFactionSelection(factionId: string, enabled: boolean) {
     selectedFactions.value.splice(index, 1)
   }
 }
+
+watch(selectedMode, (newMode) => {
+  if (newMode === 'zombie') {
+    selectedFactions.value = ['ghost']
+  }
+})
 
 function startBattle() {
   console.log('开始战斗检查', { 
@@ -469,6 +492,25 @@ watch(() => gameStore.player, () => {
   font-size: 22rpx;
   color: #718096;
   margin-top: 4rpx;
+}
+
+.mode-hint {
+  display: flex;
+  align-items: center;
+  gap: 8rpx;
+  padding: 12rpx 16rpx;
+  background: rgba(239, 68, 68, 0.15);
+  border: 1rpx solid rgba(239, 68, 68, 0.4);
+  border-radius: 12rpx;
+  margin-bottom: 16rpx;
+
+  .hint-icon {
+    font-size: 24rpx;
+  }
+  .hint-text {
+    font-size: 24rpx;
+    color: #fca5a5;
+  }
 }
 
 .faction-list {

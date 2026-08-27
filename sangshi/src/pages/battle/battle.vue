@@ -99,7 +99,7 @@
               
               <!-- 建筑物 -->
               <view 
-                v-if="getBuildingAt(rowIndex, colIndex)" 
+                v-if="isCellVisible(rowIndex, colIndex) && getBuildingAt(rowIndex, colIndex)" 
                 class="building-marker"
                 :class="{ 'shaking': isShaking(rowIndex, colIndex, 'building') }"
               >
@@ -123,7 +123,7 @@
               </view>
               
               <!-- 灵草灵药 -->
-              <view v-if="getCollectibleAt(rowIndex, colIndex)" class="collectible-marker">
+              <view v-if="isCellVisible(rowIndex, colIndex) && getCollectibleAt(rowIndex, colIndex)" class="collectible-marker">
                 <image 
                   v-if="isCollectibleIconUrl(getCollectibleAt(rowIndex, colIndex)!.icon)"
                   :src="getCollectibleAt(rowIndex, colIndex)!.icon" 
@@ -138,7 +138,7 @@
               
               <!-- 角色 -->
               <view 
-                v-if="getCharacterAt(rowIndex, colIndex)" 
+                v-if="isCellVisible(rowIndex, colIndex) && getCharacterAt(rowIndex, colIndex)" 
                 class="character-marker"
                 :class="{ 
                   'shaking': isShaking(rowIndex, colIndex, 'character'),
@@ -1688,15 +1688,24 @@ function getCharacterSkills(char: BattleCharacter): Skill[] {
   return template?.skills || []
 }
 
+function isCellVisible(row: number, col: number): boolean {
+  return gameStore.getCellVisibility(row, col)
+}
+
 function getCellClass(tile: { terrain: string; building?: any }, row: number, col: number): Record<string, boolean> {
   const classes: Record<string, boolean> = {}
   const map = gameStore.battleMap
+  
+  if (!isCellVisible(row, col)) {
+    classes['cell-hidden'] = true
+    return classes
+  }
   
   if (tile.terrain === 'river') classes['river'] = true
   if (tile.terrain === 'obstacle') classes['obstacle'] = true
   if (gameStore.isSnowArea(row, col)) classes['snow-area'] = true
   
-  if (map?.mode === 'defensive') {
+  if (map?.mode === 'defensive' || map?.mode === 'zombie') {
     const homeOffsetRow = Math.floor((map.height - 9) / 2)
     const homeOffsetCol = Math.floor((map.width - 9) / 2)
     if (row >= homeOffsetRow && row < homeOffsetRow + 9 && 
@@ -4057,6 +4066,11 @@ function collectCollectible() {
   &.home-area {
     background: rgba(251, 191, 36, 0.1);
     border: 1rpx solid rgba(251, 191, 36, 0.3);
+  }
+  
+  &.cell-hidden {
+    background: #000 !important;
+    overflow: hidden;
   }
   
   &.river {

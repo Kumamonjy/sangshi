@@ -2,7 +2,7 @@ export type Faction = 'human' | 'ghost' | 'beast' | 'immortal' | 'god' | 'demon'
 export type Job = string
 export type Rarity = 'common' | 'rare' | 'exceptional' | 'treasure' | 'celestial' | 'peerless'
 export type ItemSubtype = 'weapon' | 'armor' | 'helmet' | 'shoes' | 'accessory' | 'book' | 'consumable' | 'chest' | 'soul'
-export type TerrainType = 'empty' | 'river' | 'obstacle' | 'snow'
+export type TerrainType = 'empty' | 'river' | 'obstacle' | 'snow' | 'path'
 export type WeatherType = 'normal' | 'light_snow' | 'medium_snow' | 'heavy_snow' | 'mountain_fire' | 'sky_fire' | 'fog' | 'ghost_fog'
 export type Attribute = 'normal' | 'metal' | 'wood' | 'water' | 'fire' | 'earth' | 'ice' | 'wind' | 'dark' | 'yang' | 'light' | 'yin'
 
@@ -517,7 +517,7 @@ export interface BattleMap {
   id: string
   width: number
   height: number
-  mode: 'offensive' | 'defensive' | 'zombie'
+  mode: 'offensive' | 'defensive' | 'zombie' | 'pass_defense'
   terrainType: string
   tiles: BattleTile[][]
   players: BattleCharacter[]
@@ -543,6 +543,15 @@ export interface BattleMap {
   enemyReiki: number
   enemyShaQi: number
   battleEnded: boolean
+  // === 关隘守卫模式专属字段 ===
+  pdPaths?: { row: number; col: number }[][]
+  pdPathTiles?: boolean[][]
+  pdPlacementArea?: boolean[][]
+  pdCoreBuilding?: BattleBuilding | null
+  pdDifficulty?: 'easy' | 'normal' | 'hard' | 'nightmare' | 'deadly'
+  pdCurrentWave?: number
+  pdTotalWaves?: number
+  pdWaveSpawned?: boolean[]
 }
 
 export interface BattleCollectible {
@@ -3812,6 +3821,7 @@ export const TERRAIN_CONFIG: Record<TerrainType, { icon: string; passable: boole
   obstacle: { icon: '⛰️', passable: false, destructible: true, hp: 100 },
   empty: { icon: '', passable: true, destructible: false },
   snow: { icon: '❄️', passable: true, destructible: false },
+  path: { icon: '', passable: true, destructible: false },
 }
 
 
@@ -3820,6 +3830,26 @@ export const BATTLE_CONFIG = {
   offensive: { width: 11, height: 13, playerRows: 2, enemyRows: 2 },
   defensive: { width: 19, height: 19, playerRows: 9, enemyRows: 10 },
   zombie: { width: 19, height: 19, playerRows: 9, enemyRows: 10 },
+  pass_defense: {
+    width: 19,
+    height: 19,
+    corePosition: { row: 9, col: 9 },
+    coreType: 'energyTower',
+    waveInterval: 4,
+    totalWaves: 3,
+    difficultyPathCount: {
+      easy: 1,
+      normal: 2,
+      hard: 2,
+      nightmare: 3,
+      deadly: 3,
+    } as Record<string, number>,
+    waveRankFilter: [
+      { wave: 0, minRank: 1, maxRank: 3 },
+      { wave: 1, minRank: 1, maxRank: 4 },
+      { wave: 2, minRank: 1, maxRank: 99 },
+    ],
+  },
 }
 
 export const TERRAIN_PROBABILITIES = {

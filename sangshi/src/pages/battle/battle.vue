@@ -1703,6 +1703,7 @@ function getCellClass(tile: { terrain: string; building?: any }, row: number, co
   
   if (tile.terrain === 'river') classes['river'] = true
   if (tile.terrain === 'obstacle') classes['obstacle'] = true
+  if (tile.terrain === 'path') classes['path-tile'] = true
   if (gameStore.isSnowArea(row, col)) classes['snow-area'] = true
   
   if (map?.mode === 'defensive' || map?.mode === 'zombie') {
@@ -4079,6 +4080,11 @@ function collectCollectible() {
   
   &.obstacle {
     background: rgba(156, 163, 175, 0.2);
+  }
+  
+  &.path-tile {
+    background: rgba(239, 68, 68, 0.35);
+    box-shadow: inset 0 0 0 1px rgba(239, 68, 68, 0.5);
   }
   
   &.snow-area {

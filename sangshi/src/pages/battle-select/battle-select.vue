@@ -170,7 +170,7 @@ import { getExpRequired, DIFFICULTY_CONFIG, INITIAL_CHARACTERS, HIREABLE_CHARACT
 
 const gameStore = useGameStore()
 
-const selectedMode = ref<'offensive' | 'defensive' | 'zombie'>('offensive')
+const selectedMode = ref<'offensive' | 'defensive' | 'zombie' | 'pass_defense'>('offensive')
 const selectedDifficulty = ref<'easy' | 'normal' | 'hard' | 'nightmare' | 'deadly'>('normal')
 const selectedTerrain = ref('plain')
 const selectedCharacterIds = ref<string[]>([])
@@ -181,6 +181,7 @@ const gameModes = [
   { id: 'offensive' as const, name: '主动进攻', icon: '🗡️', desc: '主动出击，击败敌人' },
   { id: 'defensive' as const, name: '家园防御', icon: '🏠', desc: '保护家园，抵御入侵' },
   { id: 'zombie' as const, name: '丧尸围城', icon: '🧟', desc: '视野受限，丧尸肆虐' },
+  { id: 'pass_defense' as const, name: '关隘守卫', icon: '🏯', desc: '守卫中央灵能塔，抵御波次入侵' },
 ]
 
 const allFactions = [

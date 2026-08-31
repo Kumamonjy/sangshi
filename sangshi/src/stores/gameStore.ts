@@ -3414,7 +3414,182 @@ export const useGameStore = defineStore('game', () => {
     })
   }
 
-  function startBattle(mode: 'offensive' | 'defensive' | 'zombie', terrain: string, difficulty: 'easy' | 'normal' | 'hard' | 'nightmare' | 'deadly' = 'normal', selectedCharacterIds?: string[], selectedFactions?: string[]) {
+  // === 关隘守卫模式：路径随机生成算法 ===
+  function generateRandomPaths(
+    height: number,
+    width: number,
+    corePos: { row: number; col: number },
+    pathCount: number
+  ): { row: number; col: number }[][] {
+    const paths: { row: number; col: number }[][] = []
+    const coreRow = corePos.row
+    const coreCol = corePos.col
+
+    // Step 1: 为每条路径选起点（地图边缘，均匀分布，尽量远离其他起点）
+    const allEdgePositions: { row: number; col: number; edge: string }[] = []
+    for (let c = 0; c < width; c++) {
+      allEdgePositions.push({ row: 0, col: c, edge: 'top' })
+      allEdgePositions.push({ row: height - 1, col: c, edge: 'bottom' })
+    }
+    for (let r = 1; r < height - 1; r++) {
+      allEdgePositions.push({ row: r, col: 0, edge: 'left' })
+      allEdgePositions.push({ row: r, col: width - 1, edge: 'right' })
+    }
+
+    // 选起点：先随机选一个，后续选与已有起点距离最远的
+    const selectedStarts: { row: number; col: number }[] = []
+    const shuffledEdges = allEdgePositions.sort(() => Math.random() - 0.5)
+
+    if (pathCount >= 1 && shuffledEdges.length > 0) {
+      selectedStarts.push({ row: shuffledEdges[0].row, col: shuffledEdges[0].col })
+    }
+
+    for (let i = 1; i < pathCount; i++) {
+      let bestCandidate: { row: number; col: number } | null = null
+      let bestMinDist = -1
+
+      for (const candidate of shuffledEdges) {
+        const cand = { row: candidate.row, col: candidate.col }
+        const minDistToExisting = selectedStarts.reduce(
+          (min, s) => Math.min(min, Math.abs(s.row - cand.row) + Math.abs(s.col - cand.col)),
+          Infinity
+        )
+        if (minDistToExisting > bestMinDist) {
+          bestMinDist = minDistToExisting
+          bestCandidate = cand
+        }
+      }
+
+      if (bestCandidate) {
+        selectedStarts.push(bestCandidate)
+      }
+    }
+
+    // Step 2: 从每个起点随机走到核心
+    for (const start of selectedStarts) {
+      const path = generateSinglePath(height, width, start, coreRow, coreCol)
+      paths.push(path)
+    }
+
+    return paths
+  }
+
+  function generateSinglePath(
+    height: number,
+    width: number,
+    start: { row: number; col: number },
+    coreRow: number,
+    coreCol: number
+  ): { row: number; col: number }[] {
+    const path: { row: number; col: number }[] = [{ row: start.row, col: start.col }]
+    const visited = new Set<string>()
+    visited.add(`${start.row},${start.col}`)
+
+    const maxAttempts = 500
+    let backtrackCount = 0
+
+    while (backtrackCount < maxAttempts) {
+      const current = path[path.length - 1]
+
+      // 到达核心？
+      if (current.row === coreRow && current.col === coreCol) {
+        return path
+      }
+
+      // 找候选方向
+      const candidates: { row: number; col: number }[] = []
+      const directions = [
+        { dr: -1, dc: 0 },  // 上
+        { dr: 1, dc: 0 },   // 下
+        { dr: 0, dc: -1 },  // 左
+        { dr: 0, dc: 1 },   // 右
+      ]
+
+      for (const dir of directions) {
+        const nr = current.row + dir.dr
+        const nc = current.col + dir.dc
+        const key = `${nr},${nc}`
+
+        // 在地图范围内
+        if (nr < 0 || nr >= height || nc < 0 || nc >= width) continue
+        // 没走过（同一条路径里不重复）
+        if (visited.has(key)) continue
+        // 不要绕得太远（曼哈顿距离到核心不能突然增加太多）
+        const currDist = Math.abs(current.row - coreRow) + Math.abs(current.col - coreCol)
+        const newDist = Math.abs(nr - coreRow) + Math.abs(nc - coreCol)
+        if (newDist > currDist + 4) continue  // 允许小迂回但不要大绕远
+
+        candidates.push({ row: nr, col: nc })
+      }
+
+      if (candidates.length === 0) {
+        // 死胡同，回退一步重试
+        if (path.length > 1) {
+          path.pop()
+          const backPos = path[path.length - 1]
+          // 允许从回退位置重新探索（删除 visited 标记以便重试）
+          visited.delete(`${backPos.row},${backPos.col}`)
+          backtrackCount++
+          continue
+        } else {
+          // 起点就卡住了，重新选一个方向硬走
+          // 直接朝核心方向选一个
+          const forceDirs: { row: number; col: number }[] = []
+          if (coreRow > current.row && current.row + 1 < height) forceDirs.push({ row: current.row + 1, col: current.col })
+          if (coreRow < current.row && current.row - 1 >= 0) forceDirs.push({ row: current.row - 1, col: current.col })
+          if (coreCol > current.col && current.col + 1 < width) forceDirs.push({ row: current.row, col: current.col + 1 })
+          if (coreCol < current.col && current.col - 1 >= 0) forceDirs.push({ row: current.row, col: current.col - 1 })
+          if (forceDirs.length > 0) {
+            path.push(forceDirs[0])
+            visited.add(`${forceDirs[0].row},${forceDirs[0].col}`)
+          } else {
+            break  // 真的走不动了
+          }
+          continue
+        }
+      }
+
+      // 选方向：70% 选朝核心最近的，30% 随机（蛇形）
+      let chosen: { row: number; col: number }
+      if (Math.random() < 0.7) {
+        // 贪心选离核心最近的
+        chosen = candidates.reduce((best, c) => {
+          const bd = Math.abs(best.row - coreRow) + Math.abs(best.col - coreCol)
+          const cd = Math.abs(c.row - coreRow) + Math.abs(c.col - coreCol)
+          return cd < bd ? c : best
+        })
+      } else {
+        // 随机选一个（增加变化）
+        chosen = candidates[Math.floor(Math.random() * candidates.length)]
+      }
+
+      path.push(chosen)
+      visited.add(`${chosen.row},${chosen.col}`)
+    }
+
+    // 如果真的走了 maxAttempts 次还没到核心，强制直线连过去
+    // 从当前路径最后一格直接朝核心直走
+    const lastPos = path[path.length - 1]
+    let r = lastPos.row
+    let c = lastPos.col
+
+    while (r !== coreRow || c !== coreCol) {
+      if (r < coreRow) r++
+      else if (r > coreRow) r--
+      else if (c < coreCol) c++
+      else if (c > coreCol) c--
+
+      const key = `${r},${c}`
+      if (!visited.has(key)) {
+        path.push({ row: r, col: c })
+        visited.add(key)
+      }
+    }
+
+    return path
+  }
+
+  function startBattle(mode: 'offensive' | 'defensive' | 'zombie' | 'pass_defense', terrain: string, difficulty: 'easy' | 'normal' | 'hard' | 'nightmare' | 'deadly' = 'normal', selectedCharacterIds?: string[], selectedFactions?: string[]) {
     if (!player.value) return
 
     // 重置战斗结果状态，防止上一局的结果影响新战斗
@@ -3459,6 +3634,73 @@ export const useGameStore = defineStore('game', () => {
       }
     }
 
+    // === 关隘守卫模式：纯净地图 + 生成路径 ===
+    let pdPaths: { row: number; col: number }[][] = []
+    let pdPathTiles: boolean[][] = []
+    let pdPlacementArea: boolean[][] = []
+    let pdCoreBuilding: BattleBuilding | null = null
+    let pdTotalWaves = 3
+
+    if (mode === 'pass_defense') {
+      // 1. 清除所有随机地形，全部设为 empty（纯净地图）
+      for (let r = 0; r < config.height; r++) {
+        for (let c = 0; c < config.width; c++) {
+          tiles[r][c].terrain = 'empty'
+        }
+      }
+
+      // 2. 初始化路径标记数组和可放置区域
+      pdPathTiles = Array.from({ length: config.height }, () => Array(config.width).fill(false))
+      pdPlacementArea = Array.from({ length: config.height }, () => Array(config.width).fill(true))
+
+      // 3. 随机生成 N 条路径
+      const pathCount = config.difficultyPathCount[difficulty] || 1
+      pdPaths = generateRandomPaths(config.height, config.width, config.corePosition, pathCount)
+
+      // 4. 标记路径格子 terrain='path' 并排除出可放置区域
+      //    核心格 (9,9) 保持 terrain='empty'（建筑会盖住它，不需要红色高亮）
+      for (const path of pdPaths) {
+        for (const waypoint of path) {
+          const isCore = waypoint.row === config.corePosition.row && waypoint.col === config.corePosition.col
+          if (!isCore) {
+            tiles[waypoint.row][waypoint.col].terrain = 'path'
+          }
+          pdPathTiles[waypoint.row][waypoint.col] = true
+          pdPlacementArea[waypoint.row][waypoint.col] = false
+        }
+      }
+
+      // 5. 核心 (9,9) 本身不能放角色，但周围 8 格可以
+      pdPlacementArea[config.corePosition.row][config.corePosition.col] = false
+
+      // 6. 创建核心灵能塔建筑
+      const coreConfig = BUILDING_CONFIG.energyTower
+      const coreHp = Math.round(coreConfig.maxHp * difficultyConfig.multiplier)
+      pdCoreBuilding = {
+        id: 'pd_core',
+        type: 'energyTower',
+        name: coreConfig.name,
+        icon: coreConfig.icon,
+        isPlayer: true,
+        row: config.corePosition.row,
+        col: config.corePosition.col,
+        hp: coreHp,
+        maxHp: coreHp,
+        attack: coreConfig.attack,
+        defense: coreConfig.defense,
+        attackRange: coreConfig.attackRange,
+      }
+      buildings.push(pdCoreBuilding)
+
+      console.log('=== 关隘守卫模式 ===')
+      console.log('路径数量:', pathCount)
+      console.log('核心位置:', config.corePosition)
+      console.log('核心血量:', coreHp)
+      for (let i = 0; i < pdPaths.length; i++) {
+        console.log(`路径 ${i + 1}:`, pdPaths[i][0], '→', pdPaths[i][pdPaths[i].length - 1], '长度:', pdPaths[i].length)
+      }
+    }
+
     // 2. 防御模式下，用玩家家园覆盖中央9x9区域
     // 先筛选玩家角色并计算等级，用于计算建筑血量
     let playerCharsForLevel: any[]
@@ -3471,7 +3713,7 @@ export const useGameStore = defineStore('game', () => {
     const getBuildingHp = (baseHp: number) => Math.floor(baseHp * (1 + 0.1 * (buildingLevel - 1)))
     console.log('建筑等级:', buildingLevel)
     
-    if (mode === 'defensive' || mode === 'zombie') {
+    if ((mode === 'defensive' || mode === 'zombie') && mode !== 'pass_defense') {
       const homeOffsetRow = Math.floor((config.height - 9) / 2)
       const homeOffsetCol = Math.floor((config.width - 9) / 2)
       
@@ -3560,7 +3802,20 @@ export const useGameStore = defineStore('game', () => {
     // 预先收集玩家出生区域的所有有效空位
     let validPositions: {row: number, col: number}[] = []
     
-    if (mode === 'defensive' || mode === 'zombie') {
+    if (mode === 'pass_defense') {
+      // 关隘守卫：在 pdPlacementArea 内收集 empty 且无建筑的空位
+      for (let r = 0; r < config.height; r++) {
+        for (let c = 0; c < config.width; c++) {
+          if (pdPlacementArea[r]?.[c]) {
+            const tile = tiles[r]?.[c]
+            const hasBuilding = buildings.some(b => b.row === r && b.col === c)
+            if (tile && tile.terrain === 'empty' && !hasBuilding) {
+              validPositions.push({row: r, col: c})
+            }
+          }
+        }
+      }
+    } else if (mode === 'defensive' || mode === 'zombie') {
       // 防御模式/丧尸围城：在中央9x9区域收集空位
       const homeOffsetRow = Math.floor((config.height - 9) / 2)
       const homeOffsetCol = Math.floor((config.width - 9) / 2)
@@ -3658,6 +3913,8 @@ export const useGameStore = defineStore('game', () => {
     console.log('可用敌人模板数量:', enemyTemplates.length)
     console.log('基础敌人数量:', baseEnemyCount, '难度倍数:', difficultyConfig.multiplier, '最终敌人数量:', enemyCount)
 
+    // 关隘守卫模式：初始敌人列表为空，等波次生成
+    if (mode !== 'pass_defense') {
     for (let index = 0; index < enemyCount; index++) {
       let placed = false
       let attempts = 0
@@ -3784,6 +4041,7 @@ export const useGameStore = defineStore('game', () => {
         attempts++
       }
     }
+    } // end of if (mode !== 'pass_defense')
 
     // 5. 生成灵草（3个位置随机）
     const collectibleCount = 3 // 固定3个
@@ -3847,6 +4105,15 @@ export const useGameStore = defineStore('game', () => {
       enemyReiki: 0,
       enemyShaQi: 0,
       battleEnded: false,
+      // === 关隘守卫模式专属 ===
+      pdPaths: mode === 'pass_defense' ? pdPaths : undefined,
+      pdPathTiles: mode === 'pass_defense' ? pdPathTiles : undefined,
+      pdPlacementArea: mode === 'pass_defense' ? pdPlacementArea : undefined,
+      pdCoreBuilding: mode === 'pass_defense' ? pdCoreBuilding : undefined,
+      pdDifficulty: mode === 'pass_defense' ? difficulty : undefined,
+      pdCurrentWave: mode === 'pass_defense' ? 0 : undefined,
+      pdTotalWaves: mode === 'pass_defense' ? config.totalWaves : undefined,
+      pdWaveSpawned: mode === 'pass_defense' ? Array(config.totalWaves).fill(false) : undefined,
     }
     // 重置结算调度标志，确保新战斗可以正常触发结算
     endBattleScheduled = false
@@ -5199,6 +5466,14 @@ export const useGameStore = defineStore('game', () => {
         visited[newRow][newCol] = true
         queue.push({ row: newRow, col: newCol, distance: current.distance + 1 })
       }
+    }
+
+    // 关隘守卫模式：玩家角色不能停在路径格上（但可以穿过）
+    if (battleMap.value.mode === 'pass_defense' && char.isPlayer) {
+      return range.filter(pos => {
+        const tile = battleMap.value!.tiles[pos.row]?.[pos.col]
+        return tile?.terrain !== 'path'
+      })
     }
 
     return range
@@ -10220,6 +10495,29 @@ export const useGameStore = defineStore('game', () => {
     if (!battleMap.value) return false
     if (battleMap.value.battleEnded || endBattleScheduled) return false
 
+    // === 关隘守卫模式：特殊胜利/失败条件 ===
+    if (battleMap.value.mode === 'pass_defense') {
+      // 失败：核心灵能塔被摧毁
+      const core = battleMap.value.pdCoreBuilding
+      if (core && core.hp <= 0) {
+        battleLog.value.push('💥 核心灵能塔被摧毁！守关失败！')
+        scheduleEndBattle(false)
+        return true
+      }
+      // 胜利：所有波次已生成 AND 没有敌人剩余
+      if (
+        battleMap.value.pdCurrentWave !== undefined &&
+        battleMap.value.pdTotalWaves !== undefined &&
+        battleMap.value.pdCurrentWave >= battleMap.value.pdTotalWaves &&
+        battleMap.value.enemies.length === 0
+      ) {
+        battleLog.value.push('🎉 所有波次已清完！守关成功！')
+        scheduleEndBattle(true)
+        return true
+      }
+      return false
+    }
+
     // 检查是否还有敌方建筑
     const hasEnemyBuildings = battleMap.value.buildings.some(b => !b.isPlayer)
 
@@ -10576,6 +10874,11 @@ export const useGameStore = defineStore('game', () => {
       availableSkills = (charTemplate?.skills || []).filter(skill => {
         const cooldown = char.skillCooldowns ? char.skillCooldowns[skill.id] : 0
         if ((cooldown || 0) !== 0 || char.mp < skill.mpCost) return false
+        // 关隘守卫模式：敌方禁用陷阵/召唤/辅助/治疗技能
+        if (battleMap.value?.mode === 'pass_defense') {
+          const blockedCategories = ['陷阵', 'summon', 'support', 'heal']
+          if (blockedCategories.includes(skill.category)) return false
+        }
         // 阵营灵气/煞气检查
         if (skill.reikiCost && battleMap.value && battleMap.value.enemyReiki < skill.reikiCost) return false
         if (skill.shaQiCost && battleMap.value && battleMap.value.enemyShaQi < skill.shaQiCost) return false
@@ -13094,28 +13397,37 @@ export const useGameStore = defineStore('game', () => {
     console.log('玩家:', battleMap.value.players.map(p => `${p.characterId}(${p.row},${p.col}) moved:${p.hasMoved} acted:${p.hasActed}`))
     console.log('敌人:', battleMap.value.enemies.map(e => `${e.characterId}(${e.row},${e.col})`))
 
+    const isPassDefense = battleMap.value.mode === 'pass_defense'
+
     // 先检查是否有未行动的玩家角色
     let playerChars = battleMap.value.players.filter(p => !p.hasMoved || !p.hasActed)
     if (playerChars.length > 0) {
       battleLog.value.push('剩余角色自动行动中...')
       
       // 按照到最近敌方目标的曼哈顿距离排序（最近的先行动）
+      // 关隘守卫模式下敌人可能还没生成，用空列表（距离返回 999 兜底）
       playerChars = playerChars.sort((a, b) => {
-        const aDistance = getMinManhattanDistance(a, battleMap.value.enemies, battleMap.value.buildings.filter(b => b.owner !== player.value.id))
-        const bDistance = getMinManhattanDistance(b, battleMap.value.enemies, battleMap.value.buildings.filter(b => b.owner !== player.value.id))
+        const enemyList = isPassDefense ? battleMap.value.enemies : battleMap.value.enemies
+        const enemyBuildings = battleMap.value.buildings.filter(b => b.owner !== player.value.id)
+        const aDistance = getMinManhattanDistance(a, enemyList, enemyBuildings)
+        const bDistance = getMinManhattanDistance(b, enemyList, enemyBuildings)
         return aDistance - bDistance
       })
       
       for (const char of playerChars) {
-        // 如果战斗已结束（敌方全灭或玩家全灭），立即停止执行
-        if (battleResult.value || battleMap.value.enemies.length === 0 || battleMap.value.players.length === 0) return
+        // 如果战斗已结束，立即停止执行
+        // 关隘守卫模式下不能因为敌人为空就停止（敌人会在敌方回合生成）
+        if (battleResult.value || battleMap.value.players.length === 0) return
+        if (!isPassDefense && battleMap.value.enemies.length === 0) return
         await new Promise(resolve => setTimeout(resolve, 750 / gameSpeed.value))
         await executeCharacterAi(char, true)
       }
     }
 
     // 战斗已结束则不再执行回合结束逻辑
-    if (battleResult.value || battleMap.value.enemies.length === 0) return
+    // 关隘守卫模式下敌人为空是正常的（等待敌方回合生成），不能提前退出
+    if (battleResult.value) return
+    if (!isPassDefense && battleMap.value.enemies.length === 0) return
 
     // 重置玩家角色已完成回合状态，除了防御状态
     battleMap.value.players.forEach(p => {
@@ -13417,11 +13729,240 @@ export const useGameStore = defineStore('game', () => {
     })
   }
 
+  // === 关隘守卫模式：波次生成 ===
+  function spawnPassDefenseWaveEnemies(waveIndex: number) {
+    if (!battleMap.value) return
+    const pdConfig = BATTLE_CONFIG.pass_defense
+    const waveFilter = pdConfig.waveRankFilter[waveIndex]
+
+    if (!waveFilter) return
+
+    // 1. 根据难度决定每条路径的敌人数（难度越高敌人越多）
+    const pathCount = battleMap.value.pdPaths?.length || 1
+    const difficulty = battleMap.value.pdDifficulty || 'normal'
+    const diffConfig = DIFFICULTY_CONFIG[difficulty]
+    // 敌人数随波次递增：wave0=3, wave1=4, wave2=5，再乘难度倍数
+    const baseCount = Math.round((3 + waveIndex) * diffConfig.multiplier)
+    const countPerPath = Math.max(1, Math.ceil(baseCount / pathCount))
+
+    // 2. 根据 waveFilter 选敌人模板（按 rank 过滤）
+    const enemyTemplates = getWaveEnemyTemplates(waveFilter.minRank, waveFilter.maxRank)
+
+    if (enemyTemplates.length === 0) {
+      battleLog.value.push(`⚠️ 第 ${waveIndex + 1} 波无可生成的敌人模板！`)
+      return
+    }
+
+    // 3. 在每条路径上依次排开敌人
+    //    从起点附近依次尝试放置，若被占用则沿路径向前搜索下一个空位
+    //    永远不生成在核心位置（path[path.length-1] 是核心）
+    const paths = battleMap.value.pdPaths || []
+    const pathTiles = battleMap.value.pdPathTiles
+
+    for (const path of paths) {
+      const corePos = path[path.length - 1]
+      let spawnedOnThisPath = 0
+
+      // 从索引 1 开始（跳过起点），到 path.length-2 结束（跳过核心）
+      for (let spawnIndex = 1; spawnIndex < path.length - 1 && spawnedOnThisPath < countPerPath; spawnIndex++) {
+        const targetPos = path[spawnIndex]
+
+        // 必须确认这个位置是路径格子（pdPathTiles=true）
+        if (pathTiles && !pathTiles[targetPos.row]?.[targetPos.col]) {
+          continue  // 不是路径格，跳过
+        }
+
+        // 检查位置是否被占用
+        const tile = battleMap.value.tiles[targetPos.row]?.[targetPos.col]
+        if (!tile || tile.character || tile.building) {
+          // 被占用了，不直接跳过这个敌人，而是继续找下一个空位
+          continue
+        }
+
+        // 确认不是核心位置
+        if (targetPos.row === corePos.row && targetPos.col === corePos.col) {
+          continue
+        }
+
+        // 随机选一个敌人模板
+        const template = enemyTemplates[Math.floor(Math.random() * enemyTemplates.length)]
+        const enemyLevel = battleMap.value.enemyLevel + waveIndex
+
+        const enemy = createBattleCharacter(template, enemyLevel, targetPos.row, targetPos.col, false)
+        enemy.id = `pd_w${waveIndex}_e${battleMap.value.enemies.length}`
+        battleMap.value.enemies.push(enemy)
+        battleMap.value.tiles[targetPos.row][targetPos.col].character = enemy
+
+        spawnedOnThisPath++
+        battleLog.value.push(`👹 第 ${waveIndex + 1} 波：${template.name}（${JOB_CONFIG[template.job]?.rank || 1}阶）出现在(${targetPos.row},${targetPos.col})`)
+      }
+    }
+  }
+
+  function getWaveEnemyTemplates(minRank: number, maxRank: number) {
+    if (!player.value) return []
+    // 从敌方已选阵营的模板里选
+    const selectedFactions = battleMap.value
+      ? (battleMap.value.enemies.length > 0
+          ? [battleMap.value.enemies[0].faction]
+          : ['ghost'])
+      : ['ghost']
+
+    const factionTemplates = HIREABLE_CHARACTERS.filter(c =>
+      selectedFactions.includes(c.faction) && c.job !== '虚影'
+    )
+
+    // 从所选阵营里按 rank 过滤
+    return factionTemplates.filter(c => {
+      const rank = JOB_CONFIG[c.job]?.rank || 1
+      return rank >= minRank && rank <= maxRank
+    })
+  }
+
+  // === 关隘守卫模式：路径跟随 AI ===
+  async function executePathFollowMode(enemy: BattleCharacter) {
+    if (!battleMap.value) return
+    if (enemy.hp <= 0) return
+    if (enemy.hasActed && enemy.hasMoved) return
+
+    const pdPaths = battleMap.value.pdPaths
+    const core = battleMap.value.pdCoreBuilding
+
+    if (!pdPaths || !core) {
+      await executeCharacterAi(enemy, false)
+      return
+    }
+
+    // 找到这个敌人在哪条路径上
+    let enemyPath: { row: number; col: number }[] | null = null
+    let currentIndex = -1
+
+    for (const path of pdPaths) {
+      const idx = path.findIndex(p => p.row === enemy.row && p.col === enemy.col)
+      if (idx !== -1) {
+        enemyPath = path
+        currentIndex = idx
+        break
+      }
+    }
+
+    // 敌人不在任何路径上 → fallback 普通 AI
+    if (!enemyPath) {
+      await executeCharacterAi(enemy, false)
+      return
+    }
+
+    // ========== 第一步：沿路径朝核心移动 ==========
+    // 先移动（如果还没移动过），确保敌人贴紧路径
+    if (!enemy.hasMoved) {
+      let targetIndex = Math.min(currentIndex + enemy.moveRange, enemyPath.length - 1)
+
+      // 逐格检查：路径上被占用就停在它前面
+      let actualTargetIndex = currentIndex
+      for (let i = currentIndex + 1; i <= targetIndex; i++) {
+        const pos = enemyPath[i]
+        const tile = battleMap.value.tiles[pos.row]?.[pos.col]
+        const hasChar = tile?.character && tile.character.id !== enemy.id
+        const hasBuild = tile?.building
+        if (hasChar || hasBuild) {
+          break
+        }
+        actualTargetIndex = i
+      }
+
+      if (actualTargetIndex > currentIndex) {
+        const targetPos = enemyPath[actualTargetIndex]
+        // 直接移动（我们已经验证过路径上的格子都是有效、可通行、无阻挡的）
+        const oldRow = enemy.row
+        const oldCol = enemy.col
+        const distance = Math.abs(targetPos.row - oldRow) + Math.abs(targetPos.col - oldCol)
+        enemy.row = targetPos.row
+        enemy.col = targetPos.col
+        enemy.hasMoved = true
+        enemy.movedDistance = (enemy.movedDistance || 0) + distance
+        battleMap.value.tiles[oldRow][oldCol].character = null
+        battleMap.value.tiles[targetPos.row][targetPos.col].character = enemy
+        triggerMoveTrail(oldRow, oldCol, targetPos.row, targetPos.col, false)
+      }
+    }
+
+    // ========== 第二步：基础攻击（不用 executeAttackMode，避免它把敌人移出路径） ==========
+    if (!enemy.hasActed) {
+      const enemyTemplate = findCharacterTemplateInStore(enemy.characterId)
+      const attackPower = computeAttackPower(enemy)
+      let didAttack = false
+
+      // 优先攻击核心灵能塔（如果在攻击范围内）
+      const distToCore = Math.abs(enemy.row - core.row) + Math.abs(enemy.col - core.col)
+      if (distToCore <= (enemy.attackRange || 1)) {
+        attackBuilding(enemy.id, core.id)
+        didAttack = true
+      }
+
+      // 攻击范围内有玩家角色 → 攻击玩家
+      if (!didAttack) {
+        const attackable = getAttackableTargets(enemy)
+        const playerTargets = attackable.filter(t => 'characterId' in t)
+        if (playerTargets.length > 0) {
+          // 选离自己最近的玩家角色
+          const target = playerTargets.reduce((best, t) => {
+            const bd = Math.abs(best.row - enemy.row) + Math.abs(best.col - enemy.col)
+            const td = Math.abs(t.row - enemy.row) + Math.abs(t.col - enemy.col)
+            return td < bd ? t : best
+          }) as BattleCharacter
+          const tileAtTarget = battleMap.value.tiles[target.row]?.[target.col]
+          if (tileAtTarget) {
+            const damage = Math.max(1, attackPower - (target.defense || 0))
+            target.hp = Math.max(0, target.hp - damage)
+            triggerShake(target.row, target.col, 'character')
+            showFloatingText(target.row, target.col, damage, 'damage')
+            const targetName = findCharacterTemplateInStore(target.characterId)?.name || target.characterId
+            battleLog.value.push(`【${enemyTemplate?.name || enemy.characterId}】攻击【${targetName}】，造成${damage}点伤害`)
+            if (!enemy.totalDamage) enemy.totalDamage = 0
+            enemy.totalDamage += damage
+            enemy.hasActed = true
+            didAttack = true
+          }
+        }
+      }
+
+      if (!didAttack) {
+        enemy.hasActed = true  // 没有目标可打，也算行动完毕
+      }
+    }
+  }
+
   async function executeEnemyTurn() {
     if (!battleMap.value || !player.value) return
 
-    // 按照到最近玩家目标的曼哈顿距离排序（最近的先行动）
+    // === 关隘守卫模式：先检查并生成本回合波次敌人 ===
+    if (battleMap.value.mode === 'pass_defense') {
+      const pdConfig = BATTLE_CONFIG.pass_defense
+      // 回合 1 → wave 0, 回合 5 → wave 1, 回合 9 → wave 2
+      const expectedWave = Math.floor((battleMap.value.turn - 1) / pdConfig.waveInterval)
+      while (
+        battleMap.value.pdCurrentWave !== undefined &&
+        battleMap.value.pdCurrentWave <= expectedWave &&
+        battleMap.value.pdCurrentWave < pdConfig.totalWaves
+      ) {
+        spawnPassDefenseWaveEnemies(battleMap.value.pdCurrentWave)
+        battleMap.value.pdCurrentWave++
+      }
+    }
+
+    // 关隘守卫模式：前方（近核心）敌人先行动，让前方先移动让路
+    // 其他模式：按到最近玩家目标的曼哈顿距离排序（最近的先行动）
     const sortedEnemies = [...battleMap.value.enemies].sort((a, b) => {
+      if (battleMap.value?.mode === 'pass_defense') {
+        // 离核心近的先行动（前方敌人先移动让路，后方敌人才能跟上）
+        const core = battleMap.value.pdCoreBuilding
+        if (core) {
+          const aDist = Math.abs(a.row - core.row) + Math.abs(a.col - core.col)
+          const bDist = Math.abs(b.row - core.row) + Math.abs(b.col - core.col)
+          return aDist - bDist  // 升序：近的在前
+        }
+      }
+      // 原有逻辑：最近的先行动
       const aDistance = getMinManhattanDistance(a, battleMap.value.players, battleMap.value.buildings.filter(b => b.owner === player.value.id))
       const bDistance = getMinManhattanDistance(b, battleMap.value.players, battleMap.value.buildings.filter(b => b.owner === player.value.id))
       return aDistance - bDistance
@@ -13431,7 +13972,12 @@ export const useGameStore = defineStore('game', () => {
       // 如果战斗已结束（玩家全灭或敌方全灭），立即停止执行
       if (battleResult.value || battleMap.value.players.length === 0 || battleMap.value.enemies.length === 0) return
       await new Promise(resolve => setTimeout(resolve, 750 / gameSpeed.value))
-      await executeCharacterAi(enemy, false)
+      // 关隘守卫模式下敌方走路径跟随 AI，否则走普通 AI
+      if (battleMap.value.mode === 'pass_defense') {
+        await executePathFollowMode(enemy)
+      } else {
+        await executeCharacterAi(enemy, false)
+      }
     }
 
     // 战斗已结束则不再执行回合结束逻辑

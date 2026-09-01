@@ -41,7 +41,7 @@ sangshi/src/
 | `Job` | 职业类型 | string，支持自定义职业名称（如天命人、士兵、炼气修士、筑基修士、普通丧尸、变异丧尸、机甲） |
 | `Attribute` | 属性类型 | 'normal' \| 'metal' \| 'wood' \| 'water' \| 'fire' \| 'earth' \| 'ice' \| 'wind' \| 'dark' \| 'yang' \| 'light' |
 | `Rarity` | 装备品质枚举 | 'common' \| 'rare' \| 'exceptional' \| 'treasure' \| 'celestial' \| 'peerless' |
-| `TerrainType` | 地形类型 | 'empty' \| 'river' \| 'obstacle' \| 'snow' |
+| `TerrainType` | 地形类型 | 'empty' \| 'river' \| 'obstacle' \| 'snow' \| 'path' |
 | `WeatherType` | 天气类型 | 'normal' \| 'light_snow' \| 'medium_snow' \| 'heavy_snow' |
 | `StatusType` | 状态类型 | 'poison' \| 'burning' \| 'silenced' \| 'bleeding' \| 'cold' \| 'disorder' \| 'stun' \| 'resolute' \| 'undying' \| 'fury' \| 'strong' \| 'fierce' \| 'swift' \| 'lame' \| 'weak' \| 'heal' \| 'regen' \| 'tune' \| 'meditate' \| 'fear' \| 'fragile' \| 'crumble' \| 'weakened' \| 'imprison' \| 'mili' \| 'xinluan' \| 'eagle_eye' \| 'zhangmu' |
 | `Character` | 角色接口 | 包含角色属性、技能、装备、avatar、isPlayerOwned等 |
@@ -108,8 +108,8 @@ interface BattleCharacter {
 | `SKILL_TEMPLATES` | 技能模板：所有技能的基础信息（含喋血刺击、碎裂重击、自爆毒液、摘叶飞花、万叶飞花、阴阳玉手印、吸血、灵魂诅咒、灵魂扰乱、魅惑、远程导弹、精准打击、凶猛撕咬等） |
 | `BUILDING_CONFIG` | 建筑配置：灵田、丹房、血心、兵营、天启炮 |
 | `COLLECTIBLE_CONFIG` | 拾取物配置 |
-| `TERRAIN_CONFIG` | 地形配置（空地/河流/障碍物） |
-| `BATTLE_CONFIG` | 战斗配置（主动进攻11×13、家园防御19×19） |
+| `TERRAIN_CONFIG` | 地形配置（空地/河流/障碍物/路径） |
+| `BATTLE_CONFIG` | 战斗配置（主动进攻11×13、家园防御/丧尸围城/关隘守卫19×19） |
 | `DIFFICULTY_CONFIG` | 难度配置（简单/正常/困难/噩梦/绝命） |
 | `TERRAIN_PROBABILITIES` | 地形生成概率 |
 | `RARITY_CONFIG` | 装备品质配置（概率 + 属性加成） |
@@ -419,6 +419,7 @@ attack()
 | `zhao_huan_wawa` | 召唤娃娃 | 2格菱形2个空地，召唤2个【傀儡娃娃】 | category='summon', summonCharacter='kuilei' |
 | `xi_rang_zai_sheng` | 息壤再生 | 1格单体120%伤害，恢复60%攻击HP，自身【刚毅】 | lifesteal=0.5, selfStatusEffects=['resolute'] |
 | `zhao_huan_nvhuang` | 召唤女皇 | 2格1个空地，召唤1个【傀儡女皇】 | category='summon', summonCharacter='kuileinvhuang' |
+| `tian_ming_huang_quan` | 天命皇权 | 3格菱形3个空地，召唤3个【动员兵】，自身【刚毅】+【愈合】3回合 | category='summon', summonCharacter='dongyuan_bing', selfStatusEffects=['resolute','heal'], reikiCost=30 |
 | `an_ye_jin_sheng` | 暗夜噤声 | 3格2目标各70%伤害，目标【沉默】 | targetCount=2, statusEffect='silenced' |
 | `po_jing_chong_yuan` | 破镜重圆 | 2格单体150%伤害，若目标有增益则自身获得相同增益 | 状态偷取逻辑 |
 | `yue_zhi_yin_li` | 月之引力 | 2格同阵营目标，双方获得【愈合】+【调息】 | type='support' |
@@ -830,7 +831,7 @@ character.vue
 
 ```
 battle-select.vue
-├── 选择战斗模式（主动进攻/家园防御）
+├── 选择战斗模式（主动进攻/家园防御/丧尸围城/关隘守卫）
 ├── 选择难度（简单/正常/困难/噩梦/绝命）
 ├── 选择地形（平原/河流/山地）
 ├── 选择参战角色

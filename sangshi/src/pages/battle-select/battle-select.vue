@@ -19,10 +19,7 @@
           @click="selectedMode = mode.id"
         >
           <text class="mode-icon">{{ mode.icon }}</text>
-          <view class="mode-info">
-            <text class="mode-name">{{ mode.name }}</text>
-            <text class="mode-desc">{{ mode.desc }}</text>
-          </view>
+          <text class="mode-name">{{ mode.name }}</text>
         </view>
       </view>
     </view>
@@ -180,7 +177,7 @@ const maxCharacters = 15
 const gameModes = [
   { id: 'offensive' as const, name: '主动进攻', icon: '🗡️', desc: '主动出击，击败敌人' },
   { id: 'defensive' as const, name: '家园防御', icon: '🏠', desc: '保护家园，抵御入侵' },
-  { id: 'zombie' as const, name: '丧尸围城', icon: '🧟', desc: '视野受限，丧尸肆虐' },
+  { id: 'zombie' as const, name: '丧尸围城', icon: '☠️', desc: '视野受限，丧尸肆虐' },
   { id: 'pass_defense' as const, name: '关隘守卫', icon: '🏯', desc: '守卫中央灵能塔，抵御波次入侵' },
 ]
 
@@ -404,25 +401,13 @@ watch(() => gameStore.player, () => {
 }
 
 .mode-icon {
-  font-size: 48rpx;
-}
-
-.mode-info {
-  text-align: center;
-  margin-top: 12rpx;
+  font-size: 40rpx;
 }
 
 .mode-name {
-  font-size: 28rpx;
+  font-size: 24rpx;
   color: #eaeaea;
   font-weight: 500;
-  display: block;
-}
-
-.mode-desc {
-  font-size: 22rpx;
-  color: #718096;
-  margin-top: 4rpx;
 }
 
 .difficulty-list {

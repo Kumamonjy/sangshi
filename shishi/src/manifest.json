@@ -1,0 +1,64 @@
+{
+    "name" : "天下",
+    "appid" : "__UNI__6383D08",
+    "description" : "养成类战棋生存游戏",
+    "versionName" : "1.0.0",
+    "versionCode" : "100",
+    "transformPx" : false,
+    "h5" : {
+        "title" : "末日家园：丧尸围城",
+        "icon" : "static/icon.png"
+    },
+    "mp-weixin" : {
+        "appid" : "",
+        "setting" : {
+            "urlCheck" : false
+        },
+        "usingComponents" : true
+    },
+    "app-plus" : {
+        "icon" : "static/icon.png",
+        "permissions" : {
+            "Android" : [
+                "android.permission.WRITE_EXTERNAL_STORAGE",
+                "android.permission.READ_EXTERNAL_STORAGE",
+                "android.permission.MANAGE_EXTERNAL_STORAGE"
+            ]
+        },
+        "distribute" : {
+            "icons" : {
+                "android" : {
+                    "hdpi" : "static/icon.png",
+                    "xhdpi" : "static/icon.png",
+                    "xxhdpi" : "static/icon.png",
+                    "xxxhdpi" : "static/icon.png"
+                },
+                "ios" : {
+                    "appstore" : "static/icon.png",
+                    "ipad" : {
+                        "app" : "static/icon.png",
+                        "notification" : "static/icon.png",
+                        "proapp" : "static/icon.png"
+                    },
+                    "iphone" : {
+                        "app" : "static/icon.png",
+                        "notification" : "static/icon.png",
+                        "spotlight" : "static/icon.png",
+                        "settings" : "static/icon.png"
+                    }
+                }
+            },
+            "ios" : {
+                "bundleId" : "com.example.sangshi",
+                "dSYMs" : false
+            },
+            "android" : {
+                "package" : "com.example.sangshi"
+            }
+        }
+    },
+    "uniStatistics" : {
+        "enable" : false
+    },
+    "vueVersion" : "3"
+}

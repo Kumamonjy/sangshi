@@ -1,4 +1,4 @@
-﻿<template>
+<template>
   <view class="battle-container">
     <view class="battle-header">
       <view class="turn-info">
@@ -474,13 +474,12 @@
           </view>
         </view>
         
-        <!-- 死亡特效层（角色化作光点消散） -->
+        <!-- 死亡特效层（简化版：闪光+光环扩散） -->
         <view class="death-effects-layer">
           <view
             v-for="d in gameStore.deathEffects"
             :key="d.id"
             class="death-effect"
-            :class="`death-attr-${d.attribute}`"
             :style="{
               left: (d.col * 64 + 46) + 'rpx',
               top: (d.row * 64 + 46) + 'rpx',
@@ -489,14 +488,6 @@
           >
             <view class="death-flash"></view>
             <view class="death-ring"></view>
-            <view class="death-particle death-particle-1"></view>
-            <view class="death-particle death-particle-2"></view>
-            <view class="death-particle death-particle-3"></view>
-            <view class="death-particle death-particle-4"></view>
-            <view class="death-particle death-particle-5"></view>
-            <view class="death-particle death-particle-6"></view>
-            <view class="death-particle death-particle-7"></view>
-            <view class="death-particle death-particle-8"></view>
           </view>
         </view>
       </view>
@@ -532,7 +523,7 @@
           </view>
           <view class="mini-stat">
             <text>👟</text>
-            <text>{{ getCharacterMoveRange(selectedCharacter) }}</text>
+            <text>{{ getCharacterMoveFreq(selectedCharacter) }}</text>
           </view>
           <view class="mini-stat">
             <text>🎯</text>
@@ -642,7 +633,7 @@
           </view>
           <view class="mini-stat">
             <text>👟</text>
-            <text>{{ getCharacterMoveRange(selectedCharacter) }}</text>
+            <text>{{ getCharacterMoveFreq(selectedCharacter) }}</text>
           </view>
           <view class="mini-stat">
             <text>🎯</text>
@@ -1451,17 +1442,13 @@ function getCharacterAttackRange(char: BattleCharacter): number {
   return attackRange
 }
 
-function getCharacterMoveRange(char: BattleCharacter): number {
-  if (char.characterId === 'heart') return 1
-  
-  const statusBonus = (char.statuses || []).reduce((acc, s) => {
-    const key = typeof s === 'object' ? s.type : s
-    const cfg = STATUS_CONFIG?.[key]
-    if (cfg?.effects?.moveRange) acc += cfg.effects.moveRange
-    return acc
-  }, 0)
-  
-  return Math.max(0, char.moveRange + statusBonus)
+/** 获取角色移动频率（秒/格）：1 / moveSpeed */
+function getCharacterMoveFreq(char: BattleCharacter): string {
+  const moveSpeed = char.moveSpeed
+  if (!moveSpeed || moveSpeed <= 0) return '—'
+  const secPerStep = 1 / moveSpeed
+  const rounded = Math.round(secPerStep * 100) / 100
+  return `${rounded}秒/格`
 }
 
 function getCollectibleAt(row: number, col: number): BattleCollectible | null {
@@ -6592,77 +6579,41 @@ function collectCollectible() {
   position: absolute;
   transform: translate(-50%, -50%);
   pointer-events: none;
-  width: 120rpx;
-  height: 120rpx;
+  width: 100rpx;
+  height: 100rpx;
 }
 
 .death-effect .death-flash {
   position: absolute;
   top: 50%; left: 50%;
-  width: 80rpx;
-  height: 80rpx;
+  width: 70rpx;
+  height: 70rpx;
   transform: translate(-50%, -50%);
   background: radial-gradient(circle, var(--death-color) 0%, transparent 70%);
   border-radius: 50%;
-  animation: death-flash 0.6s ease-out forwards;
+  animation: death-flash 0.5s ease-out forwards;
 }
 
 .death-effect .death-ring {
   position: absolute;
   top: 50%; left: 50%;
-  width: 60rpx;
-  height: 60rpx;
+  width: 50rpx;
+  height: 50rpx;
   transform: translate(-50%, -50%);
-  border: 4rpx solid var(--death-color);
+  border: 3rpx solid var(--death-color);
   border-radius: 50%;
-  box-shadow: 0 0 16rpx var(--death-color);
-  animation: death-ring 1.4s ease-out forwards;
+  animation: death-ring 0.6s ease-out forwards;
 }
-
-.death-effect .death-particle {
-  position: absolute;
-  top: 50%; left: 50%;
-  width: 10rpx;
-  height: 10rpx;
-  border-radius: 50%;
-  background: var(--death-color);
-  box-shadow: 0 0 10rpx var(--death-color), 0 0 20rpx var(--death-color);
-  transform: translate(-50%, -50%);
-  animation: death-particle-fly 1.5s ease-out forwards;
-}
-
-.death-effect .death-particle-1 { --angle: 0deg; --dist: 50rpx; }
-.death-effect .death-particle-2 { --angle: 45deg; --dist: 48rpx; animation-delay: 0.05s; }
-.death-effect .death-particle-3 { --angle: 90deg; --dist: 52rpx; animation-delay: 0.1s; }
-.death-effect .death-particle-4 { --angle: 135deg; --dist: 46rpx; animation-delay: 0.15s; }
-.death-effect .death-particle-5 { --angle: 180deg; --dist: 50rpx; animation-delay: 0.2s; }
-.death-effect .death-particle-6 { --angle: 225deg; --dist: 48rpx; animation-delay: 0.25s; }
-.death-effect .death-particle-7 { --angle: 270deg; --dist: 52rpx; animation-delay: 0.3s; }
-.death-effect .death-particle-8 { --angle: 315deg; --dist: 46rpx; animation-delay: 0.35s; }
 
 @keyframes death-flash {
   0% { transform: translate(-50%, -50%) scale(0.3); opacity: 0; }
-  30% { transform: translate(-50%, -50%) scale(1.5); opacity: 1; }
-  100% { transform: translate(-50%, -50%) scale(2.5); opacity: 0; }
+  30% { transform: translate(-50%, -50%) scale(1.3); opacity: 1; }
+  100% { transform: translate(-50%, -50%) scale(2); opacity: 0; }
 }
 
 @keyframes death-ring {
   0% { transform: translate(-50%, -50%) scale(0.3); opacity: 1; }
-  100% { transform: translate(-50%, -50%) scale(2.5); opacity: 0; border-width: 2rpx; }
-}
-
-@keyframes death-particle-fly {
-  0% {
-    transform: translate(-50%, -50%) rotate(var(--angle)) translateY(0) scale(1);
-    opacity: 1;
-  }
-  50% {
-    opacity: 1;
-  }
-  100% {
-    transform: translate(-50%, -50%) rotate(var(--angle)) translateY(calc(var(--dist) * -1)) scale(0.2);
-    opacity: 0;
-  }
+  100% { transform: translate(-50%, -50%) scale(2); opacity: 0; }
 }
 
 /* ============ 地图级震屏（重击/AOE/击杀时整个地图抖动） ============ */
@@ -6718,81 +6669,6 @@ function collectCollectible() {
 @keyframes effect-shockwave-large {
   0% { transform: translate(-50%, -50%) scale(0.2); opacity: 1; border-width: 10rpx; }
   100% { transform: translate(-50%, -50%) scale(4.5); opacity: 0; border-width: 1rpx; }
-}
-
-/* ============ 死亡特效按属性分化 ============ */
-/* 火：爆炸消散 —— 粒子更快更远地炸开，闪光更强更亮 */
-.death-effect.death-attr-fire .death-flash {
-  animation: death-flash-fire 0.5s ease-out forwards;
-}
-.death-effect.death-attr-fire .death-particle {
-  animation: death-particle-burst 0.9s ease-out forwards;
-}
-@keyframes death-flash-fire {
-  0% { transform: translate(-50%, -50%) scale(0.3); opacity: 0; }
-  25% { transform: translate(-50%, -50%) scale(1.8); opacity: 1; }
-  100% { transform: translate(-50%, -50%) scale(3.2); opacity: 0; }
-}
-@keyframes death-particle-burst {
-  0% {
-    transform: translate(-50%, -50%) rotate(var(--angle)) translateY(0) scale(1);
-    opacity: 1;
-  }
-  30% { opacity: 1; }
-  100% {
-    transform: translate(-50%, -50%) rotate(var(--angle)) translateY(calc(var(--dist) * -2.2)) scale(0.1);
-    opacity: 0;
-  }
-}
-
-/* 冰：菱形碎裂 —— 粒子变为菱形碎片，先炸开再旋转坠落消散 */
-.death-effect.death-attr-ice .death-particle {
-  width: 14rpx;
-  height: 14rpx;
-  border-radius: 2rpx;
-  animation: death-particle-shatter 1.2s cubic-bezier(0.2, 0.6, 0.4, 1) forwards;
-}
-.death-effect.death-attr-ice .death-ring {
-  border-radius: 8rpx;
-  animation: death-ring-shatter 1.2s ease-out forwards;
-}
-@keyframes death-particle-shatter {
-  0% {
-    transform: translate(-50%, -50%) rotate(calc(var(--angle) + 45deg)) translateY(0) scale(0.6);
-    opacity: 1;
-  }
-  35% {
-    transform: translate(-50%, -50%) rotate(calc(var(--angle) + 45deg)) translateY(calc(var(--dist) * -0.9)) scale(1.1);
-    opacity: 1;
-  }
-  100% {
-    transform: translate(-50%, -50%) rotate(calc(var(--angle) + 90deg)) translateY(calc(var(--dist) * -0.4)) scale(0.3);
-    opacity: 0;
-  }
-}
-@keyframes death-ring-shatter {
-  0% { transform: translate(-50%, -50%) scale(0.3) rotate(0deg); opacity: 1; border-radius: 8rpx; }
-  60% { transform: translate(-50%, -50%) scale(1.6) rotate(20deg); opacity: 0.7; border-radius: 8rpx; }
-  100% { transform: translate(-50%, -50%) scale(2.4) rotate(45deg); opacity: 0; border-radius: 8rpx; }
-}
-
-/* 暗/阴：溶解下沉 —— 粒子缓缓下沉并溶解消散 */
-.death-effect.death-attr-dark .death-particle,
-.death-effect.death-attr-yin .death-particle {
-  animation: death-particle-dissolve 1.5s ease-in forwards;
-}
-.death-effect.death-attr-dark .death-flash,
-.death-effect.death-attr-yin .death-flash {
-  animation: death-flash-dissolve 1s ease-in forwards;
-}
-@keyframes death-particle-dissolve {
-  0% { transform: translate(-50%, -50%) translateY(0) scale(1); opacity: 1; }
-  40% { transform: translate(-50%, -50%) translateY(6rpx) scale(0.9); opacity: 0.9; }
-  100% { transform: translate(-50%, -50%) translateY(30rpx) scale(0.2); opacity: 0; }
-}
-@keyframes death-flash-dissolve {
-  0% { transform: translate(-50%, -50%) scale(0.3); opacity: 0.8; }
-  100% { transform: translate(-50%, -50%) scale(0.8) translateY(15rpx); opacity: 0; }
 }
 
 /* ============ GPU 合成层提示 + 重绘隔离 ============ */
@@ -6856,8 +6732,7 @@ function collectCollectible() {
 .move-trail-particle,
 .trail-particle .trail-core,
 .trail-particle .trail-glow,
-.charge-effect .charge-spark,
-.death-effect .death-particle {
+.charge-effect .charge-spark {
   will-change: auto;
   backface-visibility: hidden;
 }

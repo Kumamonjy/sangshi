@@ -1,4 +1,4 @@
-﻿import { defineStore } from 'pinia'
+﻿﻿import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import type { Player, Character, Item, HomeGridCell, BattleMap, BattleCharacter, BattleTile, TerrainType, WeatherType, SnowArea, FireArea, FogArea, StatusType, Attribute, Skill } from '../utils/gameData'
 import { INITIAL_CHARACTERS, HIREABLE_CHARACTERS, FACTION_CONFIG, JOB_CONFIG, createInitialHomeGrid, createCharacterFromTemplate, EQUIPMENT_TEMPLATES, CONSUMABLE_TEMPLATES, BATTLE_CONFIG, TERRAIN_PROBABILITIES, TERRAIN_CONFIG, getExpRequired, getEquipmentStats, getEquipmentUpgradeCost, openChest, DIFFICULTY_CONFIG, SKILL_TEMPLATES, getAvatarPath, getRandomRarity, CHARACTER_SKILLS, buildSkillsForCharacterId, buildFullSkillsForCharacter, STATUS_CONFIG, NEGATIVE_STATUSES, POSITIVE_STATUSES, RARITY_CONFIG, ATTRIBUTE_CONFIG, calculateCharacterStats, calculateSetBonus, CHEST_CONFIG, createChestItem, isChestItem, getChestConfigByName, processEquipmentEffects, createSoulItem, getCharacterBaseTemplate } from '../utils/gameData'
@@ -2298,13 +2298,11 @@ function triggerTerrainMark(row: number, col: number, type: 'scorch' | 'frost' |
     }, durationMs)
   }
 
-  // 4. 死亡特效（按致死属性分化：�?爆炸消散 / �?菱形碎裂 / 暗·阴=溶解下沉 / 其他=光点消散�?
+  // 4. 死亡特效（闪光+光环扩散，按致死属性着色）
 function triggerDeathEffect(row: number, col: number, attribute: Attribute = 'normal') {
     const color = ATTRIBUTE_CONFIG[attribute]?.color || '#ffd86b'
     const id = `death_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`
     deathEffects.value.push({ id, row, col, color, attribute, timestamp: Date.now() })
-    // 任意单位死亡都让地图轻震，增强打击反�?
-  triggerMapShake('light')
     ensureEffectCleanupTimer()
   }
 
@@ -3521,10 +3519,28 @@ function removeGatheringPoint(row: number, col: number) {
           showFloatingText(ev.row, ev.col, ev.mpDamage, 'mp', undefined, false, '-')
         }
         triggerShake(ev.row, ev.col, 'character')
+        // 文字日志：天气对角色造成的伤害
+        const weatherVictim = state.chars.find(c => c.row === ev.row && c.col === ev.col && !c.dead)
+        if (weatherVictim) {
+          const victimTpl = findCharacterTemplateInStore(weatherVictim.characterId)
+          const victimName = victimTpl?.name || weatherVictim.characterId
+          const curWeather = battleMap.value?.weather
+          const weatherSource = curWeather === 'sky_fire' ? '天火' : '山火'
+          const parts = [`${weatherSource}对【${victimName}】造成${ev.hpDamage}点伤害`]
+          if (ev.mpDamage > 0) parts.push(`损失${ev.mpDamage}点法力`)
+          battleLog.value.push(parts.join('，'))
+        }
         break
       }
       case 'weather_heal': {
         showFloatingText(ev.row, ev.col, ev.hpHeal, 'heal')
+        // 文字日志：天气对角色的治疗
+        const healVictim = state.chars.find(c => c.row === ev.row && c.col === ev.col && !c.dead)
+        if (healVictim) {
+          const healTpl = findCharacterTemplateInStore(healVictim.characterId)
+          const healName = healTpl?.name || healVictim.characterId
+          battleLog.value.push(`天气对【${healName}】恢复${ev.hpHeal}点生命值`)
+        }
         break
       }
       case 'move': {
@@ -4002,9 +4018,9 @@ function removeGatheringPoint(row: number, col: number) {
       if (!battleManager || !battleMap.value) return
       const state = battleManager.getState()
 
-      // 天气系统：每 6 秒随机变化一次（概率同原来秒制�?
-    const now = Date.now()
-      if (now - lastWeatherTime >= 6000) {
+      // 天气系统：每 6 秒随机变化一次（暂停时不变化）
+      const now = Date.now()
+      if (!battleManager.isPaused() && now - lastWeatherTime >= 6000) {
         lastWeatherTime = now
         updateWeather()
       }
@@ -4635,8 +4651,9 @@ async function buyShopEquipment(template: any): Promise<boolean> {
       sky_fire: '天火',
       fog: '迷雾',
       ghost_fog: '鬼雾'
+
     }
-    battleLog.value.push(`天气变为�?${weatherNames[newWeather]}`)
+    battleLog.value.push(`天气变为【${weatherNames[newWeather]}】`)
   }
 
   function generateSnowAreas() {
@@ -13714,8 +13731,9 @@ async function moveToNearestEnemy(char: BattleCharacter) {
     /* @deprecated 实时战斗废弃 �?状态结算已�?BattleManager.applyStatusTick() 每秒执行 */
     // triggerStatusOnTurnEnd([...battleMap.value.players, ...battleMap.value.enemies])
 
-    // 秒结束：火焰区域伤害（山火/天火区域的角色损�?0%生命�?0%法力�?
-  if (battleMap.value.fireAreas.length > 0) {
+    // 秒结束：火焰区域伤害（山火/天火区域的角色损失10%生命、10%法力）
+    /* @deprecated 实时战斗已由 BattleManager 每秒结算天气伤害，此处跳过避免重复扣血 */
+    if (false && battleMap.value.fireAreas.length > 0) {
       const weather = battleMap.value.weather
       const weatherName = weather === 'sky_fire' ? '天火' : '山火'
       const allChars = [...battleMap.value.players, ...battleMap.value.enemies]

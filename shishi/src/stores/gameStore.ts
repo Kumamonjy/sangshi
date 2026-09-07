@@ -16,7 +16,8 @@ export const useGameStore = defineStore('game', () => {
   const gameSpeed = ref(1)
   const currentAiCharacter = ref<string | null>(null)
   
-  // 实时战斗管理器（非响应式，内部自行驱�?tick�?  let battleManager: BattleManager | null = null
+  // 实时战斗管理器（非响应式，内部自行驱�?tick�?
+let battleManager: BattleManager | null = null
   let battleSyncTimer: ReturnType<typeof setInterval> | null = null
   
   // 抖动特效相关
@@ -53,13 +54,15 @@ export const useGameStore = defineStore('game', () => {
     mapShakeIntensity.value = intensity
     mapShakeTick.value++
     if (mapShakeResetTimer) clearTimeout(mapShakeResetTimer)
-    // 动画结束后移除震�?class（同时释�?will-change 占用的合成层�?    mapShakeResetTimer = setTimeout(() => {
+    // 动画结束后移除震�?class（同时释�?will-change 占用的合成层�?
+  mapShakeResetTimer = setTimeout(() => {
       mapShakeTick.value = 0
       mapShakeResetTimer = null
     }, 500)
   }
   
-  // 技能光效相�?  interface SkillEffect {
+  // 技能光效相�?
+interface SkillEffect {
     id: string
     row: number
     col: number
@@ -111,7 +114,8 @@ export const useGameStore = defineStore('game', () => {
     row: number
     col: number
     color: string
-    // 致死属性：用于按属性分化死亡特效（�?爆炸消散 / �?菱形碎裂 / 暗·阴=溶解下沉�?    attribute: Attribute
+    // 致死属性：用于按属性分化死亡特效（�?爆炸消散 / �?菱形碎裂 / 暗·阴=溶解下沉�?
+  attribute: Attribute
     timestamp: number
   }
   
@@ -147,7 +151,8 @@ export const useGameStore = defineStore('game', () => {
     return 0
   }
 
-  // 队列超限时裁剪最旧的技能光�?  function trimSkillEffects() {
+  // 队列超限时裁剪最旧的技能光�?
+function trimSkillEffects() {
     if (skillEffects.value.length > EFFECT_MAX_QUEUE) {
       skillEffects.value.splice(0, skillEffects.value.length - EFFECT_MAX_QUEUE)
     }
@@ -156,16 +161,19 @@ export const useGameStore = defineStore('game', () => {
   function sweepByTimestamp<T extends { timestamp: number }>(list: { value: T[] }, lifetime: number, now: number) {
     const len = list.value.length
     if (len === 0) return
-    // 修复：检查最旧元素（index=0），而非最新元�?    // 若最旧元素尚未过期，则全部元素都未过期，无需 filter
+    // 修复：检查最旧元素（index=0），而非最新元�?
+  // 若最旧元素尚未过期，则全部元素都未过期，无需 filter
     const oldest = list.value[0]
     if (now - oldest.timestamp < lifetime) return
-    // 最旧元素已过期，必须过滤所有元�?    const remaining = list.value.filter(e => now - e.timestamp < lifetime)
+    // 最旧元素已过期，必须过滤所有元�?
+  const remaining = list.value.filter(e => now - e.timestamp < lifetime)
     if (remaining.length !== len) list.value = remaining
   }
 
   function cleanupExpiredEffects() {
     const now = Date.now()
-    // 技能光效寿命缩短至 1000ms，避免多角色连动时前一个技能残�?    sweepByTimestamp(skillEffects, 1000, now)
+    // 技能光效寿命缩短至 1000ms，避免多角色连动时前一个技能残�?
+  sweepByTimestamp(skillEffects, 1000, now)
     sweepByTimestamp(trailParticles, 1200, now)
     sweepByTimestamp(chargeEffects, 600, now)
     sweepByTimestamp(deathEffects, 1500, now)
@@ -176,11 +184,13 @@ export const useGameStore = defineStore('game', () => {
     sweepByTimestamp(defeatRecords, 1200, now)
     sweepByTimestamp(floatingTexts, 900, now)
     sweepByTimestamp(moveTrailEffects, 500, now)
-    // 投射物寿命与其飞行时长挂钩（duration + 200ms 余量�?    {
+    // 投射物寿命与其飞行时长挂钩（duration + 200ms 余量�?
+  {
       const remaining = projectiles.value.filter(p => now - p.timestamp < (p.duration || 300) + 200)
       if (remaining.length !== projectiles.value.length) projectiles.value = remaining
     }
-    // 所有特效都清空后停止定时器，避免空�?    if (totalActiveEffectCount() === 0
+    // 所有特效都清空后停止定时器，避免空�?
+  if (totalActiveEffectCount() === 0
       && hitFlashTargets.value.length === 0 && defeatRecords.value.length === 0
       && terrainMarks.value.length === 0 && shakingTargets.value.length === 0
       && effectCleanupTimer) {
@@ -326,7 +336,8 @@ export const useGameStore = defineStore('game', () => {
     })
 
     if (isLargeAOE || isMediumAOE) {
-      // �?大范�?AOE：仅渲染中心 + 4 个方向格（共 5 格），其余全部跳�?      // 非中心格设为 isMinimal，模板中只渲染一�?effect-base
+      // �?大范�?AOE：仅渲染中心 + 4 个方向格（共 5 格），其余全部跳�?
+    // 非中心格设为 isMinimal，模板中只渲染一�?effect-base
       const dirs = [[-1, 0], [1, 0], [0, -1], [0, 1]]
       for (const [dr, dc] of dirs) {
         addEffect(centerRow + dr, centerCol + dc, { isMinimal: true })
@@ -427,7 +438,8 @@ export const useGameStore = defineStore('game', () => {
 
     triggerAOEEffects(centerRow, centerCol, areaRange, attribute, rangeType, skillType, aoeCategory)
 
-    // 投射物动画：轰炸类技能从攻击者飞到中�?    if (isBombing) {
+    // 投射物动画：轰炸类技能从攻击者飞到中�?
+  if (isBombing) {
       const projType = getProjectileTypeForSkill(skill)
       if (projType) {
         triggerProjectile(attacker.row, attacker.col, centerRow, centerCol, projType, attribute)
@@ -490,7 +502,9 @@ export const useGameStore = defineStore('game', () => {
     }
 
     // ========== 批量收集 per-target 特效数据 ==========
-    // 避免�?forEach 循环中逐个 push 响应式数组（�?push 触发一�?Vue 更新�?    // 改为收集到本地数组，循环结束后一次性写�?    const batchTimestamp = Date.now()
+    // 避免�?forEach 循环中逐个 push 响应式数组（�?push 触发一�?Vue 更新�?
+  // 改为收集到本地数组，循环结束后一次性写�?
+  const batchTimestamp = Date.now()
     const batchHitFlashes: HitFlashTarget[] = []
     const batchFloatingTexts: FloatingText[] = []
     const batchStatusEffects: StatusApplyEffect[] = []
@@ -537,7 +551,7 @@ export const useGameStore = defineStore('game', () => {
         type: 'damage' as const, attribute, isShaking: true, sign: '-',
         timestamp: batchTimestamp
       })
-      damageResults.push(`对�?{targetTemplate?.name || target.characterId}】造成${damage}点伤害`)
+      damageResults.push(`对�?${targetTemplate?.name || target.characterId}】造成${damage}点伤害`)
 
       if (skill.statusEffect) {
         addStatusToCharacter(target, skill.statusEffect, true, skill.statusEffectDuration || 0)
@@ -546,7 +560,7 @@ export const useGameStore = defineStore('game', () => {
           row: target.row, col: target.col, statusType: skill.statusEffect,
           isPositive: POSITIVE_STATUSES.includes(skill.statusEffect), timestamp: batchTimestamp
         })
-        damageResults.push(`使�?{targetTemplate?.name || target.characterId}】陷入�?{STATUS_CONFIG[skill.statusEffect]?.name || skill.statusEffect}】状态`)
+        damageResults.push(`使�?${targetTemplate?.name || target.characterId}】陷入�?${STATUS_CONFIG[skill.statusEffect]?.name || skill.statusEffect}】状态`)
       }
       if (skill.statusEffects && skill.statusEffects.length > 0) {
         skill.statusEffects.forEach((status, index) => {
@@ -557,7 +571,7 @@ export const useGameStore = defineStore('game', () => {
             row: target.row, col: target.col, statusType: status,
             isPositive: POSITIVE_STATUSES.includes(status), timestamp: batchTimestamp
           })
-          damageResults.push(`使�?{targetTemplate?.name || target.characterId}】陷入�?{STATUS_CONFIG[status]?.name || status}】状态`)
+          damageResults.push(`使�?${targetTemplate?.name || target.characterId}】陷入�?${STATUS_CONFIG[status]?.name || status}】状态`)
         })
       }
 
@@ -602,7 +616,7 @@ export const useGameStore = defineStore('game', () => {
         type: 'damage' as const, attribute: undefined, isShaking: false, sign: '-',
         timestamp: batchTimestamp
       })
-      damageResults.push(`对�?{building.name}】造成${damage}点伤害`)
+      damageResults.push(`对�?${building.name}】造成${damage}点伤害`)
 
       trySpawnZombieFromHeart(building)
 
@@ -637,7 +651,8 @@ export const useGameStore = defineStore('game', () => {
     }
     // 震屏批量写入（处理去�?+ 定时器）
     if (batchShakes.length > 0) {
-      // 去重：相同位置只保留最后一�?      const seen = new Set<string>()
+      // 去重：相同位置只保留最后一�?
+    const seen = new Set<string>()
       const uniqueShakes: ShakingTarget[] = []
       for (let i = batchShakes.length - 1; i >= 0; i--) {
         const key = `${batchShakes[i].row}_${batchShakes[i].col}_${batchShakes[i].type}`
@@ -649,7 +664,8 @@ export const useGameStore = defineStore('game', () => {
       shakingTargets.value = [...shakingTargets.value.filter(t => 
         !uniqueShakes.some(u => u.row === t.row && u.col === t.col && u.type === t.type)
       ), ...uniqueShakes]
-      // 统一设置定时器清�?      uniqueShakes.forEach(s => {
+      // 统一设置定时器清�?
+    uniqueShakes.forEach(s => {
         setTimeout(() => {
           const idx = shakingTargets.value.findIndex(t => t.row === s.row && t.col === s.col && t.type === s.type)
           if (idx !== -1) shakingTargets.value.splice(idx, 1)
@@ -664,7 +680,7 @@ export const useGameStore = defineStore('game', () => {
       // 障碍物清除属于环境变化，不触发角色震屏，避免多目标时额外动画开销
     })
     if (obstaclePositions.length > 0) {
-      damageResults.push(`清除�?{obstaclePositions.length}个障碍物`)
+      damageResults.push(`清除�?${obstaclePositions.length}个障碍物`)
     }
 
     // 轰炸技能溅射特效：对中心范围外�?格的目标造成50%伤害
@@ -762,7 +778,7 @@ export const useGameStore = defineStore('game', () => {
           type: 'damage' as const, attribute, isShaking: true, sign: '-',
           timestamp: splashBatchTimestamp
         })
-        damageResults.push(`溅射对�?{targetTemplate?.name || target.characterId}】造成${splashDamage}点伤害`)
+        damageResults.push(`溅射对�?${targetTemplate?.name || target.characterId}】造成${splashDamage}点伤害`)
 
         if (skill.statusEffect) {
           addStatusToCharacter(target, skill.statusEffect, true, skill.statusEffectDuration || 0)
@@ -771,7 +787,7 @@ export const useGameStore = defineStore('game', () => {
             row: target.row, col: target.col, statusType: skill.statusEffect,
             isPositive: POSITIVE_STATUSES.includes(skill.statusEffect), timestamp: splashBatchTimestamp
           })
-          damageResults.push(`溅射使�?{targetTemplate?.name || target.characterId}】陷入�?{STATUS_CONFIG[skill.statusEffect]?.name || skill.statusEffect}】状态`)
+          damageResults.push(`溅射使�?${targetTemplate?.name || target.characterId}】陷入�?${STATUS_CONFIG[skill.statusEffect]?.name || skill.statusEffect}】状态`)
         }
         if (skill.statusEffects && skill.statusEffects.length > 0) {
           skill.statusEffects.forEach((status, index) => {
@@ -782,7 +798,7 @@ export const useGameStore = defineStore('game', () => {
               row: target.row, col: target.col, statusType: status,
               isPositive: POSITIVE_STATUSES.includes(status), timestamp: splashBatchTimestamp
             })
-            damageResults.push(`溅射使�?{targetTemplate?.name || target.characterId}】陷入�?{STATUS_CONFIG[status]?.name || status}】状态`)
+            damageResults.push(`溅射使�?${targetTemplate?.name || target.characterId}】陷入�?${STATUS_CONFIG[status]?.name || status}】状态`)
           })
         }
 
@@ -812,7 +828,7 @@ export const useGameStore = defineStore('game', () => {
           type: 'damage' as const, attribute: undefined, isShaking: false, sign: '-',
           timestamp: splashBatchTimestamp
         })
-        damageResults.push(`溅射对�?{building.name}】造成${splashDamage}点伤害`)
+        damageResults.push(`溅射对�?${building.name}】造成${splashDamage}点伤害`)
 
         if (building.hp <= 0) {
           removeBuildingFromBattle(building.id)
@@ -863,7 +879,7 @@ export const useGameStore = defineStore('game', () => {
     if (skill.lifesteal && totalDamage > 0) {
       const healAmount = Math.floor(totalDamage * skill.lifesteal)
       attacker.hp = Math.min(attacker.hp + healAmount, attacker.maxHp)
-      damageResults.push(`恢复�?{healAmount}点生命值`)
+      damageResults.push(`恢复�?${healAmount}点生命值`)
     }
 
     if (skill.selfHpCost) {
@@ -878,7 +894,7 @@ export const useGameStore = defineStore('game', () => {
         const duration = getSelfStatusDuration(skill, index)
         addStatusToCharacter(attacker, effect, true, duration)
         triggerStatusApplyEffect(attacker.row, attacker.col, effect)
-        damageResults.push(`自身获得�?{STATUS_CONFIG[effect]?.name || effect}】状�?{duration > 0 ? `，持�?{duration}秒` : ''}`)
+        damageResults.push(`自身获得�?${STATUS_CONFIG[effect]?.name || effect}】状�?${duration > 0 ? `，持�?${duration}秒` : ''}`)
       })
     }
 
@@ -888,7 +904,7 @@ export const useGameStore = defineStore('game', () => {
       attacker.hp = Math.min(attacker.hp + hpBuff, attacker.maxHp)
       if (attacker.totalHeal === undefined) attacker.totalHeal = 0
       attacker.totalHeal += hpBuff
-      damageResults.push(`生命值上�?${hpBuff}并恢�?{hpBuff}生命`)
+      damageResults.push(`生命值上�?${hpBuff}并恢�?${hpBuff}生命`)
     }
 
     if (skill.selfHealPct && attacker.maxHp) {
@@ -913,7 +929,7 @@ export const useGameStore = defineStore('game', () => {
         const toDispel = negStatuses.sort(() => Math.random() - 0.5).slice(0, skill.dispelRandomDebuffs)
         toDispel.forEach(status => {
           removeStatusFromCharacter(attacker, status)
-          damageResults.push(`驱散�?{STATUS_CONFIG[status]?.name || status}】状态`)
+          damageResults.push(`驱散�?${STATUS_CONFIG[status]?.name || status}】状态`)
         })
       }
     }
@@ -921,10 +937,10 @@ export const useGameStore = defineStore('game', () => {
     const totalHits = enemyTargets.length + enemyBuildings.length + obstaclePositions.length + 
       (isBombing ? (splashTargets.length + splashBuildings.length) : 0)
     if (totalHits > 0) {
-      const summary = damageResults.join('�?)
-      battleLog.value.push(`�?{charTemplate?.name || attacker.characterId}】使用技能�?{skill.name}】命�?${totalHits} 个目标：${summary}`)
+      const summary = damageResults.join('�?')
+      battleLog.value.push(`�?${charTemplate?.name || attacker.characterId}】使用技能�?${skill.name}】命�?${totalHits} 个目标：${summary}`)
     } else {
-      battleLog.value.push(`�?{charTemplate?.name || attacker.characterId}】使用技能�?{skill.name}】，但范围内没有可攻击目标`)
+      battleLog.value.push(`�?${charTemplate?.name || attacker.characterId}】使用技能�?${skill.name}】，但范围内没有可攻击目标`)
     }
   }
 
@@ -1078,7 +1094,8 @@ export const useGameStore = defineStore('game', () => {
         type: 'damage' as const, attribute, isShaking: true, sign: '-',
         timestamp: batchTimestamp
       })
-      // 注：不再调用 triggerSkillEffect —�?triggerAreaEffects 已覆盖路径光�?      damageResults.push(`对�?{targetTemplate?.name || target.characterId}】造成${damage}点伤害`)
+      // 注：不再调用 triggerSkillEffect —�?triggerAreaEffects 已覆盖路径光�?
+    damageResults.push(`对�?${targetTemplate?.name || target.characterId}】造成${damage}点伤害`)
 
       if (skill.statusEffect) {
         addStatusToCharacter(target, skill.statusEffect, true, skill.statusEffectDuration || 0)
@@ -1087,7 +1104,7 @@ export const useGameStore = defineStore('game', () => {
           row: target.row, col: target.col, statusType: skill.statusEffect,
           isPositive: POSITIVE_STATUSES.includes(skill.statusEffect), timestamp: batchTimestamp
         })
-        damageResults.push(`使�?{targetTemplate?.name || target.characterId}】陷入�?{STATUS_CONFIG[skill.statusEffect]?.name || skill.statusEffect}】状态`)
+        damageResults.push(`使�?${targetTemplate?.name || target.characterId}】陷入�?${STATUS_CONFIG[skill.statusEffect]?.name || skill.statusEffect}】状态`)
       }
 
       if (skill.statusEffects) {
@@ -1099,7 +1116,7 @@ export const useGameStore = defineStore('game', () => {
             row: target.row, col: target.col, statusType: effect,
             isPositive: POSITIVE_STATUSES.includes(effect), timestamp: batchTimestamp
           })
-          damageResults.push(`使�?{targetTemplate?.name || target.characterId}】陷入�?{STATUS_CONFIG[effect]?.name || effect}】状态`)
+          damageResults.push(`使�?${targetTemplate?.name || target.characterId}】陷入�?${STATUS_CONFIG[effect]?.name || effect}】状态`)
         })
       }
 
@@ -1107,7 +1124,7 @@ export const useGameStore = defineStore('game', () => {
         POSITIVE_STATUSES.forEach(status => {
           if (hasStatus(target, status)) {
             removeStatusFromCharacter(target, status)
-            damageResults.push(`驱散�?{targetTemplate?.name || target.characterId}】的�?{STATUS_CONFIG[status]?.name || status}】状态`)
+            damageResults.push(`驱散�?${targetTemplate?.name || target.characterId}】的�?${STATUS_CONFIG[status]?.name || status}】状态`)
           }
         })
       }
@@ -1150,7 +1167,7 @@ export const useGameStore = defineStore('game', () => {
         type: 'damage' as const, attribute: undefined, isShaking: false, sign: '-',
         timestamp: batchTimestamp
       })
-      damageResults.push(`对�?{building.name}】造成${damage}点伤害`)
+      damageResults.push(`对�?${building.name}】造成${damage}点伤害`)
 
       trySpawnZombieFromHeart(building)
 
@@ -1170,7 +1187,7 @@ export const useGameStore = defineStore('game', () => {
       batchShakes.push({ row: pos.row, col: pos.col, type: 'character' as const })
     })
     if (obstaclePositions.length > 0) {
-      damageResults.push(`清除�?{obstaclePositions.length}个障碍物`)
+      damageResults.push(`清除�?${obstaclePositions.length}个障碍物`)
     }
 
     // ========== 批量写入（单次响应式触发�?==========
@@ -1216,7 +1233,7 @@ export const useGameStore = defineStore('game', () => {
     if (skill.lifesteal && totalDamage > 0) {
       const healAmount = Math.floor(totalDamage * skill.lifesteal)
       attacker.hp = Math.min(attacker.hp + healAmount, attacker.maxHp)
-      damageResults.push(`恢复�?{healAmount}点生命值`)
+      damageResults.push(`恢复�?${healAmount}点生命值`)
     }
 
     if (skill.selfHpCost) {
@@ -1230,7 +1247,7 @@ export const useGameStore = defineStore('game', () => {
       skill.selfStatusEffects.forEach((effect, index) => {
         const duration = skill.selfStatusEffectsDurations?.[index] || 0
         addStatusToCharacter(attacker, effect, true, duration)
-        damageResults.push(`自身获得�?{STATUS_CONFIG[effect]?.name || effect}】状�?{duration > 0 ? `，持�?{duration}秒` : ''}`)
+        damageResults.push(`自身获得�?${STATUS_CONFIG[effect]?.name || effect}】状�?${duration > 0 ? `，持�?${duration}秒` : ''}`)
       })
     }
 
@@ -1240,7 +1257,7 @@ export const useGameStore = defineStore('game', () => {
       attacker.hp = Math.min(attacker.hp + hpBuff, attacker.maxHp)
       if (attacker.totalHeal === undefined) attacker.totalHeal = 0
       attacker.totalHeal += hpBuff
-      damageResults.push(`生命值上�?${hpBuff}并恢�?{hpBuff}生命`)
+      damageResults.push(`生命值上�?${hpBuff}并恢�?${hpBuff}生命`)
     }
 
     if (skill.selfHealPct && attacker.maxHp) {
@@ -1265,17 +1282,17 @@ export const useGameStore = defineStore('game', () => {
         const toDispel = negStatuses.sort(() => Math.random() - 0.5).slice(0, skill.dispelRandomDebuffs)
         toDispel.forEach(status => {
           removeStatusFromCharacter(attacker, status)
-          damageResults.push(`驱散�?{STATUS_CONFIG[status]?.name || status}】状态`)
+          damageResults.push(`驱散�?${STATUS_CONFIG[status]?.name || status}】状态`)
         })
       }
     }
 
     const totalHits = enemyTargets.length + enemyBuildings.length + obstaclePositions.length
     if (totalHits > 0) {
-      const summary = damageResults.join('�?)
-      battleLog.value.push(`�?{charTemplate?.name || attacker.characterId}】使用技能�?{skill.name}】命�?${totalHits} 个目标：${summary}`)
+      const summary = damageResults.join('�?')
+      battleLog.value.push(`�?${charTemplate?.name || attacker.characterId}】使用技能�?${skill.name}】命�?${totalHits} 个目标：${summary}`)
     } else {
-      battleLog.value.push(`�?{charTemplate?.name || attacker.characterId}】使用技能�?{skill.name}】，但范围内没有可攻击目标`)
+      battleLog.value.push(`�?${charTemplate?.name || attacker.characterId}】使用技能�?${skill.name}】，但范围内没有可攻击目标`)
     }
   }
 
@@ -1404,7 +1421,7 @@ export const useGameStore = defineStore('game', () => {
         type: 'damage' as const, attribute, isShaking: true, sign: '-',
         timestamp: batchTimestamp
       })
-      damageResults.push(`对�?{targetTemplate?.name || target.characterId}】造成${damage}点伤害`)
+      damageResults.push(`对�?${targetTemplate?.name || target.characterId}】造成${damage}点伤害`)
 
       if (skill.statusEffect) {
         addStatusToCharacter(target, skill.statusEffect, true, skill.statusEffectDuration || 0)
@@ -1413,7 +1430,7 @@ export const useGameStore = defineStore('game', () => {
           row: target.row, col: target.col, statusType: skill.statusEffect,
           isPositive: POSITIVE_STATUSES.includes(skill.statusEffect), timestamp: batchTimestamp
         })
-        damageResults.push(`使�?{targetTemplate?.name || target.characterId}】陷入�?{STATUS_CONFIG[skill.statusEffect]?.name || skill.statusEffect}】状态`)
+        damageResults.push(`使�?${targetTemplate?.name || target.characterId}】陷入�?${STATUS_CONFIG[skill.statusEffect]?.name || skill.statusEffect}】状态`)
       }
 
       if (skill.statusEffects) {
@@ -1425,7 +1442,7 @@ export const useGameStore = defineStore('game', () => {
             row: target.row, col: target.col, statusType: effect,
             isPositive: POSITIVE_STATUSES.includes(effect), timestamp: batchTimestamp
           })
-          damageResults.push(`使�?{targetTemplate?.name || target.characterId}】陷入�?{STATUS_CONFIG[effect]?.name || effect}】状态`)
+          damageResults.push(`使�?${targetTemplate?.name || target.characterId}】陷入�?${STATUS_CONFIG[effect]?.name || effect}】状态`)
         })
       }
 
@@ -1433,7 +1450,7 @@ export const useGameStore = defineStore('game', () => {
         POSITIVE_STATUSES.forEach(status => {
           if (hasStatus(target, status)) {
             removeStatusFromCharacter(target, status)
-            damageResults.push(`驱散�?{targetTemplate?.name || target.characterId}】的�?{STATUS_CONFIG[status]?.name || status}】状态`)
+            damageResults.push(`驱散�?${targetTemplate?.name || target.characterId}】的�?${STATUS_CONFIG[status]?.name || status}】状态`)
           }
         })
       }
@@ -1476,7 +1493,7 @@ export const useGameStore = defineStore('game', () => {
         type: 'damage' as const, attribute: undefined, isShaking: false, sign: '-',
         timestamp: batchTimestamp
       })
-      damageResults.push(`对�?{building.name}】造成${damage}点伤害`)
+      damageResults.push(`对�?${building.name}】造成${damage}点伤害`)
 
       trySpawnZombieFromHeart(building)
 
@@ -1496,7 +1513,7 @@ export const useGameStore = defineStore('game', () => {
       batchShakes.push({ row: pos.row, col: pos.col, type: 'character' as const })
     })
     if (obstaclePositions.length > 0) {
-      damageResults.push(`清除�?{obstaclePositions.length}个障碍物`)
+      damageResults.push(`清除�?${obstaclePositions.length}个障碍物`)
     }
 
     // ========== 批量写入（单次响应式触发�?==========
@@ -1542,7 +1559,7 @@ export const useGameStore = defineStore('game', () => {
     if (skill.lifesteal && totalDamage > 0) {
       const healAmount = Math.floor(totalDamage * skill.lifesteal)
       attacker.hp = Math.min(attacker.hp + healAmount, attacker.maxHp)
-      damageResults.push(`恢复�?{healAmount}点生命值`)
+      damageResults.push(`恢复�?${healAmount}点生命值`)
     }
 
     if (skill.selfHpCost) {
@@ -1556,7 +1573,7 @@ export const useGameStore = defineStore('game', () => {
       skill.selfStatusEffects.forEach((effect, index) => {
         const duration = skill.selfStatusEffectsDurations?.[index] || 0
         addStatusToCharacter(attacker, effect, true, duration)
-        damageResults.push(`自身获得�?{STATUS_CONFIG[effect]?.name || effect}】状�?{duration > 0 ? `，持�?{duration}秒` : ''}`)
+        damageResults.push(`自身获得�?${STATUS_CONFIG[effect]?.name || effect}】状�?${duration > 0 ? `，持�?${duration}秒` : ''}`)
       })
     }
 
@@ -1566,7 +1583,7 @@ export const useGameStore = defineStore('game', () => {
       attacker.hp = Math.min(attacker.hp + hpBuff, attacker.maxHp)
       if (attacker.totalHeal === undefined) attacker.totalHeal = 0
       attacker.totalHeal += hpBuff
-      damageResults.push(`生命值上�?${hpBuff}并恢�?{hpBuff}生命`)
+      damageResults.push(`生命值上�?${hpBuff}并恢�?${hpBuff}生命`)
     }
 
     if (skill.selfHealPct && attacker.maxHp) {
@@ -1591,17 +1608,17 @@ export const useGameStore = defineStore('game', () => {
         const toDispel = negStatuses.sort(() => Math.random() - 0.5).slice(0, skill.dispelRandomDebuffs)
         toDispel.forEach(status => {
           removeStatusFromCharacter(attacker, status)
-          damageResults.push(`驱散�?{STATUS_CONFIG[status]?.name || status}】状态`)
+          damageResults.push(`驱散�?${STATUS_CONFIG[status]?.name || status}】状态`)
         })
       }
     }
 
     const totalHits = enemyTargets.length + enemyBuildings.length + obstaclePositions.length
     if (totalHits > 0) {
-      const summary = damageResults.join('�?)
-      battleLog.value.push(`�?{charTemplate?.name || attacker.characterId}】使用技能�?{skill.name}】命�?${totalHits} 个目标：${summary}`)
+      const summary = damageResults.join('�?')
+      battleLog.value.push(`�?${charTemplate?.name || attacker.characterId}】使用技能�?${skill.name}】命�?${totalHits} 个目标：${summary}`)
     } else {
-      battleLog.value.push(`�?{charTemplate?.name || attacker.characterId}】使用技能�?{skill.name}】，但范围内没有可攻击目标`)
+      battleLog.value.push(`�?${charTemplate?.name || attacker.characterId}】使用技能�?${skill.name}】，但范围内没有可攻击目标`)
     }
   }
 
@@ -1618,7 +1635,7 @@ export const useGameStore = defineStore('game', () => {
     if (skill.selfHpThreshold !== undefined) {
       const hpRatio = attacker.hp / (attacker.maxHp || 1)
       if (hpRatio < skill.selfHpThreshold) {
-        battleLog.value.push(`�?{charTemplate?.name || attacker.characterId}】使用�?{skill.name}】失败：生命值不足！`)
+        battleLog.value.push(`�?${charTemplate?.name || attacker.characterId}】使用�?${skill.name}】失败：生命值不足！`)
         return
       }
     }
@@ -1626,7 +1643,7 @@ export const useGameStore = defineStore('game', () => {
     // HP > ATK check for skills that require it
     if (skill.requireHpGtAtk) {
       if (attacker.hp <= attacker.attack) {
-        battleLog.value.push(`�?{charTemplate?.name || attacker.characterId}】使用�?{skill.name}】失败：当前生命值必须大于攻击力！`)
+        battleLog.value.push(`�?${charTemplate?.name || attacker.characterId}】使用�?${skill.name}】失败：当前生命值必须大于攻击力！`)
         return
       }
     }
@@ -1639,7 +1656,7 @@ export const useGameStore = defineStore('game', () => {
       const hpBase = skill.selfHpCostType === 'current' ? (attacker.hp || 1) : (attacker.maxHp || 100)
       const hpCost = Math.floor(hpBase * skill.selfHpCost)
       attacker.hp = Math.max(1, attacker.hp - hpCost)
-      battleLog.value.push(`�?{charTemplate?.name || attacker.characterId}】消耗了${hpCost}点生命值`)
+      battleLog.value.push(`�?${charTemplate?.name || attacker.characterId}】消耗了${hpCost}点生命值`)
     }
 
     // Apply self status effects
@@ -1648,7 +1665,7 @@ export const useGameStore = defineStore('game', () => {
         const duration = getSelfStatusDuration(skill, index)
         addStatusToCharacter(attacker, effect, true, duration)
         triggerStatusApplyEffect(attacker.row, attacker.col, effect)
-        battleLog.value.push(`自身获得�?{STATUS_CONFIG[effect]?.name || effect}】状�?{duration > 0 ? `，持�?{duration}秒` : ''}`)
+        battleLog.value.push(`自身获得�?${STATUS_CONFIG[effect]?.name || effect}】状�?${duration > 0 ? `，持�?${duration}秒` : ''}`)
       })
     }
 
@@ -1677,15 +1694,17 @@ export const useGameStore = defineStore('game', () => {
     if (skill.summonCharacter) {
       const template = HIREABLE_CHARACTERS.find(c => c.id === skill.summonCharacter)
       if (template) {
-        // 检查同阵营召唤物数量限�?        if (skill.summonMaxCount && skill.summonCountId) {
+        // 检查同阵营召唤物数量限�?
+      if (skill.summonMaxCount && skill.summonCountId) {
           const currentSide = attacker.isPlayer ? map.players : map.enemies
           const existingCount = currentSide.filter(c => c.characterId === skill.summonCountId).length
           const availableSlots = Math.max(0, skill.summonMaxCount - existingCount)
           if (availableSlots <= 0) {
-            battleLog.value.push(`�?{charTemplate?.name || attacker.characterId}】使用�?{skill.name}】失败：同阵营【杀生樱】数量已达上�?{skill.summonMaxCount}个！`)
+            battleLog.value.push(`�?${charTemplate?.name || attacker.characterId}】使用�?${skill.name}】失败：同阵营【杀生樱】数量已达上�?${skill.summonMaxCount}个！`)
             return
           }
-          // 限制可召唤数�?          const maxSummonCount = Math.min(summonPositions.length, availableSlots)
+          // 限制可召唤数�?
+        const maxSummonCount = Math.min(summonPositions.length, availableSlots)
           summonTemplates = Array(maxSummonCount).fill(template)
         } else {
           summonTemplates = Array(summonPositions.length).fill(template)
@@ -1768,9 +1787,9 @@ export const useGameStore = defineStore('game', () => {
       if (summonedNames.length > 0) {
         const uniqueNames = [...new Set(summonedNames)]
         const nameStr = uniqueNames.length === 1 
-          ? `�?{uniqueNames[0]}】` 
-          : `�?{uniqueNames.join('】、�?)}】`
-        battleLog.value.push(`�?{charTemplate?.name || attacker.characterId}】使用技能�?{skill.name}】，召唤�?{summonedNames.length}�?{nameStr}！`)
+          ? `�?${uniqueNames[0]}】` 
+          : `�?${uniqueNames.join('】、�?')}】`
+        battleLog.value.push(`�?${charTemplate?.name || attacker.characterId}】使用技能�?${skill.name}】，召唤�?${summonedNames.length}�?${nameStr}！`)
       }
     }
   }
@@ -1837,24 +1856,25 @@ export const useGameStore = defineStore('game', () => {
         showFloatingText(target.row, target.col, damage, 'damage', skillAttribute, true)
         triggerSkillEffect(target.row, target.col, skillAttribute, 'medium', skillType, '指定', attacker.row, attacker.col)
         
-        // 攻击投射�?        const projType = getProjectileTypeForSkill(skill)
+        // 攻击投射�?
+      const projType = getProjectileTypeForSkill(skill)
         if (projType) {
           triggerProjectile(attacker.row, attacker.col, target.row, target.col, projType, skillAttribute)
         }
 
-        damageResults.push(`对�?{targetTemplate?.name || target.characterId}】造成${damage}点伤害`)
+        damageResults.push(`对�?${targetTemplate?.name || target.characterId}】造成${damage}点伤害`)
 
         if (skill.statusEffect) {
           addStatusToCharacter(target, skill.statusEffect, true, skill.statusEffectDuration || 0)
           triggerStatusApplyEffect(target.row, target.col, skill.statusEffect)
-          damageResults.push(`使�?{targetTemplate?.name || target.characterId}】陷入�?{STATUS_CONFIG[skill.statusEffect]?.name || skill.statusEffect}】状态`)
+          damageResults.push(`使�?${targetTemplate?.name || target.characterId}】陷入�?${STATUS_CONFIG[skill.statusEffect]?.name || skill.statusEffect}】状态`)
         }
         if (skill.statusEffects && skill.statusEffects.length > 0) {
           skill.statusEffects.forEach((status, index) => {
             const duration = skill.statusEffectsDurations?.[index] || 0
             addStatusToCharacter(target, status, true, duration)
             triggerStatusApplyEffect(target.row, target.col, status)
-            damageResults.push(`使�?{targetTemplate?.name || target.characterId}】陷入�?{STATUS_CONFIG[status]?.name || status}】状态`)
+            damageResults.push(`使�?${targetTemplate?.name || target.characterId}】陷入�?${STATUS_CONFIG[status]?.name || status}】状态`)
           })
         }
 
@@ -1868,7 +1888,7 @@ export const useGameStore = defineStore('game', () => {
             if (statusIdx !== -1) {
               target.statuses.splice(statusIdx, 1)
               addStatusToCharacter(attacker, stolenStatus.type, true, stolenStatus.duration)
-              damageResults.push(`偷取了�?{targetTemplate?.name || target.characterId}】的�?{STATUS_CONFIG[stolenStatus.type]?.name || stolenStatus.type}】状态`)
+              damageResults.push(`偷取了�?${targetTemplate?.name || target.characterId}】的�?${STATUS_CONFIG[stolenStatus.type]?.name || stolenStatus.type}】状态`)
             }
           }
         }
@@ -1876,7 +1896,7 @@ export const useGameStore = defineStore('game', () => {
         if (target.hp <= 0) {
           triggerDefeatAnimation(target.row, target.col, 'kill')
           removeCharacterFromBattle(target.id, target.isPlayer)
-          damageResults.push(`�?{targetTemplate?.name || target.characterId}】被击败`)
+          damageResults.push(`�?${targetTemplate?.name || target.characterId}】被击败`)
         }
       } else if (buildingTargets.length > 0) {
         const targetBuilding = buildingTargets[0]
@@ -1898,14 +1918,14 @@ export const useGameStore = defineStore('game', () => {
         showFloatingText(targetBuilding.row, targetBuilding.col, damage, 'damage')
         triggerSkillEffect(targetBuilding.row, targetBuilding.col, skillAttribute, 'medium', skillType)
 
-        damageResults.push(`对�?{targetBuilding.name}】造成${damage}点伤害`)
+        damageResults.push(`对�?${targetBuilding.name}】造成${damage}点伤害`)
 
         trySpawnZombieFromHeart(targetBuilding)
 
         if (targetBuilding.hp <= 0) {
           removeBuildingFromBattle(targetBuilding.id)
           battleMap.value!.tiles[targetBuilding.row]![targetBuilding.col]!.building = null
-          damageResults.push(`�?{targetBuilding.name}】被摧毁`)
+          damageResults.push(`�?${targetBuilding.name}】被摧毁`)
         }
       }
     }
@@ -1913,14 +1933,14 @@ export const useGameStore = defineStore('game', () => {
     if (skill.lifesteal && totalDamage > 0) {
       const healAmount = Math.floor(totalDamage * skill.lifesteal)
       attacker.hp = Math.min(attacker.hp + healAmount, attacker.maxHp)
-      damageResults.push(`恢复�?{healAmount}点生命值`)
+      damageResults.push(`恢复�?${healAmount}点生命值`)
     }
 
     if (actualTargets.length > 0 && damageResults.length > 0) {
-      const summary = damageResults.join('�?)
-      battleLog.value.push(`�?{charTemplate?.name || attacker.characterId}】使用技能�?{skill.name}】，${summary}！`)
+      const summary = damageResults.join('�?')
+      battleLog.value.push(`�?${charTemplate?.name || attacker.characterId}】使用技能�?${skill.name}】，${summary}！`)
     } else if (actualTargets.length > 0) {
-      battleLog.value.push(`�?{charTemplate?.name || attacker.characterId}】使用技能�?{skill.name}】，但没有命中有效目标`)
+      battleLog.value.push(`�?${charTemplate?.name || attacker.characterId}】使用技能�?${skill.name}】，但没有命中有效目标`)
     }
 
     if (skill.summonZombie) {
@@ -1965,7 +1985,7 @@ export const useGameStore = defineStore('game', () => {
             useCollectible(collectibleAtZombiePos.id, newZombie.id)
           }
           
-          battleLog.value.push('召唤�?只普通丧�?)
+          battleLog.value.push('召唤�?只普通丧�?')
         }
       }
     }
@@ -1975,7 +1995,7 @@ export const useGameStore = defineStore('game', () => {
       triggerDeathEffect(attacker.row, attacker.col, attribute)
       attacker.hp = 0
       removeCharacterFromBattle(attacker.id, attacker.isPlayer)
-      battleLog.value.push(`�?{charTemplate?.name || attacker.characterId}】使用技能后战败退场！`)
+      battleLog.value.push(`�?${charTemplate?.name || attacker.characterId}】使用技能后战败退场！`)
     }
 
     if (skill.selfHpCost && attacker.maxHp) {
@@ -1990,10 +2010,10 @@ export const useGameStore = defineStore('game', () => {
         const duration = getSelfStatusDuration(skill, index)
         addStatusToCharacter(attacker, status, true, duration)
         triggerStatusApplyEffect(attacker.row, attacker.col, status)
-        damageResults.push(`自身获得�?{STATUS_CONFIG[status]?.name || status}】状�?{duration > 0 ? `，持�?{duration}秒` : ''}`)
+        damageResults.push(`自身获得�?${STATUS_CONFIG[status]?.name || status}】状�?${duration > 0 ? `，持�?${duration}秒` : ''}`)
       })
-      const summary = damageResults.join('�?)
-      battleLog.value.push(`�?{charTemplate?.name || attacker.characterId}】使用技能�?{skill.name}】，${summary}！`)
+      const summary = damageResults.join('�?')
+      battleLog.value.push(`�?${charTemplate?.name || attacker.characterId}】使用技能�?${skill.name}】，${summary}！`)
     }
 
     if (skill.clearPositiveStatus && actualTargets.length > 0 && battleMap.value) {
@@ -2010,7 +2030,7 @@ export const useGameStore = defineStore('game', () => {
             }
           })
           if (dispelled.length > 0) {
-            battleLog.value.push(`驱散了�?{targetChar.characterId}】的�?{dispelled.join('�?)}】状态`)
+            battleLog.value.push(`驱散了�?${targetChar.characterId}】的�?${dispelled.join('�?')}】状态`)
           }
         }
       })
@@ -2023,7 +2043,7 @@ export const useGameStore = defineStore('game', () => {
         const targetChar = allChars.find(c => c.id === tid)
         if (targetChar) {
           map.tiles[targetChar.row]![targetChar.col]!.terrain = 'snow'
-          damageResults.push(`在�?{targetChar.characterId}】脚下产生了雪地`)
+          damageResults.push(`在�?${targetChar.characterId}】脚下产生了雪地`)
         }
       })
     }
@@ -2034,7 +2054,7 @@ export const useGameStore = defineStore('game', () => {
       attacker.hp = Math.min(attacker.hp + hpBuff, attacker.maxHp)
       if (attacker.totalHeal === undefined) attacker.totalHeal = 0
       attacker.totalHeal += hpBuff
-      damageResults.push(`生命值上�?${hpBuff}并恢�?{hpBuff}生命`)
+      damageResults.push(`生命值上�?${hpBuff}并恢�?${hpBuff}生命`)
     }
 
     if (skill.selfHealPct && attacker.maxHp) {
@@ -2059,7 +2079,7 @@ export const useGameStore = defineStore('game', () => {
         const toDispel = negStatuses.sort(() => Math.random() - 0.5).slice(0, skill.dispelRandomDebuffs)
         toDispel.forEach(status => {
           removeStatusFromCharacter(attacker, status)
-          damageResults.push(`驱散�?{STATUS_CONFIG[status]?.name || status}】状态`)
+          damageResults.push(`驱散�?${STATUS_CONFIG[status]?.name || status}】状态`)
         })
       }
     }
@@ -2088,14 +2108,15 @@ export const useGameStore = defineStore('game', () => {
       centerRow = parseInt(rowStr)
       centerCol = parseInt(colStr)
     } else {
-      battleLog.value.push(`�?{attackerName}】的�?{skill.name}】需要选择一个目标格子！`)
+      battleLog.value.push(`�?${attackerName}】的�?${skill.name}】需要选择一个目标格子！`)
       attacker.mp += skill.mpCost
       return false
     }
 
-    // 验证目标格子合法�?    const targetTile = battleMap.value.tiles[centerRow]?.[centerCol]
+    // 验证目标格子合法�?
+  const targetTile = battleMap.value.tiles[centerRow]?.[centerCol]
     if (!targetTile || targetTile.terrain !== 'empty') {
-      battleLog.value.push(`�?{attackerName}】的�?{skill.name}】需要选择一个空格子！`)
+      battleLog.value.push(`�?${attackerName}】的�?${skill.name}】需要选择一个空格子！`)
       attacker.mp += skill.mpCost
       return false
     }
@@ -2104,14 +2125,16 @@ export const useGameStore = defineStore('game', () => {
     const occupiedByEnemy = battleMap.value.enemies.some(e => e.row === centerRow && e.col === centerCol)
     const occupiedByBuilding = battleMap.value.buildings.some(b => b.row === centerRow && b.col === centerCol)
     if (occupiedByPlayer || occupiedByEnemy || occupiedByBuilding) {
-      battleLog.value.push(`�?{attackerName}】的�?{skill.name}】需要选择一个没有其他单位的空格子！`)
+      battleLog.value.push(`�?${attackerName}】的�?${skill.name}】需要选择一个没有其他单位的空格子！`)
       attacker.mp += skill.mpCost
       return false
     }
 
-    // 1. 触发攻击特效（瞬移前在原位置触发�?    triggerSkillEffect(attacker.row, attacker.col, skillAttr, 'large', skillType, '陷阵', centerRow, centerCol)
+    // 1. 触发攻击特效（瞬移前在原位置触发�?
+  triggerSkillEffect(attacker.row, attacker.col, skillAttr, 'large', skillType, '陷阵', centerRow, centerCol)
 
-    // 2. 对范围内敌人造成伤害，同时触发陷阵特效（通过 forceCategory 参数�?    processAOEAttackSkill(attacker, skill, centerRow, centerCol, charTemplate, '陷阵')
+    // 2. 对范围内敌人造成伤害，同时触发陷阵特效（通过 forceCategory 参数�?
+  processAOEAttackSkill(attacker, skill, centerRow, centerCol, charTemplate, '陷阵')
 
     // 3. 触发瞬移特效（从原位置消失，在目标位置出现）
     setTimeout(() => {
@@ -2124,10 +2147,11 @@ export const useGameStore = defineStore('game', () => {
 
       triggerSkillEffect(centerRow, centerCol, skillAttr, 'large', skillType, '陷阵')
 
-      battleLog.value.push(`�?{attackerName}】使用�?{skill.name}】瞬移至(${centerRow},${centerCol})！`)
+      battleLog.value.push(`�?${attackerName}】使用�?${skill.name}】瞬移至(${centerRow},${centerCol})！`)
     }, 300)
 
-    // 陷阵技能同时消耗移动和行动（瞬移等同于移动�?    attacker.hasMoved = true
+    // 陷阵技能同时消耗移动和行动（瞬移等同于移动�?
+  attacker.hasMoved = true
     attacker.hasActed = true
     if (attacker.isPlayer) {
       const attackerChar = player.value.characters.find(c => c.id === attacker.characterId)
@@ -2179,7 +2203,8 @@ export const useGameStore = defineStore('game', () => {
   
   // ========== 新视觉特效系�?==========
   
-  // 1. 受击闪白 + 血条冲击反�?  interface HitFlashTarget {
+  // 1. 受击闪白 + 血条冲击反�?
+interface HitFlashTarget {
     id: string
     row: number
     col: number
@@ -2190,17 +2215,20 @@ export const useGameStore = defineStore('game', () => {
   function triggerHitFlash(row: number, col: number, attribute: Attribute = 'normal', skipSpark: boolean = false) {
     const id = `hitflash_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`
     hitFlashTargets.value.push({ id, row, col, timestamp: Date.now() })
-    // AOE 等多目标命中时，范围特效已经覆盖受击反馈，不再重复触发粒子飞�?    if (!skipSpark) {
+    // AOE 等多目标命中时，范围特效已经覆盖受击反馈，不再重复触发粒子飞�?
+  if (!skipSpark) {
       triggerHitSpark(row, col, attribute)
     }
     ensureEffectCleanupTimer()
   }
   
-  // 2. 击杀/退场动�?  interface DefeatRecord {
+  // 2. 击杀/退场动�?
+interface DefeatRecord {
     id: string
     row: number
     col: number
-    defeatType: 'kill' | 'self' // kill: 被击败退�? self: 主动退场（自爆/中毒/燃烧�?    timestamp: number
+    defeatType: 'kill' | 'self' // kill: 被击败退�? self: 主动退场（自爆/中毒/燃烧�?
+  timestamp: number
   }
   const defeatRecords = ref<DefeatRecord[]>([])
   
@@ -2229,7 +2257,8 @@ export const useGameStore = defineStore('game', () => {
       size
     }))
     trailParticles.value.push(...newParticles)
-    // 过期清除统一交给 cleanupExpiredEffects 定时器（1.9s 寿命�?    ensureEffectCleanupTimer()
+    // 过期清除统一交给 cleanupExpiredEffects 定时器（1.9s 寿命�?
+  ensureEffectCleanupTimer()
   }
 
   // 2. 技能蓄力特效（选择目标时角色头�?身上的蓄力光效）
@@ -2251,7 +2280,8 @@ export const useGameStore = defineStore('game', () => {
     chargeEffects.value = []
   }
 
-  // 3. 环境交互痕迹（火焰留焦黑、冰留冰晶、毒留腐蚀�?  function triggerTerrainMark(row: number, col: number, type: 'scorch' | 'frost' | 'poison', durationMs = 6000) {
+  // 3. 环境交互痕迹（火焰留焦黑、冰留冰晶、毒留腐蚀�?
+function triggerTerrainMark(row: number, col: number, type: 'scorch' | 'frost' | 'poison', durationMs = 6000) {
     if (!battleMap.value) return
     // 限制同格同类型最多一个，避免堆积
     const existing = terrainMarks.value.findIndex(m => m.row === row && m.col === col && m.type === type)
@@ -2268,15 +2298,18 @@ export const useGameStore = defineStore('game', () => {
     }, durationMs)
   }
 
-  // 4. 死亡特效（按致死属性分化：�?爆炸消散 / �?菱形碎裂 / 暗·阴=溶解下沉 / 其他=光点消散�?  function triggerDeathEffect(row: number, col: number, attribute: Attribute = 'normal') {
+  // 4. 死亡特效（按致死属性分化：�?爆炸消散 / �?菱形碎裂 / 暗·阴=溶解下沉 / 其他=光点消散�?
+function triggerDeathEffect(row: number, col: number, attribute: Attribute = 'normal') {
     const color = ATTRIBUTE_CONFIG[attribute]?.color || '#ffd86b'
     const id = `death_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`
     deathEffects.value.push({ id, row, col, color, attribute, timestamp: Date.now() })
-    // 任意单位死亡都让地图轻震，增强打击反�?    triggerMapShake('light')
+    // 任意单位死亡都让地图轻震，增强打击反�?
+  triggerMapShake('light')
     ensureEffectCleanupTimer()
   }
 
-  // 统一处理：击中地形痕迹（�?�?�?�?触发对应环境痕迹�?  function applyTerrainMarkByAttribute(row: number, col: number, attribute: Attribute) {
+  // 统一处理：击中地形痕迹（�?�?�?�?触发对应环境痕迹�?
+function applyTerrainMarkByAttribute(row: number, col: number, attribute: Attribute) {
     if (attribute === 'fire') {
       triggerTerrainMark(row, col, 'scorch')
     } else if (attribute === 'ice') {
@@ -2290,10 +2323,12 @@ export const useGameStore = defineStore('game', () => {
   function handleTargetDefeated(row: number, col: number, attribute: Attribute, defeatType: 'kill' | 'self') {
     triggerDefeatAnimation(row, col, defeatType)
     triggerDeathEffect(row, col, attribute)
-    // 战斗击杀额外触发重震屏（triggerDeathEffect 内的轻震会被本次覆盖�?    if (defeatType === 'kill') triggerMapShake('heavy')
+    // 战斗击杀额外触发重震屏（triggerDeathEffect 内的轻震会被本次覆盖�?
+  if (defeatType === 'kill') triggerMapShake('heavy')
   }
   
-  // 3. 攻击轨迹投射物动�?  interface Projectile {
+  // 3. 攻击轨迹投射物动�?
+interface Projectile {
     id: string
     fromRow: number
     fromCol: number
@@ -2318,7 +2353,8 @@ export const useGameStore = defineStore('game', () => {
     ensureEffectCleanupTimer()
   }
   
-  // 4. 状态施加视觉反�?  interface StatusApplyEffect {
+  // 4. 状态施加视觉反�?
+interface StatusApplyEffect {
     id: string
     row: number
     col: number
@@ -2364,7 +2400,8 @@ export const useGameStore = defineStore('game', () => {
     const distance = Math.abs(toRow - fromRow) + Math.abs(toCol - fromCol)
     if (distance === 0) return
     
-    // 沿路径生成粒子，首尾分别在起点和终点格子正中�?    const particleCount = Math.min(distance * 2, 8)
+    // 沿路径生成粒子，首尾分别在起点和终点格子正中�?
+  const particleCount = Math.min(distance * 2, 8)
     const particles: { row: number; col: number; delay: number }[] = []
     
     for (let i = 0; i < particleCount; i++) {
@@ -2401,7 +2438,8 @@ export const useGameStore = defineStore('game', () => {
   const hitSparkEffects = ref<HitSparkEffect[]>([])
   
   function triggerHitSpark(row: number, col: number, attribute: Attribute = 'normal') {
-    // 特效数量分级：中负载粒子减半，高负载只保�?3 �?    const load = effectLoadLevel()
+    // 特效数量分级：中负载粒子减半，高负载只保�?3 �?
+  const load = effectLoadLevel()
     const particleCount = load === 2 ? 3 : load === 1 ? 4 : 8
     const particles: HitSparkParticle[] = []
 
@@ -2421,15 +2459,18 @@ export const useGameStore = defineStore('game', () => {
     ensureEffectCleanupTimer()
   }
   
-  // 投射物类型判断：指定哪些技能类型有投射�?  function getProjectileTypeForSkill(skill: Skill | null): Projectile['type'] | null {
+  // 投射物类型判断：指定哪些技能类型有投射�?
+function getProjectileTypeForSkill(skill: Skill | null): Projectile['type'] | null {
     if (!skill) return null
-    // 指定category的攻击技能有投射�?    if (skill.category !== '指定' && skill.category !== 'aoe') return null
+    // 指定category的攻击技能有投射�?
+  if (skill.category !== '指定' && skill.category !== 'aoe') return null
     if (skill.type !== 'attack') return null
     
     const attr = skill.attribute || 'normal'
     const effectType = skill.effectType
     
-    // 根据属性和特效类型决定投射物样�?    if (effectType === 'fire' || attr === 'fire') return 'fireball'
+    // 根据属性和特效类型决定投射物样�?
+  if (effectType === 'fire' || attr === 'fire') return 'fireball'
     if (effectType === 'ice' || attr === 'ice' || attr === 'water') return 'ice-spike'
     if (effectType === 'thunder') return 'metal-blade'
     if (effectType === 'wind' || attr === 'wind') return 'arrow'
@@ -2440,7 +2481,8 @@ export const useGameStore = defineStore('game', () => {
     return 'arrow' // 默认使用箭矢
   }
 
-  // 计算轰炸类技能的最佳中心位�?  function findBestBombingCenter(
+  // 计算轰炸类技能的最佳中心位�?
+function findBestBombingCenter(
     attacker: BattleCharacter,
     skill: Skill
   ): { row: number; col: number } | null {
@@ -2488,7 +2530,8 @@ export const useGameStore = defineStore('game', () => {
     return bestCenterPos
   }
   
-  // 普通攻击使用的投射�?  function getProjectileTypeForNormalAttack(attribute: Attribute): Projectile['type'] {
+  // 普通攻击使用的投射�?
+function getProjectileTypeForNormalAttack(attribute: Attribute): Projectile['type'] {
     if (attribute === 'fire') return 'fireball'
     if (attribute === 'ice' || attribute === 'water') return 'ice-spike'
     if (attribute === 'dark') return 'dark-bolt'
@@ -2511,15 +2554,17 @@ export const useGameStore = defineStore('game', () => {
       battleLog.value.push('请选择1-4个格子作为集结点')
     } else {
       isSelectingGatherPoints.value = false
-      battleLog.value.push('全军出击指令已下�?)
+      battleLog.value.push('全军出击指令已下�?')
     }
   }
   
-  // 切换集结点选择状�?  function toggleGatherPointSelection(active: boolean) {
+  // 切换集结点选择状�?
+function toggleGatherPointSelection(active: boolean) {
     isSelectingGatherPoints.value = active
   }
   
-  // 添加集结�?  function addGatheringPoint(row: number, col: number) {
+  // 添加集结�?
+function addGatheringPoint(row: number, col: number) {
     if (gatheringPoints.value.length >= 4) {
       battleLog.value.push('最多只能选择4个集结点')
       return false
@@ -2533,7 +2578,8 @@ export const useGameStore = defineStore('game', () => {
     return true
   }
   
-  // 移除集结�?  function removeGatheringPoint(row: number, col: number) {
+  // 移除集结�?
+function removeGatheringPoint(row: number, col: number) {
     gatheringPoints.value = gatheringPoints.value.filter(p => !(p.row === row && p.col === col))
   }
   
@@ -2596,7 +2642,7 @@ export const useGameStore = defineStore('game', () => {
         const result = await loadGameFromExternalStorage('sangshi_save')
         if (result.success && result.content) {
           saveData = result.content
-          console.log('从外部存储恢复存�?)
+          console.log('从外部存储恢复存�?')
         }
       } catch (e) {
         console.error('从外部存储恢复存档失�?', e)
@@ -2621,8 +2667,10 @@ export const useGameStore = defineStore('game', () => {
         
         // 处理 homeGrid
         if (parsed.player.homeGrid) {
-          // 检查是否是简化格式（一维数组）还是旧格式（二维数组�?          if (Array.isArray(parsed.player.homeGrid[0])) {
-            // 旧格式，先移�?icon 等字�?            parsed.player.characters = parsed.player.characters.map((char: any) => {
+          // 检查是否是简化格式（一维数组）还是旧格式（二维数组�?
+        if (Array.isArray(parsed.player.homeGrid[0])) {
+            // 旧格式，先移�?icon 等字�?
+          parsed.player.characters = parsed.player.characters.map((char: any) => {
               if (!char.baseMaxHp) char.baseMaxHp = char.maxHp
               if (!char.baseMaxMp) char.baseMaxMp = char.maxMp
               if (!char.baseAttack) char.baseAttack = char.attack
@@ -2630,14 +2678,17 @@ export const useGameStore = defineStore('game', () => {
               if (!char.baseMoveSpeed) char.baseMoveSpeed = char.moveSpeed
               if (!char.baseAttackRange) char.baseAttackRange = char.attackRange
               
-              // hp �?mp 恢复到满�?              char.hp = char.maxHp
+              // hp �?mp 恢复到满�?
+            char.hp = char.maxHp
               char.mp = char.maxMp
               
-              // 恢复 avatar（从角色 id 重新生成�?              if (!char.avatar) {
+              // 恢复 avatar（从角色 id 重新生成�?
+            if (!char.avatar) {
                 char.avatar = getAvatarPath(char.id, char.faction)
               }
               
-              // 恢复 isPlayerOwned（玩家角色均�?true�?              char.isPlayerOwned = true
+              // 恢复 isPlayerOwned（玩家角色均�?true�?
+            char.isPlayerOwned = true
               
               // 恢复 faction �?job（战斗灵气煞气系统需要）
               if (!char.faction || !char.job) {
@@ -2650,7 +2701,8 @@ export const useGameStore = defineStore('game', () => {
                 }
               }
               
-              // 处理技能：移除 icon 字段，确保兼容�?              if (char.skills) {
+              // 处理技能：移除 icon 字段，确保兼容�?
+            if (char.skills) {
                 char.skills = char.skills.map((skill: any) => {
                   const { icon, ...cleanSkill } = skill
                   return cleanSkill
@@ -2679,17 +2731,22 @@ export const useGameStore = defineStore('game', () => {
               if (!char.baseMoveSpeed) char.baseMoveSpeed = char.moveSpeed
               if (!char.baseAttackRange) char.baseAttackRange = char.attackRange
               
-              // 处理 maxLevel 字段（新增的等级上限系统�?              if (char.maxLevel === undefined || char.maxLevel === null) {
-                char.maxLevel = 5  // 默认等级上限�?�?              }
+              // 处理 maxLevel 字段（新增的等级上限系统�?
+            if (char.maxLevel === undefined || char.maxLevel === null) {
+                char.maxLevel = 5  // 默认等级上限�?�?
+            }
               
-              // hp �?mp 恢复到满�?              char.hp = char.maxHp
+              // hp �?mp 恢复到满�?
+            char.hp = char.maxHp
               char.mp = char.maxMp
               
-              // 恢复 avatar（从角色 id 重新生成�?              if (!char.avatar) {
+              // 恢复 avatar（从角色 id 重新生成�?
+            if (!char.avatar) {
                 char.avatar = getAvatarPath(char.id, char.faction)
               }
               
-              // 恢复 isPlayerOwned（玩家角色均�?true�?              char.isPlayerOwned = true
+              // 恢复 isPlayerOwned（玩家角色均�?true�?
+            char.isPlayerOwned = true
               
               // 恢复 attribute（属性系统为新增字段，旧存档可能缺失，从模板中找回）
               if (!char.attribute) {
@@ -2710,7 +2767,8 @@ export const useGameStore = defineStore('game', () => {
                 }
               }
               
-              // �?CHARACTER_SKILLS 装配技能：忽略存档中的 skills 字段，直接查表生�?              // 这样版本更新新增的技能可以在旧存档中自动生效
+              // �?CHARACTER_SKILLS 装配技能：忽略存档中的 skills 字段，直接查表生�?
+            // 这样版本更新新增的技能可以在旧存档中自动生效
               char.skills = buildFullSkillsForCharacter(char.id, char.equipment)
               
               return char
@@ -2720,7 +2778,8 @@ export const useGameStore = defineStore('game', () => {
           // 没有 homeGrid，创建初始的
           parsed.player.homeGrid = createInitialHomeGrid()
           
-          // 也为这些角色装配技�?          parsed.player.characters = parsed.player.characters.map((char: any) => {
+          // 也为这些角色装配技�?
+        parsed.player.characters = parsed.player.characters.map((char: any) => {
             if (!char.attribute) {
               const initialChar = INITIAL_CHARACTERS.find((c: any) => c.id === char.id)
               const hireableChar = HIREABLE_CHARACTERS.find((c: any) => c.id === char.id)
@@ -2750,10 +2809,10 @@ export const useGameStore = defineStore('game', () => {
         return { success: true }
       } catch (e) {
         console.error('加载存档失败:', e)
-        return { success: false, error: (e as Error).message?.substring(0, 100) || '加载存档时发生未知错�? }
+        return { success: false, error: (e as Error).message?.substring(0, 100) || '加载存档时发生未知错�' }
       }
     }
-    return { success: false, error: '未找到存档数�? }
+    return { success: false, error: '未找到存档数�' }
   }
 
   async function saveGame() {
@@ -2915,10 +2974,11 @@ export const useGameStore = defineStore('game', () => {
   }
 
   async function loadFromSlot(slotId: number): Promise<{ success: boolean; error?: string }> {
-    if (slotId < 1 || slotId > 3) return { success: false, error: '无效的存档槽�? }
+    if (slotId < 1 || slotId > 3) return { success: false, error: '无效的存档槽�' }
     let saveData = uni.getStorageSync(`sangshi_save_${slotId}`)
     
-    // Android 先尝试外部存�?    if (uni.getSystemInfoSync().platform === 'android') {
+    // Android 先尝试外部存�?
+  if (uni.getSystemInfoSync().platform === 'android') {
       try {
         const result = await loadGameFromExternalStorage(`sangshi_save_${slotId}`)
         if (result.success && result.content) {
@@ -2948,8 +3008,10 @@ export const useGameStore = defineStore('game', () => {
         
         // 处理 homeGrid
         if (parsed.player.homeGrid) {
-          // 检查是否是简化格式（一维数组）还是旧格式（二维数组�?          if (Array.isArray(parsed.player.homeGrid[0])) {
-            // 旧格式，先移�?icon 等字�?            parsed.player.characters = parsed.player.characters.map((char: any) => {
+          // 检查是否是简化格式（一维数组）还是旧格式（二维数组�?
+        if (Array.isArray(parsed.player.homeGrid[0])) {
+            // 旧格式，先移�?icon 等字�?
+          parsed.player.characters = parsed.player.characters.map((char: any) => {
               if (!char.baseMaxHp) char.baseMaxHp = char.maxHp
               if (!char.baseMaxMp) char.baseMaxMp = char.maxMp
               if (!char.baseAttack) char.baseAttack = char.attack
@@ -2957,14 +3019,17 @@ export const useGameStore = defineStore('game', () => {
               if (!char.baseMoveSpeed) char.baseMoveSpeed = char.moveSpeed
               if (!char.baseAttackRange) char.baseAttackRange = char.attackRange
               
-              // hp �?mp 恢复到满�?              char.hp = char.maxHp
+              // hp �?mp 恢复到满�?
+            char.hp = char.maxHp
               char.mp = char.maxMp
               
-              // 恢复 avatar（从角色 id 重新生成�?              if (!char.avatar) {
+              // 恢复 avatar（从角色 id 重新生成�?
+            if (!char.avatar) {
                 char.avatar = getAvatarPath(char.id, char.faction)
               }
               
-              // 恢复 isPlayerOwned（玩家角色均�?true�?              char.isPlayerOwned = true
+              // 恢复 isPlayerOwned（玩家角色均�?true�?
+            char.isPlayerOwned = true
               
               // 恢复 faction �?job（战斗灵气煞气系统需要）
               if (!char.faction || !char.job) {
@@ -2977,7 +3042,8 @@ export const useGameStore = defineStore('game', () => {
                 }
               }
               
-              // 处理技能：移除 icon 字段，确保兼容�?              if (char.skills) {
+              // 处理技能：移除 icon 字段，确保兼容�?
+            if (char.skills) {
                 char.skills = char.skills.map((skill: any) => {
                   const { icon, ...cleanSkill } = skill
                   return cleanSkill
@@ -3006,14 +3072,17 @@ export const useGameStore = defineStore('game', () => {
               if (!char.baseMoveSpeed) char.baseMoveSpeed = char.moveSpeed
               if (!char.baseAttackRange) char.baseAttackRange = char.attackRange
               
-              // hp �?mp 恢复到满�?              char.hp = char.maxHp
+              // hp �?mp 恢复到满�?
+            char.hp = char.maxHp
               char.mp = char.maxMp
               
-              // 恢复 avatar（从角色 id 重新生成�?              if (!char.avatar) {
+              // 恢复 avatar（从角色 id 重新生成�?
+            if (!char.avatar) {
                 char.avatar = getAvatarPath(char.id, char.faction)
               }
               
-              // 恢复 isPlayerOwned（玩家角色均�?true�?              char.isPlayerOwned = true
+              // 恢复 isPlayerOwned（玩家角色均�?true�?
+            char.isPlayerOwned = true
               
               // 恢复 attribute（属性系统为新增字段，旧存档可能缺失，从模板中找回）
               if (!char.attribute) {
@@ -3033,7 +3102,8 @@ export const useGameStore = defineStore('game', () => {
           // 没有 homeGrid，创建初始的
           parsed.player.homeGrid = createInitialHomeGrid()
           
-          // 也为这些角色装配技�?          parsed.player.characters = parsed.player.characters.map((char: any) => {
+          // 也为这些角色装配技�?
+        parsed.player.characters = parsed.player.characters.map((char: any) => {
             if (!char.attribute) {
               const initialChar = INITIAL_CHARACTERS.find((c: any) => c.id === char.id)
               const hireableChar = HIREABLE_CHARACTERS.find((c: any) => c.id === char.id)
@@ -3063,10 +3133,10 @@ export const useGameStore = defineStore('game', () => {
         return { success: true }
       } catch (e) {
         console.error('加载存档失败:', e)
-        return { success: false, error: (e as Error).message?.substring(0, 100) || '加载存档时发生未知错�? }
+        return { success: false, error: (e as Error).message?.substring(0, 100) || '加载存档时发生未知错�' }
       }
     }
-    return { success: false, error: '未找到存档数�? }
+    return { success: false, error: '未找到存档数�' }
   }
 
   async function hireCharacter(characterTemplate: typeof HIREABLE_CHARACTERS[0]): Promise<boolean> {
@@ -3276,19 +3346,22 @@ export const useGameStore = defineStore('game', () => {
     // 查找目标角色
     let target: Character | null = null
     if (soulTargetId === 'universal') {
-      // 万能魂魄：可以提升任意角�?      if (targetCharacterId) {
+      // 万能魂魄：可以提升任意角�?
+    if (targetCharacterId) {
         target = player.value.characters.find(c => c.id === targetCharacterId)
       } else {
         // 如果没有指定目标，返回false让UI提示选择角色
         return false
       }
     } else {
-      // 特定类型魂魄：只能提升指定角�?      if (soulTargetId === targetCharacterId) {
+      // 特定类型魂魄：只能提升指定角�?
+    if (soulTargetId === targetCharacterId) {
         target = player.value.characters.find(c => c.id === targetCharacterId)
       } else {
-        // 检查是否有该角�?        target = player.value.characters.find(c => c.id === soulTargetId)
+        // 检查是否有该角�?
+      target = player.value.characters.find(c => c.id === soulTargetId)
         if (!target) {
-          battleLog.value.push(`没有可以使用�?{item.name}】的角色！`)
+          battleLog.value.push(`没有可以使用�?${item.name}】的角色！`)
           return false
         }
       }
@@ -3296,14 +3369,15 @@ export const useGameStore = defineStore('game', () => {
 
     if (!target) return false
 
-    // 检查等级上限是否已�?0�?    if (target.maxLevel >= 20) {
-      battleLog.value.push(`�?{target.name}】的等级上限已达最高（20级）！`)
+    // 检查等级上限是否已�?0�?
+  if (target.maxLevel >= 20) {
+      battleLog.value.push(`�?${target.name}】的等级上限已达最高（20级）！`)
       return false
     }
 
     // 提升等级上限
     target.maxLevel++
-    battleLog.value.push(`使用�?{item.name}】，�?{target.name}】等级上限提升至${target.maxLevel}级！`)
+    battleLog.value.push(`使用�?${item.name}】，�?${target.name}】等级上限提升至${target.maxLevel}级！`)
 
     item.count--
     if (item.count <= 0) {
@@ -3338,7 +3412,7 @@ export const useGameStore = defineStore('game', () => {
           buildingConfig = { type: 'archerTower', name: '箭塔', icon: '/static/avatars/human/jianta.png', maxHp: 200, level: 1 }
           break
         case 'energyTower':
-          buildingConfig = { type: 'energyTower', name: '灵能�?, icon: '/static/avatars/human/lingnengta.png', maxHp: 300, level: 1 }
+          buildingConfig = { type: 'energyTower', name: '灵能�?', icon: '/static/avatars/human/lingnengta.png', maxHp: 300, level: 1 }
           break
         default:
           buildingConfig = { type: 'spiritField', name: '灵田', icon: '🌾', maxHp: 500, level: 1 }
@@ -3395,7 +3469,8 @@ export const useGameStore = defineStore('game', () => {
         showFloatingText(row, col, absVal, isHeal ? 'heal' : 'damage', attr)
         // 受击闪白 + 粒子飞溅
         if (!isHeal) triggerHitFlash(row, col, attr)
-        // 远程普攻：画投射�?        if (attacker && attacker.attackRange > 1 && !isHeal) {
+        // 远程普攻：画投射�?
+      if (attacker && attacker.attackRange > 1 && !isHeal) {
           triggerProjectile(attacker.row, attacker.col, row, col, 'arrow', attr)
         }
         // 文字日志（伤害/治疗）
@@ -3415,7 +3490,8 @@ export const useGameStore = defineStore('game', () => {
       case 'skill': {
         const caster = state.chars.find(c => c.id === ev.casterId)
         const attr = (caster?.job as Attribute) || 'normal'
-        // 简化：技能放了就在施法者位置画个蓄力特�?        if (caster) triggerChargeEffect(caster.row, caster.col, attr)
+        // 简化：技能放了就在施法者位置画个蓄力特�?
+      if (caster) triggerChargeEffect(caster.row, caster.col, attr)
         break
       }
       case 'status': {
@@ -3467,7 +3543,8 @@ export const useGameStore = defineStore('game', () => {
     const config = BATTLE_CONFIG[mode]
     const difficultyConfig = DIFFICULTY_CONFIG[difficulty]
     const tiles: BattleTile[][] = []
-    /* @deprecated 实时战斗废弃建筑/收集物系�?    const buildings = []
+    /* @deprecated 实时战斗废弃建筑/收集物系�?
+  const buildings = []
     const collectibles = []
     */
     const buildings: any[] = []
@@ -3480,7 +3557,8 @@ export const useGameStore = defineStore('game', () => {
     console.log('地图配置:', config)
     console.log('敌方阵营:', selectedFactions)
     
-    // 1. 先初始化完整的空白地�?    for (let row = 0; row < config.height; row++) {
+    // 1. 先初始化完整的空白地�?
+  for (let row = 0; row < config.height; row++) {
       tiles[row] = []
       for (let col = 0; col < config.width; col++) {
         let tileTerrain: TerrainType = 'empty'
@@ -3506,7 +3584,8 @@ export const useGameStore = defineStore('game', () => {
     }
 
     // 2. 防御模式下，用玩家家园覆盖中�?x9区域
-    // 先筛选玩家角色并计算等级，用于计算建筑血�?    let playerCharsForLevel: any[]
+    // 先筛选玩家角色并计算等级，用于计算建筑血�?
+  let playerCharsForLevel: any[]
     if (selectedCharacterIds && selectedCharacterIds.length > 0) {
       playerCharsForLevel = player.value.characters.filter(c => selectedCharacterIds.includes(c.id) && c.hp > 0)
     } else {
@@ -3530,12 +3609,15 @@ export const useGameStore = defineStore('game', () => {
           
           console.log(`家园格子 [${homeRow},${homeCol}] -> 战场 [${battleRow},${battleCol}]:`, homeCell)
           
-          // 重置地形为空�?          tiles[battleRow][battleCol].terrain = 'empty'
+          // 重置地形为空�?
+        tiles[battleRow][battleCol].terrain = 'empty'
           
-          // 如果家园有建筑物，则添加到战场（@deprecated 实时战斗废弃�?          if (false && homeCell.building) {
+          // 如果家园有建筑物，则添加到战场（@deprecated 实时战斗废弃�?
+        if (false && homeCell.building) {
             const buildingConfig = (null as any) // @deprecated
             const calculatedMaxHp = getBuildingHp(buildingConfig.maxHp)
-            // 计算建筑攻击力和防御力（考虑等级加成�?            const buildingLevel = homeCell.building.level || 1
+            // 计算建筑攻击力和防御力（考虑等级加成�?
+          const buildingLevel = homeCell.building.level || 1
             const hpGrowth = buildingConfig.hpGrowth || 0
             const attackGrowth = buildingConfig.attackGrowth || 0
             const defenseGrowth = buildingConfig.defenseGrowth || 0
@@ -3562,12 +3644,14 @@ export const useGameStore = defineStore('game', () => {
             buildings.push(newBuilding)
             tiles[battleRow][battleCol].building = newBuilding
           } else if (homeCell.terrain !== 'empty') {
-            // 如果有地形，也应�?            tiles[battleRow][battleCol].terrain = homeCell.terrain
+            // 如果有地形，也应�?
+          tiles[battleRow][battleCol].terrain = homeCell.terrain
           }
         }
       }
     } else {
-      // 进攻模式：清理玩家出生区域（底部3行），确保没有河流或障碍�?      const spawnStartRow = config.height - 3
+      // 进攻模式：清理玩家出生区域（底部3行），确保没有河流或障碍�?
+    const spawnStartRow = config.height - 3
       for (let r = spawnStartRow; r < config.height; r++) {
         for (let c = 0; c < config.width; c++) {
           if (tiles[r][c].terrain !== 'empty') {
@@ -3592,11 +3676,13 @@ export const useGameStore = defineStore('game', () => {
     const players: BattleCharacter[] = []
     const enemies: BattleCharacter[] = []
 
-    // 3. 计算敌人等级：我方参战角色平均等级向下取�?    const enemyLevel = Math.floor(playerChars.reduce((sum, char) => sum + char.level, 0) / playerChars.length) || 1
+    // 3. 计算敌人等级：我方参战角色平均等级向下取�?
+  const enemyLevel = Math.floor(playerChars.reduce((sum, char) => sum + char.level, 0) / playerChars.length) || 1
     console.log('敌人等级:', enemyLevel)
 
     // 3. 放置玩家角色
-    // 预先收集玩家出生区域的所有有效空�?    let validPositions: {row: number, col: number}[] = []
+    // 预先收集玩家出生区域的所有有效空�?
+  let validPositions: {row: number, col: number}[] = []
     
     if (mode === 'defensive' || mode === 'zombie') {
       // 防御模式/丧尸围城：在中央9x9区域收集空位
@@ -3634,7 +3720,8 @@ export const useGameStore = defineStore('game', () => {
     }
     shuffleArray(validPositions);
     
-    // 按顺序放置玩家角�?    playerChars.forEach((char, index) => {
+    // 按顺序放置玩家角�?
+  playerChars.forEach((char, index) => {
       if (index < validPositions.length) {
         const pos = validPositions[index]
         
@@ -3676,10 +3763,12 @@ export const useGameStore = defineStore('game', () => {
       enemyCount = 1
     }
     
-    // 从选中的阵营中筛选敌人角�?    const enabledFactions = selectedFactions && selectedFactions.length > 0 ? selectedFactions : ['ghost']
+    // 从选中的阵营中筛选敌人角�?
+  const enabledFactions = selectedFactions && selectedFactions.length > 0 ? selectedFactions : ['ghost']
     const availableEnemyTemplates = HIREABLE_CHARACTERS.filter(char => enabledFactions.includes(char.faction) && char.job !== '虚影')
     
-    // 如果没有可用的敌人角色，回退到鬼�?    const finalEnemyFactions = availableEnemyTemplates.length > 0 ? enabledFactions : ['ghost']
+    // 如果没有可用的敌人角色，回退到鬼�?
+  const finalEnemyFactions = availableEnemyTemplates.length > 0 ? enabledFactions : ['ghost']
     const enemyTemplates = HIREABLE_CHARACTERS.filter(char => finalEnemyFactions.includes(char.faction) && char.job !== '虚影')
     
     console.log('选中的敌方阵�?', enabledFactions)
@@ -3690,14 +3779,16 @@ export const useGameStore = defineStore('game', () => {
       let placed = false
       let attempts = 0
       
-      // 随机从选中阵营的角色模板中选择一�?      const randomTemplate = enemyTemplates[Math.floor(Math.random() * enemyTemplates.length)]
+      // 随机从选中阵营的角色模板中选择一�?
+    const randomTemplate = enemyTemplates[Math.floor(Math.random() * enemyTemplates.length)]
       
       while (!placed && attempts < 100) {
         let row: number, col: number
         
         if (mode === 'defensive' || mode === 'zombie') {
           // 防御模式/丧尸围城：在地图四周边缘随机放置
-          const edge = Math.floor(Math.random() * 4) // 0=�?1=�?2=�?3=�?          switch (edge) {
+          const edge = Math.floor(Math.random() * 4) // 0=�?1=�?2=�?3=�?
+        switch (edge) {
             case 0: // 上边
               row = 0
               col = Math.floor(Math.random() * config.width)
@@ -3721,7 +3812,8 @@ export const useGameStore = defineStore('game', () => {
           col = Math.floor(Math.random() * config.width)
         }
         
-        // 检查位置是否有�?        const tile = tiles[row]?.[col]
+        // 检查位置是否有�?
+      const tile = tiles[row]?.[col]
         const hasBuilding = buildings.some(b => b.row === row && b.col === col)
         const hasCharacter = [...players, ...enemies].some(c => c.row === row && c.col === col)
         
@@ -3753,13 +3845,15 @@ export const useGameStore = defineStore('game', () => {
     // 根据难度决定生成策略
     let buildingsToSpawn = possibleBuildings
     if (difficulty === 'easy' || difficulty === 'normal') {
-      // 简�?正常难度：只随机生成一个建�?      if (possibleBuildings.length > 0) {
+      // 简�?正常难度：只随机生成一个建�?
+    if (possibleBuildings.length > 0) {
         const randomIndex = Math.floor(Math.random() * possibleBuildings.length)
         buildingsToSpawn = [possibleBuildings[randomIndex]]
       }
     }
     
-    // 放置选中的建�?    for (const buildingInfo of buildingsToSpawn) {
+    // 放置选中的建�?
+  for (const buildingInfo of buildingsToSpawn) {
       let placed = false
       let attempts = 0
       while (!placed && attempts < 100) {
@@ -3802,7 +3896,7 @@ export const useGameStore = defineStore('game', () => {
           buildings.push(newBuilding)
           tiles[row][col].building = newBuilding
           placed = true
-          console.log(`添加${buildingConfig.name}建筑到战�?(等级${buildingLevel}, 血�?{calculatedMaxHp}):`, row, col)
+          console.log(`添加${buildingConfig.name}建筑到战�?(等级${buildingLevel}, 血�?${calculatedMaxHp}):`, row, col)
         }
         attempts++
       }
@@ -3810,7 +3904,8 @@ export const useGameStore = defineStore('game', () => {
 
     // 5. 生成灵草（@deprecated 实时战斗废弃收集物系统）
     if (false) {
-    const collectibleCount = 3 // 固定3�?    for (let i = 0; i < collectibleCount; i++) {
+    const collectibleCount = 3 // 固定3�?
+  for (let i = 0; i < collectibleCount; i++) {
       let placed = false
       let attempts = 0
       while (!placed && attempts < 50) {
@@ -3865,7 +3960,8 @@ export const useGameStore = defineStore('game', () => {
       enemyReiki: 0,
       enemyShaQi: 0,
       battleEnded: false,
-      // 实时战斗运行时字�?      paused: false,
+      // 实时战斗运行时字�?
+    paused: false,
       speedMultiplier: 1,
       battleStartTime: Date.now(),
     }
@@ -3880,7 +3976,8 @@ export const useGameStore = defineStore('game', () => {
 
     isInBattle.value = true;
     battleLog.value = ['战斗开始！'];
-    // 重置阵营指令和集结点状�?    factionCommand.value = 'attack';
+    // 重置阵营指令和集结点状�?
+  factionCommand.value = 'attack';
     gatheringPoints.value = [];
     isSelectingGatherPoints.value = false;
 
@@ -3905,13 +4002,15 @@ export const useGameStore = defineStore('game', () => {
       if (!battleManager || !battleMap.value) return
       const state = battleManager.getState()
 
-      // 天气系统：每 6 秒随机变化一次（概率同原来秒制�?      const now = Date.now()
+      // 天气系统：每 6 秒随机变化一次（概率同原来秒制�?
+    const now = Date.now()
       if (now - lastWeatherTime >= 6000) {
         lastWeatherTime = now
         updateWeather()
       }
 
-      // 消费 BattleManager 的事件队列（攻击/技�?死亡/状�?�?飘字/特效�?      if (state.events.length > 0) {
+      // 消费 BattleManager 的事件队列（攻击/技�?死亡/状�?�?飘字/特效�?
+    if (state.events.length > 0) {
         for (const ev of state.events) {
           handleSimBattleEvent(ev, state)
         }
@@ -3934,7 +4033,8 @@ export const useGameStore = defineStore('game', () => {
 
           // 死亡同步：SimChar 死了�?BattleCharacter 还没从主数组移走 �?移到 defeatedCharacters
           if (simChar.dead && target.hp > 0) {
-            // simChar.dead=true �?target.hp 还没同步�?0 �?先同�?            target.hp = 0
+            // simChar.dead=true �?target.hp 还没同步�?0 �?先同�?
+          target.hp = 0
           }
           if (simChar.dead) {
             // 检查是否已经在 defeatedCharacters
@@ -3952,7 +4052,8 @@ export const useGameStore = defineStore('game', () => {
         }
       }
 
-      // 重建 tile.character 引用（因为角色可能移动了�?      const { width, height } = battleMap.value
+      // 重建 tile.character 引用（因为角色可能移动了�?
+    const { width, height } = battleMap.value
       // 先清空所�?tile �?character
       for (let r = 0; r < height; r++) {
         for (let c = 0; c < width; c++) {
@@ -3971,16 +4072,18 @@ export const useGameStore = defineStore('game', () => {
         }
       }
 
-      // 同步 paused 状�?      battleMap.value.paused = battleManager.isPaused()
+      // 同步 paused 状�?
+    battleMap.value.paused = battleManager.isPaused()
       battleMap.value.speedMultiplier = battleManager.getSpeedMultiplier()
 
-      // 检查战斗是否结�?      if (battleManager.isEnded()) {
+      // 检查战斗是否结�?
+    if (battleManager.isEnded()) {
         if (battleSyncTimer) {
           clearInterval(battleSyncTimer)
           battleSyncTimer = null
         }
         const winner = battleManager.getWinner()
-        battleLog.value.push(winner === 'player' ? '战斗胜利�? : '战斗失败...')
+        battleLog.value.push(winner === 'player' ? '战斗胜利�' : '战斗失败...')
         endBattle(winner === 'player')
       }
     }, 100) as unknown as ReturnType<typeof setInterval>
@@ -4068,11 +4171,14 @@ export const useGameStore = defineStore('game', () => {
     const loot: { name: string; count: number }[] = [];
     const characterExp: { name: string; exp: number; isDefeated: boolean }[] = [];
     
-    // 计算所有参战玩家角色（包括已退场的�?    const allPlayerChars = [...battleMap.value.players, ...(battleMap.value.defeatedCharacters || [])].filter(c => c.isPlayer);
+    // 计算所有参战玩家角色（包括已退场的�?
+  const allPlayerChars = [...battleMap.value.players, ...(battleMap.value.defeatedCharacters || [])].filter(c => c.isPlayer);
     
     if (victory) {
-      // 胜利：结算经�?金币+战利�?      
-      /* @deprecated 实时战斗废弃收集物系�?      // 1. 处理地图上拾取的物资（剩余的收集物）
+      // 胜利：结算经�?金币+战利�?
+    
+      /* @deprecated 实时战斗废弃收集物系�?
+    // 1. 处理地图上拾取的物资（剩余的收集物）
       battleMap.value.collectibles.forEach(collectible => {
         const template = CONSUMABLE_TEMPLATES.find(t => t.name === collectible.name);
         if (template) {
@@ -4088,7 +4194,8 @@ export const useGameStore = defineStore('game', () => {
               count: 1,
             });
           }
-          // 记录战利�?          const existingLoot = loot.find(l => l.name === collectible.name);
+          // 记录战利�?
+        const existingLoot = loot.find(l => l.name === collectible.name);
           if (existingLoot) {
             existingLoot.count += 1;
           } else {
@@ -4099,7 +4206,8 @@ export const useGameStore = defineStore('game', () => {
       });
       */
       
-      // 2. 处理已经使用/拾取的物资（loot数组�?      battleMap.value.loot.forEach(item => {
+      // 2. 处理已经使用/拾取的物资（loot数组�?
+    battleMap.value.loot.forEach(item => {
         const existingIndex = player.value.inventory.findIndex(
           i => i.name === item.name && i.type === item.type
         );
@@ -4111,7 +4219,8 @@ export const useGameStore = defineStore('game', () => {
             id: `item_${Date.now()}_${Math.random()}`,
           });
         }
-        // 记录战利�?        const existingLoot = loot.find(l => l.name === item.name);
+        // 记录战利�?
+      const existingLoot = loot.find(l => l.name === item.name);
         if (existingLoot) {
           existingLoot.count += item.count;
         } else {
@@ -4120,7 +4229,8 @@ export const useGameStore = defineStore('game', () => {
         battleLog.value.push(`获得${item.name}！`);
       });
 
-      // 3. 固定获得1个万物宝�?      const wanwuChestConfig = CHEST_CONFIG.wanwu
+      // 3. 固定获得1个万物宝�?
+    const wanwuChestConfig = CHEST_CONFIG.wanwu
       const wanwuIndex = player.value.inventory.findIndex(
         item => item.name === wanwuChestConfig.name && item.type === 'consumable'
       );
@@ -4136,9 +4246,10 @@ export const useGameStore = defineStore('game', () => {
         });
       }
       loot.push({ name: wanwuChestConfig.name, count: 1 });
-      battleLog.value.push(`获得1�?{wanwuChestConfig.name}！`);
+      battleLog.value.push(`获得1�?${wanwuChestConfig.name}！`);
       
-      // 4. 获得敌人数量个法器宝�?      const faqiChestConfig = CHEST_CONFIG.faqi
+      // 4. 获得敌人数量个法器宝�?
+    const faqiChestConfig = CHEST_CONFIG.faqi
       const faqiIndex = player.value.inventory.findIndex(
         item => item.name === faqiChestConfig.name && item.type === 'consumable'
       );
@@ -4154,12 +4265,12 @@ export const useGameStore = defineStore('game', () => {
         });
       }
       loot.push({ name: faqiChestConfig.name, count: enemyCount });
-      battleLog.value.push(`获得${enemyCount}�?{faqiChestConfig.name}！`);
+      battleLog.value.push(`获得${enemyCount}�?${faqiChestConfig.name}！`);
       
       // 5. 计算金币奖励�?50 + 敌人数量 * 30 * 敌人等级
       goldGained = 150 + enemyCount * 30 * enemyLevel;
       player.value.gold += goldGained;
-      battleLog.value.push(`战斗胜利！获�?{goldGained}金币`);
+      battleLog.value.push(`战斗胜利！获�?${goldGained}金币`);
       
       // 6. 计算魂魄掉落：万能魂�?击败的敌方角色对应的魂魄
       // 统计击败的敌方角色类型和数量
@@ -4194,10 +4305,11 @@ export const useGameStore = defineStore('game', () => {
           });
         }
         loot.push({ name: soulConfig.name, count: soul.count });
-        battleLog.value.push(`获得${soul.count}个�?{soul.name}魂魄】！`);
+        battleLog.value.push(`获得${soul.count}个�?${soul.name}魂魄】！`);
       });
       
-      // 掉落1个万能魂�?      const universalSoulConfig = createSoulItem('universal');
+      // 掉落1个万能魂�?
+    const universalSoulConfig = createSoulItem('universal');
       const universalIndex = player.value!.inventory.findIndex(
         i => i.subtype === 'soul' && i.soulTargetId === 'universal'
       );
@@ -4226,16 +4338,17 @@ export const useGameStore = defineStore('game', () => {
         if (addExpToCharacter(battleChar.characterId, expGained)) {
           characterExp.push({ name: originalChar.name, exp: expGained, isDefeated });
           if (isDefeated) {
-            battleLog.value.push(`�?{originalChar.name}】战败，获得${expGained}经验值！`);
+            battleLog.value.push(`�?${originalChar.name}】战败，获得${expGained}经验值！`);
           } else {
-            battleLog.value.push(`�?{originalChar.name}】获�?{expGained}经验值！`);
+            battleLog.value.push(`�?${originalChar.name}】获�?${expGained}经验值！`);
           }
         }
       });
       
-      battleLog.value.push('战斗胜利�?);
+      battleLog.value.push('战斗胜利�?');
     } else {
-      // 逃离或战败：只结算经�?      // 经验值为 敌方等级 * (击败敌人数量*5 + 摧毁建筑数量*15)
+      // 逃离或战败：只结算经�?
+    // 经验值为 敌方等级 * (击败敌人数量*5 + 摧毁建筑数量*15)
       const expPerCharacter = enemyLevel * (defeatedEnemyCount * 5 + destroyedBuildingCount * 15);
       
       allPlayerChars.forEach(battleChar => {
@@ -4246,18 +4359,19 @@ export const useGameStore = defineStore('game', () => {
         
         if (addExpToCharacter(battleChar.characterId, expPerCharacter)) {
           characterExp.push({ name: originalChar.name, exp: expPerCharacter, isDefeated });
-          battleLog.value.push(`�?{originalChar.name}】获�?{expPerCharacter}经验值！`);
+          battleLog.value.push(`�?${originalChar.name}】获�?${expPerCharacter}经验值！`);
         }
       });
       
       if (isEscape) {
-        battleLog.value.push('逃离战斗�?);
+        battleLog.value.push('逃离战斗�?');
       } else {
-        battleLog.value.push('战斗失败�?);
+        battleLog.value.push('战斗失败�?');
       }
     }
     
-    // 收集战斗统计数据（伤�?治疗�?    const allBattleChars = [
+    // 收集战斗统计数据（伤�?治疗�?
+  const allBattleChars = [
       ...battleMap.value.players,
       ...battleMap.value.enemies,
       ...(battleMap.value.defeatedCharacters || [])
@@ -4273,7 +4387,8 @@ export const useGameStore = defineStore('game', () => {
       const damage = char.totalDamage || 0
       const heal = char.totalHeal || 0
       
-      // 如果有同名角色（如多个同名敌人），累加统�?      if (charStatsMap[char.characterId]) {
+      // 如果有同名角色（如多个同名敌人），累加统�?
+    if (charStatsMap[char.characterId]) {
         charStatsMap[char.characterId].damage += damage
         charStatsMap[char.characterId].heal += heal
       } else {
@@ -4281,7 +4396,8 @@ export const useGameStore = defineStore('game', () => {
       }
     })
     
-    // 收集建筑伤害统计（实时战斗已废弃建筑系统，固定为 0�?    /* @deprecated 实时战斗废弃
+    // 收集建筑伤害统计（实时战斗已废弃建筑系统，固定为 0�?
+  /* @deprecated 实时战斗废弃
     const playerBuildingsWithDamage = battleMap.value.buildings.filter(b => b.isPlayer && b.totalDamage && b.totalDamage > 0)
     playerBuildingsWithDamage.forEach(building => {
       const buildingId = building.type
@@ -4304,7 +4420,8 @@ export const useGameStore = defineStore('game', () => {
     const enemyDamage = characters.filter(c => c.side === 'enemy').reduce((sum, c) => sum + c.damage, 0)
     const enemyHeal = characters.filter(c => c.side === 'enemy').reduce((sum, c) => sum + c.heal, 0)
     
-    // 按伤害排�?    characters.sort((a, b) => b.damage - a.damage)
+    // 按伤害排�?
+  characters.sort((a, b) => b.damage - a.damage)
     
     // 填充 resultData
     resultData = {
@@ -4341,7 +4458,8 @@ export const useGameStore = defineStore('game', () => {
 
     restoreResources(30);
     isInBattle.value = false;
-    // 延迟设置 battleMap �?null，给 UI 一些时间完成渲�?    setTimeout(() => {
+    // 延迟设置 battleMap �?null，给 UI 一些时间完成渲�?
+  setTimeout(() => {
       battleMap.value = null;
     }, 100);
     await saveGame();
@@ -4385,7 +4503,8 @@ export const useGameStore = defineStore('game', () => {
     return null;
   }
 
-  // 天下市集：购买装�?  async function buyShopEquipment(template: any): Promise<boolean> {
+  // 天下市集：购买装�?
+async function buyShopEquipment(template: any): Promise<boolean> {
     if (!player.value || !template) return false;
 
     if (!template.baseStats) return false;
@@ -4517,7 +4636,7 @@ export const useGameStore = defineStore('game', () => {
       fog: '迷雾',
       ghost_fog: '鬼雾'
     }
-    battleLog.value.push(`天气变为�?{weatherNames[newWeather]}`)
+    battleLog.value.push(`天气变为�?${weatherNames[newWeather]}`)
   }
 
   function generateSnowAreas() {
@@ -4554,7 +4673,8 @@ export const useGameStore = defineStore('game', () => {
         const startRow = Math.floor(Math.random() * (height - config.areaSize + 1))
         const startCol = Math.floor(Math.random() * (width - config.areaSize + 1))
 
-        // 添加整个区域的雪�?        let valid = true
+        // 添加整个区域的雪�?
+      let valid = true
         for (let r = 0; r < config.areaSize; r++) {
           for (let c = 0; c < config.areaSize; c++) {
             const key = `${startRow + r},${startCol + c}`
@@ -4598,7 +4718,8 @@ export const useGameStore = defineStore('game', () => {
     const fireAreas: FireArea[] = []
     const usedPositions = new Set<string>()
 
-    // 山火�?�?x2大小的区域；天火�?�?x3大小的区�?    const areaCount = 2
+    // 山火�?�?x2大小的区域；天火�?�?x3大小的区�?
+  const areaCount = 2
     const areaSize = weather === 'sky_fire' ? 3 : 2
 
     for (let i = 0; i < areaCount; i++) {
@@ -4649,7 +4770,8 @@ export const useGameStore = defineStore('game', () => {
 
   function cleanupExpiredSnowAreas(phase: 'player' | 'enemy') {
     if (!battleMap.value) return
-    // 清除在指定秒阶段结束后应过期的技能雪�?    battleMap.value.snowAreas = battleMap.value.snowAreas.filter(
+    // 清除在指定秒阶段结束后应过期的技能雪�?
+  battleMap.value.snowAreas = battleMap.value.snowAreas.filter(
       s => !(s.source === 'skill' && s.expiresAfterPhase === phase)
     )
   }
@@ -4788,7 +4910,8 @@ export const useGameStore = defineStore('game', () => {
     const collectible = battleMap.value.collectibles.find(c => c.id === collectibleId);
     if (!collectible) return false;
     
-    // 查找角色（可能是玩家也可能是敌人�?    const allChars = [...battleMap.value.players, ...battleMap.value.enemies]
+    // 查找角色（可能是玩家也可能是敌人�?
+  const allChars = [...battleMap.value.players, ...battleMap.value.enemies]
     const char = allChars.find(c => c.id === charId);
     if (!char) return false;
 
@@ -4806,10 +4929,11 @@ export const useGameStore = defineStore('game', () => {
       char.mp = Math.min(char.mp + restoreAmount, charTemplate.maxMp);
     }
 
-    // 移除收集�?    const idx = battleMap.value.collectibles.findIndex(c => c.id === collectibleId);
+    // 移除收集�?
+  const idx = battleMap.value.collectibles.findIndex(c => c.id === collectibleId);
     if (idx !== -1) battleMap.value.collectibles.splice(idx, 1);
 
-    battleLog.value.push(`�?{charTemplate.name}】使�?{collectible.name}！`);
+    battleLog.value.push(`�?${charTemplate.name}】使�?${collectible.name}！`);
 
     return true;
   }
@@ -4833,7 +4957,8 @@ export const useGameStore = defineStore('game', () => {
     return true;
   }
 
-  // 统一创建战斗角色的函�?  function createBattleCharacter(
+  // 统一创建战斗角色的函�?
+function createBattleCharacter(
     template: typeof HIREABLE_CHARACTERS[0],
     level: number,
     row: number,
@@ -4879,7 +5004,8 @@ export const useGameStore = defineStore('game', () => {
     }
   }
 
-  // 检查并自动使用角色所在位置的收集�?  function autoUseCollectibleAtPosition(char: BattleCharacter) {
+  // 检查并自动使用角色所在位置的收集�?
+function autoUseCollectibleAtPosition(char: BattleCharacter) {
     if (!battleMap.value) return false;
 
     // 查找角色位置是否有收集物
@@ -4888,11 +5014,13 @@ export const useGameStore = defineStore('game', () => {
     );
 
     if (collectible) {
-      // 先将收集物添加到战利�?      const template = CONSUMABLE_TEMPLATES.find(t => t.name === collectible.name);
+      // 先将收集物添加到战利�?
+    const template = CONSUMABLE_TEMPLATES.find(t => t.name === collectible.name);
       if (template) {
         battleMap.value.loot.push({ ...template, id: `loot_${Date.now()}`, count: 1 });
       }
-      // 然后自动使用收集�?      return useCollectible(collectible.id, char.id);
+      // 然后自动使用收集�?
+    return useCollectible(collectible.id, char.id);
     }
 
     return false;
@@ -4900,7 +5028,8 @@ export const useGameStore = defineStore('game', () => {
 
   // ========== 状态系统核心函�?==========
 
-  // 判断角色是否有某个状�?  function hasStatus(char: BattleCharacter, status: StatusType): boolean {
+  // 判断角色是否有某个状�?
+function hasStatus(char: BattleCharacter, status: StatusType): boolean {
     return char.statuses?.some(s => s.type === status) ?? false;
   }
 
@@ -4909,7 +5038,8 @@ export const useGameStore = defineStore('game', () => {
     return char.statuses.filter(s => s.type === status).length;
   }
 
-  // 汇总角色当前所有状态对攻击力的百分比加成（例如愤�?20%�?  function getStatusAttackPercent(char: BattleCharacter): number {
+  // 汇总角色当前所有状态对攻击力的百分比加成（例如愤�?20%�?
+function getStatusAttackPercent(char: BattleCharacter): number {
     if (!char.statuses || char.statuses.length === 0) return 0;
     let total = 0;
     for (const s of char.statuses) {
@@ -4920,7 +5050,8 @@ export const useGameStore = defineStore('game', () => {
     return total;
   }
 
-  // 汇总角色当前所有状态对防御力的百分比加成（例如刚毅+30%，不�?50%，愤�?20%�?  function getStatusDefensePercent(char: BattleCharacter): number {
+  // 汇总角色当前所有状态对防御力的百分比加成（例如刚毅+30%，不�?50%，愤�?20%�?
+function getStatusDefensePercent(char: BattleCharacter): number {
     if (!char.statuses || char.statuses.length === 0) return 0;
     let total = 0;
     for (const s of char.statuses) {
@@ -4931,7 +5062,8 @@ export const useGameStore = defineStore('game', () => {
     return total;
   }
 
-  // 汇总角色当前所有状态对移动范围的影响（例如迅捷+1，瘸�?1�?  function getStatusMoveRange(char: BattleCharacter): number {
+  // 汇总角色当前所有状态对移动范围的影响（例如迅捷+1，瘸�?1�?
+function getStatusMoveRange(char: BattleCharacter): number {
     if (!char.statuses || char.statuses.length === 0) return 0;
     let total = 0;
     for (const s of char.statuses) {
@@ -4942,7 +5074,8 @@ export const useGameStore = defineStore('game', () => {
     return total;
   }
 
-  // 汇总角色当前所有状态对攻击范围的影响（例如鹰眼+1，障�?1�?  function getStatusAttackRange(char: BattleCharacter): number {
+  // 汇总角色当前所有状态对攻击范围的影响（例如鹰眼+1，障�?1�?
+function getStatusAttackRange(char: BattleCharacter): number {
     if (!char.statuses || char.statuses.length === 0) return 0;
     let total = 0;
     for (const s of char.statuses) {
@@ -4953,7 +5086,8 @@ export const useGameStore = defineStore('game', () => {
     return total;
   }
 
-  // 获取阵营攻击加成百分比（基于煞气�?  function getFactionAttackBonus(char: BattleCharacter): number {
+  // 获取阵营攻击加成百分比（基于煞气�?
+function getFactionAttackBonus(char: BattleCharacter): number {
     if (!battleMap.value) return 0;
     const shaQi = char.isPlayer ? battleMap.value.playerShaQi : battleMap.value.enemyShaQi;
     if (shaQi >= 100) return 10;
@@ -4961,7 +5095,8 @@ export const useGameStore = defineStore('game', () => {
     return 0;
   }
 
-  // 获取阵营防御加成百分比（基于灵气�?  function getFactionDefenseBonus(char: BattleCharacter): number {
+  // 获取阵营防御加成百分比（基于灵气�?
+function getFactionDefenseBonus(char: BattleCharacter): number {
     if (!battleMap.value) return 0;
     const reiki = char.isPlayer ? battleMap.value.playerReiki : battleMap.value.enemyReiki;
     
@@ -5035,27 +5170,30 @@ export const useGameStore = defineStore('game', () => {
       char.hp = Math.min(char.hp, char.maxHp);
     }
     
-    // 状态施加视觉反�?    if (!silent && battleMap.value) {
+    // 状态施加视觉反�?
+  if (!silent && battleMap.value) {
       triggerStatusApplyEffect(char.row, char.col, status);
     }
     
     if (!silent) {
       const template = findCharacterTemplateInStore(char.characterId);
-      battleLog.value.push(`�?{template?.name || char.characterId}】进入�?{STATUS_CONFIG[status].name}】状态`);
+      battleLog.value.push(`�?${template?.name || char.characterId}】进入�?${STATUS_CONFIG[status].name}】状态`);
     }
   }
 
-  // 给角色移除一个状�?  function removeStatusFromCharacter(char: BattleCharacter, status: StatusType) {
+  // 给角色移除一个状�?
+function removeStatusFromCharacter(char: BattleCharacter, status: StatusType) {
     if (!char.statuses) return;
     const idx = char.statuses.findIndex(s => s.type === status);
     if (idx >= 0) {
       char.statuses.splice(idx, 1);
-      // 解除生命值上限减少的状态：恢复原本的生命值上�?      if (char.maxHpReductionHistory && char.maxHpReductionHistory[status]) {
+      // 解除生命值上限减少的状态：恢复原本的生命值上�?
+    if (char.maxHpReductionHistory && char.maxHpReductionHistory[status]) {
         char.maxHp = char.maxHpReductionHistory[status];
         delete char.maxHpReductionHistory[status];
       }
       const template = findCharacterTemplateInStore(char.characterId);
-      battleLog.value.push(`�?{template?.name || char.characterId}】解除了�?{STATUS_CONFIG[status].name}】状态`);
+      battleLog.value.push(`�?${template?.name || char.characterId}】解除了�?${STATUS_CONFIG[status].name}】状态`);
     }
   }
 
@@ -5064,10 +5202,11 @@ export const useGameStore = defineStore('game', () => {
     if (!char) return;
     const template = findCharacterTemplateInStore(char.characterId);
 
-    // 中毒：每次操作扣6%最大生命�?    if (hasStatus(char, 'poison')) {
+    // 中毒：每次操作扣6%最大生命�?
+  if (hasStatus(char, 'poison')) {
       const damage = Math.max(1, Math.floor(char.maxHp * 0.06));
       char.hp -= damage;
-      battleLog.value.push(`�?{template?.name || char.characterId}】因【中毒】损�?{damage}点生命值`);
+      battleLog.value.push(`�?${template?.name || char.characterId}】因【中毒】损�?${damage}点生命值`);
       if (char.hp <= 0) {
         triggerDefeatAnimation(char.row, char.col, 'self')
         triggerDeathEffect(char.row, char.col, template?.attribute || 'normal')
@@ -5075,7 +5214,7 @@ export const useGameStore = defineStore('game', () => {
         if (battleMap.value?.tiles[char.row]?.[char.col]) {
           battleMap.value.tiles[char.row][char.col].character = null;
         }
-        battleLog.value.push(`�?{template?.name || char.characterId}】因【中毒】身亡！`);
+        battleLog.value.push(`�?${template?.name || char.characterId}】因【中毒】身亡！`);
         checkBattleEnd();
       }
     }
@@ -5092,12 +5231,13 @@ export const useGameStore = defineStore('game', () => {
       if (char.hp <= 0) continue;
       const template = findCharacterTemplateInStore(char.characterId);
 
-      // 燃烧：每秒结束�?0%最大生命�?+ 5%最大法力�?      if (hasStatus(char, 'burning')) {
+      // 燃烧：每秒结束�?0%最大生命�?+ 5%最大法力�?
+    if (hasStatus(char, 'burning')) {
         const hpDamage = Math.max(1, Math.floor(char.maxHp * 0.10));
         const mpDamage = Math.max(1, Math.floor(char.maxMp * 0.05));
         char.hp -= hpDamage;
         char.mp = Math.max(0, char.mp - mpDamage);
-        battleLog.value.push(`�?{template?.name || char.characterId}】因【燃烧】损�?{hpDamage}点生命值和${mpDamage}点法力值`);
+        battleLog.value.push(`�?${template?.name || char.characterId}】因【燃烧】损�?${hpDamage}点生命值和${mpDamage}点法力值`);
         if (char.hp <= 0) {
           triggerDefeatAnimation(char.row, char.col, 'self')
           triggerDeathEffect(char.row, char.col, template?.attribute || 'normal')
@@ -5105,15 +5245,16 @@ export const useGameStore = defineStore('game', () => {
           if (battleMap.value.tiles[char.row]?.[char.col]) {
             battleMap.value.tiles[char.row][char.col].character = null;
           }
-          battleLog.value.push(`�?{template?.name || char.characterId}】因【燃烧】身亡！`);
+          battleLog.value.push(`�?${template?.name || char.characterId}】因【燃烧】身亡！`);
           continue;
         }
       }
 
-      // 流血：每秒结束�?2%最大生命�?      if (hasStatus(char, 'bleeding')) {
+      // 流血：每秒结束�?2%最大生命�?
+    if (hasStatus(char, 'bleeding')) {
         const damage = Math.max(1, Math.floor(char.maxHp * 0.12));
         char.hp -= damage;
-        battleLog.value.push(`�?{template?.name || char.characterId}】因【流血】损�?{damage}点生命值`);
+        battleLog.value.push(`�?${template?.name || char.characterId}】因【流血】损�?${damage}点生命值`);
         if (char.hp <= 0) {
           triggerDefeatAnimation(char.row, char.col, 'self')
           triggerDeathEffect(char.row, char.col, template?.attribute || 'normal')
@@ -5121,14 +5262,15 @@ export const useGameStore = defineStore('game', () => {
           if (battleMap.value.tiles[char.row]?.[char.col]) {
             battleMap.value.tiles[char.row][char.col].character = null;
           }
-          battleLog.value.push(`�?{template?.name || char.characterId}】因【流血】身亡！`);
+          battleLog.value.push(`�?${template?.name || char.characterId}】因【流血】身亡！`);
         }
       }
 
-      // 消散：每秒结束�?5%最大生命�?      if (hasStatus(char, 'dissipate')) {
+      // 消散：每秒结束�?5%最大生命�?
+    if (hasStatus(char, 'dissipate')) {
         const damage = Math.max(1, Math.floor(char.maxHp * 0.25));
         char.hp -= damage;
-        battleLog.value.push(`�?{template?.name || char.characterId}】因【消散】损�?{damage}点生命值`);
+        battleLog.value.push(`�?${template?.name || char.characterId}】因【消散】损�?${damage}点生命值`);
         if (char.hp <= 0) {
           triggerDefeatAnimation(char.row, char.col, 'self')
           triggerDeathEffect(char.row, char.col, template?.attribute || 'normal')
@@ -5136,53 +5278,60 @@ export const useGameStore = defineStore('game', () => {
           if (battleMap.value.tiles[char.row]?.[char.col]) {
             battleMap.value.tiles[char.row][char.col].character = null;
           }
-          battleLog.value.push(`�?{template?.name || char.characterId}】因【消散】身亡！`);
+          battleLog.value.push(`�?${template?.name || char.characterId}】因【消散】身亡！`);
         }
       }
 
-      // 紊乱：每秒结束�?0%最大法力�?      if (hasStatus(char, 'disorder')) {
+      // 紊乱：每秒结束�?0%最大法力�?
+    if (hasStatus(char, 'disorder')) {
         const mpDamage = Math.max(1, Math.floor(char.maxMp * 0.10));
         char.mp = Math.max(0, char.mp - mpDamage);
-        battleLog.value.push(`�?{template?.name || char.characterId}】因【紊乱】损�?{mpDamage}点法力值`);
+        battleLog.value.push(`�?${template?.name || char.characterId}】因【紊乱】损�?${mpDamage}点法力值`);
       }
 
-      // 愈合：每秒结束恢复5%最大生命�?      if (hasStatus(char, 'heal')) {
+      // 愈合：每秒结束恢复5%最大生命�?
+    if (hasStatus(char, 'heal')) {
         const healAmount = Math.max(1, Math.floor(char.maxHp * 0.05));
         char.hp = Math.min(char.maxHp, char.hp + healAmount);
-        battleLog.value.push(`�?{template?.name || char.characterId}】因【愈合】恢�?{healAmount}点生命值`);
+        battleLog.value.push(`�?${template?.name || char.characterId}】因【愈合】恢�?${healAmount}点生命值`);
       }
 
-      // 再生：每秒结束恢复10%最大生命�?      if (hasStatus(char, 'regen')) {
+      // 再生：每秒结束恢复10%最大生命�?
+    if (hasStatus(char, 'regen')) {
         const healAmount = Math.max(1, Math.floor(char.maxHp * 0.10));
         char.hp = Math.min(char.maxHp, char.hp + healAmount);
-        battleLog.value.push(`�?{template?.name || char.characterId}】因【再生】恢�?{healAmount}点生命值`);
+        battleLog.value.push(`�?${template?.name || char.characterId}】因【再生】恢�?${healAmount}点生命值`);
       }
 
-      // 调息：每秒结束恢复5%最大法力�?      if (hasStatus(char, 'tune')) {
+      // 调息：每秒结束恢复5%最大法力�?
+    if (hasStatus(char, 'tune')) {
         const mpHealAmount = Math.max(1, Math.floor(char.maxMp * 0.05));
         char.mp = Math.min(char.maxMp, char.mp + mpHealAmount);
-        battleLog.value.push(`�?{template?.name || char.characterId}】因【调息】恢�?{mpHealAmount}点法力值`);
+        battleLog.value.push(`�?${template?.name || char.characterId}】因【调息】恢�?${mpHealAmount}点法力值`);
       }
 
-      // 静心：每秒结束恢复10%最大法力�?      if (hasStatus(char, 'meditate')) {
+      // 静心：每秒结束恢复10%最大法力�?
+    if (hasStatus(char, 'meditate')) {
         const mpHealAmount = Math.max(1, Math.floor(char.maxMp * 0.10));
         char.mp = Math.min(char.maxMp, char.mp + mpHealAmount);
-        battleLog.value.push(`�?{template?.name || char.characterId}】因【静心】恢�?{mpHealAmount}点法力值`);
+        battleLog.value.push(`�?${template?.name || char.characterId}】因【静心】恢�?${mpHealAmount}点法力值`);
       }
 
-      // 眩晕：秒结束后自动清除（本秒只能防御�?      if (hasStatus(char, 'stun')) {
+      // 眩晕：秒结束后自动清除（本秒只能防御�?
+    if (hasStatus(char, 'stun')) {
         removeStatusFromCharacter(char, 'stun');
-        battleLog.value.push(`�?{template?.name || char.characterId}】从【眩晕】中恢复`);
+        battleLog.value.push(`�?${template?.name || char.characterId}】从【眩晕】中恢复`);
       }
 
-      // 更新状态持续秒数，移除过期状�?      if (char.statuses) {
+      // 更新状态持续秒数，移除过期状�?
+    if (char.statuses) {
         for (let i = char.statuses.length - 1; i >= 0; i--) {
           const status = char.statuses[i];
           if (status.duration > 0) {
             status.duration--;
             if (status.duration <= 0) {
               char.statuses.splice(i, 1);
-              battleLog.value.push(`�?{template?.name || char.characterId}】的�?{STATUS_CONFIG[status.type]?.name || status.type}】状态已解除`);
+              battleLog.value.push(`�?${template?.name || char.characterId}】的�?${STATUS_CONFIG[status.type]?.name || status.type}】状态已解除`);
             }
           }
         }
@@ -5232,12 +5381,13 @@ export const useGameStore = defineStore('game', () => {
     // 添加移动日志
     const charTemplate = findCharacterTemplateInStore(char.characterId)
     const charName = charTemplate?.name || char.characterId
-    battleLog.value.push(`�?{charName}】从(${oldRow},${oldCol})移动�?${row},${col})`)
+    battleLog.value.push(`�?${charName}】从(${oldRow},${oldCol})移动�?${row},${col})`)
 
     // 触发移动轨迹粒子
     triggerMoveTrail(oldRow, oldCol, row, col, char.isPlayer)
 
-    // 检查并自动使用收集物（AI角色�?    autoUseCollectibleAtPosition(char)
+    // 检查并自动使用收集物（AI角色�?
+  autoUseCollectibleAtPosition(char)
 
     // 触发中毒（操作时触发的状态）
     triggerStatusOnAction(char)
@@ -5251,14 +5401,16 @@ export const useGameStore = defineStore('game', () => {
   function getCharacterMoveRange(char: BattleCharacter): { row: number; col: number }[] {
     if (!battleMap.value) return []
 
-    // 如果角色在雪地中，无法移�?    if (isCharacterInSnow(char)) {
+    // 如果角色在雪地中，无法移�?
+  if (isCharacterInSnow(char)) {
       return []
     }
 
     const range: { row: number; col: number }[] = []
     const allChars = [...battleMap.value.players, ...battleMap.value.enemies]
     
-    // 使用角色实际的移动范围（已含装备加成），并叠加状态对移动范围的影响（迅捷+1，瘸�?1�?    const baseMove = char.moveSpeed !== undefined ? char.moveSpeed : 3
+    // 使用角色实际的移动范围（已含装备加成），并叠加状态对移动范围的影响（迅捷+1，瘸�?1�?
+  const baseMove = char.moveSpeed !== undefined ? char.moveSpeed : 3
     let moveDist = Math.max(0, baseMove + getStatusMoveRange(char))
     
     // 如果角色在迷雾中，移动力变成1
@@ -5266,7 +5418,8 @@ export const useGameStore = defineStore('game', () => {
       moveDist = Math.min(moveDist, 1)
     }
     
-    // 使用 BFS 计算可移动范�?    const visited: boolean[][] = Array(battleMap.value.height).fill(null).map(() => Array(battleMap.value.width).fill(false))
+    // 使用 BFS 计算可移动范�?
+  const visited: boolean[][] = Array(battleMap.value.height).fill(null).map(() => Array(battleMap.value.width).fill(false))
     const queue: { row: number; col: number; distance: number }[] = [
       { row: char.row, col: char.col, distance: 0 }
     ]
@@ -5328,7 +5481,8 @@ export const useGameStore = defineStore('game', () => {
   function getAttackableTargets(char: BattleCharacter): (BattleCharacter | any)[] {
     if (!battleMap.value) return []
     const targets: (BattleCharacter | any)[] = []
-    // 使用角色实际的攻击范围（已含装备加成），并叠加状态对攻击范围的影响（鹰眼+1，障�?1�?    const baseAttackRange = char.attackRange || 1
+    // 使用角色实际的攻击范围（已含装备加成），并叠加状态对攻击范围的影响（鹰眼+1，障�?1�?
+  const baseAttackRange = char.attackRange || 1
     let attackRange = Math.max(0, baseAttackRange + getStatusAttackRange(char))
     
     // 如果角色在迷雾中，攻击范围变�?
@@ -5368,7 +5522,8 @@ export const useGameStore = defineStore('game', () => {
       })
     }
     
-    // 添加障碍�?    for (let r = -attackRange; r <= attackRange; r++) {
+    // 添加障碍�?
+  for (let r = -attackRange; r <= attackRange; r++) {
       for (let c = -attackRange; c <= attackRange; c++) {
         const nr = char.row + r
         const nc = char.col + c
@@ -5398,7 +5553,8 @@ export const useGameStore = defineStore('game', () => {
     const charTemplate = findCharacterTemplateInStore(char.characterId)
     let attackRange = charTemplate?.baseAttackRange || 1
     
-    // 叠加状态对攻击范围的影�?    attackRange = Math.max(0, attackRange + getStatusAttackRange(char))
+    // 叠加状态对攻击范围的影�?
+  attackRange = Math.max(0, attackRange + getStatusAttackRange(char))
     
     // 如果角色在迷雾中，攻击范围变�?
     if (isCharacterInFog(char)) {
@@ -5427,14 +5583,17 @@ export const useGameStore = defineStore('game', () => {
     // 恐惧状态：无法攻击或使用技能，只能移动
     if (hasStatus(attacker, 'fear')) return false
 
-    // 先判断是不是攻击障碍�?    if (targetId.startsWith('obstacle_')) {
-      // 攻击障碍�?      const obstacleRow = parseInt(targetId.split('_')[1])
+    // 先判断是不是攻击障碍�?
+  if (targetId.startsWith('obstacle_')) {
+      // 攻击障碍�?
+    const obstacleRow = parseInt(targetId.split('_')[1])
       const obstacleCol = parseInt(targetId.split('_')[2])
       
       if (battleMap.value.tiles[obstacleRow]?.[obstacleCol]?.terrain === 'obstacle') {
         battleMap.value.tiles[obstacleRow]![obstacleCol]!.terrain = 'empty'
-        // 获取攻击者名�?        const attackerTemplate = findCharacterTemplateInStore(attacker.characterId)
-        battleLog.value.push(`�?{attackerTemplate?.name || attacker.characterId}】摧毁了障碍物！`)
+        // 获取攻击者名�?
+      const attackerTemplate = findCharacterTemplateInStore(attacker.characterId)
+        battleLog.value.push(`�?${attackerTemplate?.name || attacker.characterId}】摧毁了障碍物！`)
         attacker.hasActed = true
         // 触发中毒（操作时触发的状态）
         triggerStatusOnAction(attacker)
@@ -5466,36 +5625,41 @@ export const useGameStore = defineStore('game', () => {
     if (attacker.totalDamage === undefined) attacker.totalDamage = 0
     attacker.totalDamage += damage
     
-    // 添加被攻击抖动特�?    triggerShake(target.row, target.col, 'character')
+    // 添加被攻击抖动特�?
+  triggerShake(target.row, target.col, 'character')
     
     // 触发普通攻击投射物
     const attackerAttribute = attackerTemplate?.attribute || 'normal'
     const normalProjType = getProjectileTypeForNormalAttack(attackerAttribute)
     triggerProjectile(attacker.row, attacker.col, target.row, target.col, normalProjType, attackerAttribute)
     
-    // 受击闪白 + 血条冲击反�?    triggerHitFlash(target.row, target.col, attackerAttribute)
+    // 受击闪白 + 血条冲击反�?
+  triggerHitFlash(target.row, target.col, attackerAttribute)
     
     // 触发普通攻击技能光效（使用角色属性颜色）
     triggerSkillEffect(target.row, target.col, attackerAttribute, 'small', 'attack')
     
-    // 显示伤害飘字（带震动效果�?    showFloatingText(target.row, target.col, damage, 'damage', attackerAttribute, true)
+    // 显示伤害飘字（带震动效果�?
+  showFloatingText(target.row, target.col, damage, 'damage', attackerAttribute, true)
     
-    battleLog.value.push(`�?{attackerTemplate?.name || attacker.characterId}】攻击�?{targetTemplate?.name || target.characterId}】，造成${damage}点伤害`)
+    battleLog.value.push(`�?${attackerTemplate?.name || attacker.characterId}】攻击�?${targetTemplate?.name || target.characterId}】，造成${damage}点伤害`)
 
     attacker.hasActed = true
 
     if (target.hp <= 0) {
-      // 被击败退场动�?      triggerDefeatAnimation(target.row, target.col, 'kill')
+      // 被击败退场动�?
+    triggerDefeatAnimation(target.row, target.col, 'kill')
       triggerDeathEffect(target.row, target.col, attackerAttribute)
       removeCharacterFromBattle(target.id, target.isPlayer)
       battleMap.value.tiles[target.row][target.col].character = null
       const finalTargetTemplate = findCharacterTemplateInStore(target.characterId)
-      battleLog.value.push(`�?{finalTargetTemplate?.name || target.characterId}】被击败！`)
+      battleLog.value.push(`�?${finalTargetTemplate?.name || target.characterId}】被击败！`)
     }
 
-    // 普通攻击只清除目标位置的障碍物（如果目标在障碍物上�?    if (battleMap.value.tiles[target.row]?.[target.col]?.terrain === 'obstacle') {
+    // 普通攻击只清除目标位置的障碍物（如果目标在障碍物上�?
+  if (battleMap.value.tiles[target.row]?.[target.col]?.terrain === 'obstacle') {
       battleMap.value.tiles[target.row]![target.col]!.terrain = 'empty'
-      battleLog.value.push(`�?{attackerTemplate?.name || attacker.characterId}】攻击时摧毁了目标位置的障碍物！`)
+      battleLog.value.push(`�?${attackerTemplate?.name || attacker.characterId}】攻击时摧毁了目标位置的障碍物！`)
     }
 
     // 触发中毒（操作时触发的状态）
@@ -5520,9 +5684,11 @@ export const useGameStore = defineStore('game', () => {
     const attackable = getAttackableTargets(attacker)
     if (!attackable.find(t => 'type' in t && t.id === buildingId)) return false
 
-    // 查找攻击者模�?    const attackerTemplate = findCharacterTemplateInStore(attacker.characterId)
+    // 查找攻击者模�?
+  const attackerTemplate = findCharacterTemplateInStore(attacker.characterId)
     
-    // 使用基础攻击�?    let attackPower = attackerTemplate?.baseAttack || 20
+    // 使用基础攻击�?
+  let attackPower = attackerTemplate?.baseAttack || 20
 
     // 建筑防御�?，直接造成伤害
     const damage = Math.max(1, attackPower)
@@ -5532,14 +5698,16 @@ export const useGameStore = defineStore('game', () => {
     if (attacker.totalDamage === undefined) attacker.totalDamage = 0
     attacker.totalDamage += damage
 
-    // 添加被攻击抖动特�?    triggerShake(building.row, building.col, 'building')
+    // 添加被攻击抖动特�?
+  triggerShake(building.row, building.col, 'building')
     
     // 显示伤害飘字
     showFloatingText(building.row, building.col, damage, 'damage')
 
-    battleLog.value.push(`�?{attackerTemplate?.name || attacker.characterId}】对�?{building.name}】造成 ${damage} 点伤害`)
+    battleLog.value.push(`�?${attackerTemplate?.name || attacker.characterId}】对�?${building.name}】造成 ${damage} 点伤害`)
 
-    // 处理血心建筑：如果是血心且第一次被攻击，额外产出一个变异丧�?    if (building.type === 'heart' && !building.hasSpawnedBonus) {
+    // 处理血心建筑：如果是血心且第一次被攻击，额外产出一个变异丧�?
+  if (building.type === 'heart' && !building.hasSpawnedBonus) {
       building.hasSpawnedBonus = true
       spawnVariantZombieFromHeart(building)
     }
@@ -5549,13 +5717,13 @@ export const useGameStore = defineStore('game', () => {
     if (building.hp <= 0) {
       removeBuildingFromBattle(buildingId)
       battleMap.value.tiles[building.row]![building.col]!.building = null
-      battleLog.value.push(`�?{building.name}】被摧毁！`)
+      battleLog.value.push(`�?${building.name}】被摧毁！`)
     }
 
     // 攻击建筑只清除目标位置的障碍物（如果有的话）
     if (battleMap.value.tiles[building.row]?.[building.col]?.terrain === 'obstacle') {
       battleMap.value.tiles[building.row]![building.col]!.terrain = 'empty'
-      battleLog.value.push(`�?{attackerTemplate?.name || attacker.characterId}】攻击建筑时摧毁了目标位置的障碍物！`)
+      battleLog.value.push(`�?${attackerTemplate?.name || attacker.characterId}】攻击建筑时摧毁了目标位置的障碍物！`)
     }
 
     // 触发中毒（操作时触发的状态）
@@ -5579,7 +5747,8 @@ export const useGameStore = defineStore('game', () => {
 
     const pos = emptyPositions[Math.floor(Math.random() * emptyPositions.length)]
     
-    // 使用模板中的最大生命�?    let maxHp = zombieTemplate.maxHp
+    // 使用模板中的最大生命�?
+  let maxHp = zombieTemplate.maxHp
     let maxMp = zombieTemplate.maxMp
     let baseAttack = zombieTemplate.baseAttack ?? zombieTemplate.attack
     let baseDefense = zombieTemplate.baseDefense ?? zombieTemplate.defense
@@ -5614,7 +5783,7 @@ export const useGameStore = defineStore('game', () => {
     battleMap.value.enemies.push(newZombie)
     battleMap.value.tiles[pos.row][pos.col].character = newZombie
     
-    battleLog.value.push(`血心生成了一只�?{zombieTemplate.name}】！`)
+    battleLog.value.push(`血心生成了一只�?${zombieTemplate.name}】！`)
   }
 
   function spawnVariantZombieFromHeart(heartBuilding) {
@@ -5631,7 +5800,8 @@ export const useGameStore = defineStore('game', () => {
 
     const pos = emptyPositions[Math.floor(Math.random() * emptyPositions.length)]
     
-    // 使用模板中的最大生命�?    let maxHp = zombieTemplate.maxHp
+    // 使用模板中的最大生命�?
+  let maxHp = zombieTemplate.maxHp
     let maxMp = zombieTemplate.maxMp
     let baseAttack = zombieTemplate.baseAttack ?? zombieTemplate.attack
     let baseDefense = zombieTemplate.baseDefense ?? zombieTemplate.defense
@@ -5666,10 +5836,11 @@ export const useGameStore = defineStore('game', () => {
     battleMap.value.enemies.push(newZombie)
     battleMap.value.tiles[pos.row][pos.col].character = newZombie
     
-    battleLog.value.push(`血心受到攻击，额外产出了一只�?{zombieTemplate.name}】！`)
+    battleLog.value.push(`血心受到攻击，额外产出了一只�?${zombieTemplate.name}】！`)
   }
 
-  // 通用：血心建筑第一次受到攻击时额外产出一只变异丧�?  function trySpawnZombieFromHeart(building) {
+  // 通用：血心建筑第一次受到攻击时额外产出一只变异丧�?
+function trySpawnZombieFromHeart(building) {
     if (building.type === 'heart' && !building.hasSpawnedBonus) {
       building.hasSpawnedBonus = true
       spawnVariantZombieFromHeart(building)
@@ -5679,18 +5850,21 @@ export const useGameStore = defineStore('game', () => {
   function spawnSoldierFromBarracks(barracksBuilding) {
     if (!battleMap.value) return
 
-    // 找到所有职业为士兵的角�?    const soldierTemplates = HIREABLE_CHARACTERS.filter(c => c.faction === 'human' && c.job === '士兵')
+    // 找到所有职业为士兵的角�?
+  const soldierTemplates = HIREABLE_CHARACTERS.filter(c => c.faction === 'human' && c.job === '士兵')
     
     if (soldierTemplates.length === 0) return
 
-    // 随机选择一个士兵模�?    const randomTemplate = soldierTemplates[Math.floor(Math.random() * soldierTemplates.length)]
+    // 随机选择一个士兵模�?
+  const randomTemplate = soldierTemplates[Math.floor(Math.random() * soldierTemplates.length)]
 
     const emptyPositions = getBuildingAdjacentEmptyPositions(barracksBuilding)
     if (emptyPositions.length === 0) return
 
     const pos = emptyPositions[Math.floor(Math.random() * emptyPositions.length)]
     
-    // 获取角色属�?    let maxHp = randomTemplate.maxHp
+    // 获取角色属�?
+  let maxHp = randomTemplate.maxHp
     let maxMp = randomTemplate.maxMp
     
     const newSoldier: BattleCharacter = {
@@ -5717,7 +5891,7 @@ export const useGameStore = defineStore('game', () => {
     battleMap.value.enemies.push(newSoldier)
     battleMap.value.tiles[pos.row][pos.col].character = newSoldier
     
-    battleLog.value.push(`兵营生成了一名【敌�?{randomTemplate.name}】！`)
+    battleLog.value.push(`兵营生成了一名【敌�?${randomTemplate.name}】！`)
   }
 
   function defend(charId: string): boolean {
@@ -5733,13 +5907,15 @@ export const useGameStore = defineStore('game', () => {
     char.hasActed = true
     char.isDefending = true
     const charTemplate = findCharacterTemplateInStore(char.characterId)
-    battleLog.value.push(`�?{charTemplate?.name || char.characterId}】进入防御姿态！`)
+    battleLog.value.push(`�?${charTemplate?.name || char.characterId}】进入防御姿态！`)
 
-    // 防御属于被动姿态，不触发中毒等操作类状�?    // （仅移动/攻击/技能会触发中毒扣血�?
+    // 防御属于被动姿态，不触发中毒等操作类状�?
+  // （仅移动/攻击/技能会触发中毒扣血�?
     return true
   }
 
-  // 统一治疗技能处理函�?  function processHealSkill(
+  // 统一治疗技能处理函�?
+function processHealSkill(
     attacker: BattleCharacter,
     skill: Skill,
     targetId?: string | string[]
@@ -5753,7 +5929,8 @@ export const useGameStore = defineStore('game', () => {
     const targetIds: string[] = isMultiTarget ? [...targetId] : (targetId ? [targetId] : [])
     const allyPool = attacker.isPlayer ? battleMap.value.players : battleMap.value.enemies
 
-    // AOE治疗技能（以自身为中心�?    if (skill.areaRange && skill.range === 0) {
+    // AOE治疗技能（以自身为中心�?
+  if (skill.areaRange && skill.range === 0) {
       const areaRange = skill.areaRange
       const aoeTargets = allyPool.filter(ally => {
         const dist = Math.abs(ally.row - attacker.row) + Math.abs(ally.col - attacker.col)
@@ -5820,7 +5997,8 @@ export const useGameStore = defineStore('game', () => {
         }
       }
 
-      // 治疗范围内友�?      for (const target of aoeTargets) {
+      // 治疗范围内友�?
+    for (const target of aoeTargets) {
         const targetTemplate = findCharacterTemplateInStore(target.characterId)
         const targetMaxHp = targetTemplate?.maxHp || target.maxHp || 100
         const targetMaxMp = targetTemplate?.maxMp || target.maxMp || 100
@@ -5848,24 +6026,29 @@ export const useGameStore = defineStore('game', () => {
         }
       }
 
-      // 自身状态效�?      if (skill.selfStatusEffects && skill.selfStatusEffects.length > 0) {
+      // 自身状态效�?
+    if (skill.selfStatusEffects && skill.selfStatusEffects.length > 0) {
         const statusNames: string[] = []
         skill.selfStatusEffects.forEach((effect, index) => {
           const duration = getSelfStatusDuration(skill, index)
           addStatusToCharacter(attacker, effect, true, duration)
-          statusNames.push(`${STATUS_CONFIG[effect]?.name || effect}${duration > 0 ? `�?{duration}秒）` : ''}`)
+          statusNames.push(`${STATUS_CONFIG[effect]?.name || effect}${duration > 0 ? `�?${duration}秒）` : ''}`)
         })
-        battleLog.value.push(`�?{charTemplate?.name || attacker.characterId}】自身获得�?{statusNames.join('�?)}】状态！`)
+        battleLog.value.push(`�?${charTemplate?.name || attacker.characterId}】自身获得�?${statusNames.join('�?')}】状态！`)
       }
       
-      // 目标状态效果（如碧海潮生给目标加愈合状态等�?      if (skill.id === 'bi_hai_chao_sheng') {
-        // 碧海潮生：自身获得愈合状态（已在selfStatusEffects处理�?      } else if (skill.id === 'fu_guang_lue_ying') {
-        // 浮光掠影：所有目标获得迅捷状�?        for (const target of aoeTargets) {
+      // 目标状态效果（如碧海潮生给目标加愈合状态等�?
+    if (skill.id === 'bi_hai_chao_sheng') {
+        // 碧海潮生：自身获得愈合状态（已在selfStatusEffects处理�?
+    } else if (skill.id === 'fu_guang_lue_ying') {
+        // 浮光掠影：所有目标获得迅捷状�?
+      for (const target of aoeTargets) {
           addStatusToCharacter(target, 'swift', true)
         }
         addStatusToCharacter(attacker, 'swift', true)
       } else if (skill.id === 'yin_yang_qi_he') {
-        // 阴阳气合：所有目标获得调息状�?        for (const target of aoeTargets) {
+        // 阴阳气合：所有目标获得调息状�?
+      for (const target of aoeTargets) {
           addStatusToCharacter(target, 'tune', true)
         }
         addStatusToCharacter(attacker, 'tune', true)
@@ -5877,27 +6060,30 @@ export const useGameStore = defineStore('game', () => {
 
       // 战斗日志（包含恢复数据）
       const healText = mpHealAmount > 0 && hpHealAmount > 0 
-        ? `${hpHealAmount}生命�?{mpHealAmount}法力` 
+        ? `${hpHealAmount}生命�?${mpHealAmount}法力` 
         : hpHealAmount > 0 ? `${hpHealAmount}生命` : `${mpHealAmount}法力`
       
       if (healedNames.length > 0) {
-        battleLog.value.push(`�?{charTemplate?.name || attacker.characterId}】使用技能�?{skill.name}】，恢复�?{healedNames.join('�?)}�?{healText}！`)
+        battleLog.value.push(`�?${charTemplate?.name || attacker.characterId}】使用技能�?${skill.name}】，恢复�?${healedNames.join('�?')}�?${healText}！`)
       } else {
-        battleLog.value.push(`�?{charTemplate?.name || attacker.characterId}】使用技能�?{skill.name}】，但范围内没有需要治疗的目标！`)
+        battleLog.value.push(`�?${charTemplate?.name || attacker.characterId}】使用技能�?${skill.name}】，但范围内没有需要治疗的目标！`)
       }
 
       return true
     }
 
-    // 单体/多目标治疗技�?    if (targetIds.length === 0 && skill.selfHealPct) {
-      // 自身治疗技能（无需目标�?      const healAmount = Math.floor(attacker.maxHp * skill.selfHealPct)
+    // 单体/多目标治疗技�?
+  if (targetIds.length === 0 && skill.selfHealPct) {
+      // 自身治疗技能（无需目标�?
+    const healAmount = Math.floor(attacker.maxHp * skill.selfHealPct)
       attacker.hp = Math.min(attacker.hp + healAmount, attacker.maxHp)
       if (attacker.totalHeal === undefined) attacker.totalHeal = 0
       attacker.totalHeal += healAmount
       showFloatingText(attacker.row, attacker.col, healAmount, 'heal')
       battleLog.value.push(`自身恢复${healAmount}点生命值`)
 
-      // 自身法力治疗百分�?      if (skill.selfMpHealPct) {
+      // 自身法力治疗百分�?
+    if (skill.selfMpHealPct) {
         const mpHealAmount = Math.floor(attacker.maxMp * skill.selfMpHealPct)
         attacker.mp = Math.min(attacker.mp + mpHealAmount, attacker.maxMp)
         showFloatingText(attacker.row, attacker.col, mpHealAmount, 'mp')
@@ -5905,7 +6091,8 @@ export const useGameStore = defineStore('game', () => {
       }
 
       if (skill.dispelAllDebuffs) {
-        // 驱散所有负面状�?        const dispelledStatuses: string[] = []
+        // 驱散所有负面状�?
+      const dispelledStatuses: string[] = []
         NEGATIVE_STATUSES.forEach(status => {
           if (hasStatus(attacker, status)) {
             removeStatusFromCharacter(attacker, status)
@@ -5913,24 +6100,26 @@ export const useGameStore = defineStore('game', () => {
           }
         })
         if (dispelledStatuses.length > 0) {
-          battleLog.value.push(`驱散自身所有负面状态：�?{dispelledStatuses.join('�?)}】`)
+          battleLog.value.push(`驱散自身所有负面状态：�?${dispelledStatuses.join('�?')}】`)
         }
       } else if (skill.dispelRandomDebuffs && skill.dispelRandomDebuffs > 0) {
-        // 随机驱散负面状�?        const negStatuses = NEGATIVE_STATUSES.filter(status => hasStatus(attacker, status))
+        // 随机驱散负面状�?
+      const negStatuses = NEGATIVE_STATUSES.filter(status => hasStatus(attacker, status))
         if (negStatuses.length > 0) {
           const toDispel = negStatuses.sort(() => Math.random() - 0.5).slice(0, skill.dispelRandomDebuffs)
           toDispel.forEach(status => {
             removeStatusFromCharacter(attacker, status)
-            battleLog.value.push(`驱散自身�?{STATUS_CONFIG[status]?.name || status}】状态`)
+            battleLog.value.push(`驱散自身�?${STATUS_CONFIG[status]?.name || status}】状态`)
           })
         }
       }
 
-      // 自身状态效�?      if (skill.selfStatusEffects && skill.selfStatusEffects.length > 0) {
+      // 自身状态效�?
+    if (skill.selfStatusEffects && skill.selfStatusEffects.length > 0) {
         const duration = skill.statusEffectDuration || 0
         skill.selfStatusEffects.forEach(status => {
           addStatusToCharacter(attacker, status, false, duration)
-          battleLog.value.push(`自身获得�?{STATUS_CONFIG[status]?.name || status}】状�?{duration > 0 ? `（持�?{duration}秒）` : ''}`)
+          battleLog.value.push(`自身获得�?${STATUS_CONFIG[status]?.name || status}】状�?${duration > 0 ? `（持�?${duration}秒）` : ''}`)
         })
       }
       return true
@@ -5948,14 +6137,16 @@ export const useGameStore = defineStore('game', () => {
 
     if (targets.length === 0) return false
 
-    // 计算治疗�?    let attackPower = charTemplate.attack || charTemplate.baseAttack || 20
+    // 计算治疗�?
+  let attackPower = charTemplate.attack || charTemplate.baseAttack || 20
     const healAmount = skill.power > 0 ? Math.floor(attackPower * (skill.power / 100)) : 0
     let hpHealAmount = healAmount
     let mpHealAmount = healAmount
 
     // 特殊治疗公式处理
     if (skill.id === 'ai_de_bao_bao') {
-      // 爱的抱抱�?.05*自身最大生命�?+ 0.1*目标最大生命值（HP和MP�?      const selfMaxHp = charTemplate.maxHp || 100
+      // 爱的抱抱�?.05*自身最大生命�?+ 0.1*目标最大生命值（HP和MP�?
+    const selfMaxHp = charTemplate.maxHp || 100
       const selfMaxMp = charTemplate.maxMp || 100
       const firstTarget = targets[0]
       const firstTargetTemplate = findCharacterTemplateInStore(firstTarget.characterId)
@@ -5965,7 +6156,8 @@ export const useGameStore = defineStore('game', () => {
       hpHealAmount = Math.floor(selfMaxHp * 0.05 + targetMaxHp * 0.1)
       mpHealAmount = Math.floor(selfMaxMp * 0.05 + targetMaxMp * 0.1)
     } else if (skill.id === 'ai_de_fei_wen') {
-      // 爱的飞吻�?.05*自身最大生命�?+ 0.1*目标最大生命值（只恢复HP�?      const selfMaxHp = charTemplate.maxHp || 100
+      // 爱的飞吻�?.05*自身最大生命�?+ 0.1*目标最大生命值（只恢复HP�?
+    const selfMaxHp = charTemplate.maxHp || 100
       const firstTarget = targets[0]
       const firstTargetTemplate = findCharacterTemplateInStore(firstTarget.characterId)
       const targetMaxHp = firstTargetTemplate?.maxHp || firstTarget.maxHp || 100
@@ -5977,10 +6169,12 @@ export const useGameStore = defineStore('game', () => {
       hpHealAmount = Math.floor((charTemplate.maxHp || 100) * 0.1)
       mpHealAmount = Math.floor((charTemplate.maxMp || 100) * 0.1)
     } else if (skill.id === 'miao_shou') {
-      // 妙手：恢�?00%攻击力的生命�?      hpHealAmount = Math.floor(attackPower * (skill.power / 100))
+      // 妙手：恢�?00%攻击力的生命�?
+    hpHealAmount = Math.floor(attackPower * (skill.power / 100))
       mpHealAmount = 0
     } else if (skill.id === 'tian_ya_qing_qing') {
-      // 天雅倾情：恢复自�?0%生命值和法力值上�?      hpHealAmount = Math.floor((charTemplate.maxHp || 100) * 0.1)
+      // 天雅倾情：恢复自�?0%生命值和法力值上�?
+    hpHealAmount = Math.floor((charTemplate.maxHp || 100) * 0.1)
       mpHealAmount = Math.floor((charTemplate.maxMp || 100) * 0.1)
     } else if (skill.id === 'yu_yin_rao_liang') {
       // 余音绕梁�?10%生命 + 40%法力
@@ -6012,7 +6206,8 @@ export const useGameStore = defineStore('game', () => {
       mpHealAmount = 0
     }
 
-    // 对每个目标进行治�?    const healedNames: string[] = []
+    // 对每个目标进行治�?
+  const healedNames: string[] = []
     let totalHealed = 0
 
     for (const target of targets) {
@@ -6020,7 +6215,8 @@ export const useGameStore = defineStore('game', () => {
       const targetMaxHp = targetTemplate?.maxHp || target.maxHp || 100
       const targetMaxMp = targetTemplate?.maxMp || target.maxMp || 100
 
-      // 妙手：恢�?00%攻击力的生命值（每个目标独立计算�?      let currentHpHealAmount = hpHealAmount
+      // 妙手：恢�?00%攻击力的生命值（每个目标独立计算�?
+    let currentHpHealAmount = hpHealAmount
       let currentMpHealAmount = mpHealAmount
 
       // 治疗HP
@@ -6045,7 +6241,8 @@ export const useGameStore = defineStore('game', () => {
         }
       }
 
-      // 驱散不良状�?      if (skill.id === 'ai_de_bao_bao' || skill.id === 'ai_de_fei_wen' || 
+      // 驱散不良状�?
+    if (skill.id === 'ai_de_bao_bao' || skill.id === 'ai_de_fei_wen' || 
           skill.id === 'ai_de_hui_yi' || skill.id === 'jin_ji_zhi_liao' ||
           skill.id === 'zhi_yu_zhi_guang' || skill.id === 'mu_feng_wei_shang' ||
           skill.id === 'wu_di_niu_niu' || skill.id === 'miao_shou') {
@@ -6057,11 +6254,12 @@ export const useGameStore = defineStore('game', () => {
           }
         })
         if (dispelledStatuses.length > 0) {
-          battleLog.value.push(`驱散�?{targetTemplate?.name || target.characterId}】的�?{dispelledStatuses.join('�?)}】状态！`)
+          battleLog.value.push(`驱散�?${targetTemplate?.name || target.characterId}】的�?${dispelledStatuses.join('�?')}】状态！`)
         }
       }
 
-      // 目标状态效�?      if (skill.id === 'tao_hua_zhuo_zhuo') {
+      // 目标状态效�?
+    if (skill.id === 'tao_hua_zhuo_zhuo') {
         addStatusToCharacter(target, 'heal', true)
       } else if (skill.id === 'feng_mo_qin_xin') {
         addStatusToCharacter(target, 'strong', true)
@@ -6070,7 +6268,8 @@ export const useGameStore = defineStore('game', () => {
       }
     }
 
-    // 沐风为裳：同时恢复自�?    if (skill.id === 'mu_feng_wei_shang') {
+    // 沐风为裳：同时恢复自�?
+  if (skill.id === 'mu_feng_wei_shang') {
       const selfMaxHp = charTemplate.maxHp || 100
       const selfMaxMp = charTemplate.maxMp || 100
       
@@ -6081,7 +6280,8 @@ export const useGameStore = defineStore('game', () => {
       showFloatingText(attacker.row, attacker.col, hpHealAmount, 'heal')
     }
 
-    // 自身治疗百分比（如万古结界恢�?5%生命�?    if (skill.selfHealPct && attacker.hp < attacker.maxHp) {
+    // 自身治疗百分比（如万古结界恢�?5%生命�?
+  if (skill.selfHealPct && attacker.hp < attacker.maxHp) {
       const selfHealAmount = Math.floor(attacker.maxHp * skill.selfHealPct)
       const oldHp = attacker.hp
       attacker.hp = Math.min(attacker.hp + selfHealAmount, attacker.maxHp)
@@ -6095,7 +6295,8 @@ export const useGameStore = defineStore('game', () => {
       }
     }
 
-    // 自身法力治疗百分比（如红盖迷踪恢�?0%法力�?    if (skill.selfMpHealPct && attacker.mp < attacker.maxMp) {
+    // 自身法力治疗百分比（如红盖迷踪恢�?0%法力�?
+  if (skill.selfMpHealPct && attacker.mp < attacker.maxMp) {
       const selfMpHealAmount = Math.floor(attacker.maxMp * skill.selfMpHealPct)
       const oldMp = attacker.mp
       attacker.mp = Math.min(attacker.mp + selfMpHealAmount, attacker.maxMp)
@@ -6115,18 +6316,19 @@ export const useGameStore = defineStore('game', () => {
         }
       })
       if (dispelledStatuses.length > 0) {
-        battleLog.value.push(`�?{charTemplate?.name || attacker.characterId}】驱散所有负面状态：�?{dispelledStatuses.join('�?)}】`)
+        battleLog.value.push(`�?${charTemplate?.name || attacker.characterId}】驱散所有负面状态：�?${dispelledStatuses.join('�?')}】`)
       }
     }
 
-    // 随机驱散负面状�?    if (skill.dispelRandomDebuffs && skill.dispelRandomDebuffs > 0) {
+    // 随机驱散负面状�?
+  if (skill.dispelRandomDebuffs && skill.dispelRandomDebuffs > 0) {
       const negStatuses = NEGATIVE_STATUSES.filter(status => hasStatus(attacker, status))
       if (negStatuses.length > 0) {
         const toDispel = negStatuses.sort(() => Math.random() - 0.5).slice(0, skill.dispelRandomDebuffs)
         toDispel.forEach(status => {
           removeStatusFromCharacter(attacker, status)
         })
-        battleLog.value.push(`�?{charTemplate?.name || attacker.characterId}】驱散�?{toDispel.map(s => STATUS_CONFIG[s]?.name || s).join('�?)}】状态`)
+        battleLog.value.push(`�?${charTemplate?.name || attacker.characterId}】驱散�?${toDispel.map(s => STATUS_CONFIG[s]?.name || s).join('�?')}】状态`)
       }
     }
 
@@ -6136,9 +6338,9 @@ export const useGameStore = defineStore('game', () => {
       skill.selfStatusEffects.forEach((effect, index) => {
         const duration = getSelfStatusDuration(skill, index)
         addStatusToCharacter(attacker, effect, true, duration)
-        statusNames.push(`${STATUS_CONFIG[effect]?.name || effect}${duration > 0 ? `�?{duration}秒）` : ''}`)
+        statusNames.push(`${STATUS_CONFIG[effect]?.name || effect}${duration > 0 ? `�?${duration}秒）` : ''}`)
       })
-      battleLog.value.push(`�?{charTemplate?.name || attacker.characterId}】获得�?{statusNames.join('�?)}】状态！`)
+      battleLog.value.push(`�?${charTemplate?.name || attacker.characterId}】获得�?${statusNames.join('�?')}】状态！`)
     }
 
     // 更新治疗统计
@@ -6147,10 +6349,10 @@ export const useGameStore = defineStore('game', () => {
 
     // 战斗日志
     if (healedNames.length > 0) {
-      const healText = mpHealAmount > 0 ? `${hpHealAmount}生命�?{mpHealAmount}法力` : `${hpHealAmount}生命`
-      battleLog.value.push(`�?{charTemplate?.name || attacker.characterId}】使用技能�?{skill.name}】，恢复�?{healedNames.join('�?)}�?{healText}！`)
+      const healText = mpHealAmount > 0 ? `${hpHealAmount}生命�?${mpHealAmount}法力` : `${hpHealAmount}生命`
+      battleLog.value.push(`�?${charTemplate?.name || attacker.characterId}】使用技能�?${skill.name}】，恢复�?${healedNames.join('�?')}�?${healText}！`)
     } else {
-      battleLog.value.push(`�?{charTemplate?.name || attacker.characterId}】使用技能�?{skill.name}】，但没有找到有效目标`)
+      battleLog.value.push(`�?${charTemplate?.name || attacker.characterId}】使用技能�?${skill.name}】，但没有找到有效目标`)
     }
 
     return true
@@ -6172,10 +6374,12 @@ export const useGameStore = defineStore('game', () => {
     if (attacker.isPlayer) {
       const attackerChar = player.value.characters.find(c => c.id === attacker.characterId)
       if (attackerChar) {
-        // 初始上场的玩家角色：从玩家角色列表中检查冷�?        const playerSkill = attackerChar.skills.find(s => s.id === skillId)
+        // 初始上场的玩家角色：从玩家角色列表中检查冷�?
+      const playerSkill = attackerChar.skills.find(s => s.id === skillId)
         if (!playerSkill || playerSkill.currentCooldown > 0) return false
       } else {
-        // 召唤出来的玩家阵营角色：使用 skillCooldowns 检查冷�?        if (!attacker.skillCooldowns) attacker.skillCooldowns = {}
+        // 召唤出来的玩家阵营角色：使用 skillCooldowns 检查冷�?
+      if (!attacker.skillCooldowns) attacker.skillCooldowns = {}
         if ((attacker.skillCooldowns[skillId] || 0) > 0) return false
       }
     } else {
@@ -6186,7 +6390,8 @@ export const useGameStore = defineStore('game', () => {
     
     if (attacker.mp < skill.mpCost) return false
     
-    // 阵营灵气/煞气消耗检�?    if (skill.reikiCost && battleMap.value) {
+    // 阵营灵气/煞气消耗检�?
+  if (skill.reikiCost && battleMap.value) {
       const currentReiki = attacker.isPlayer ? battleMap.value.playerReiki : battleMap.value.enemyReiki
       if (currentReiki < skill.reikiCost) return false
     }
@@ -6206,22 +6411,25 @@ export const useGameStore = defineStore('game', () => {
       if (attacker.hp <= attacker.attack) return false
     }
     
-    // 检查技能使用次数限�?    if (skill.maxUsesPerBattle !== undefined) {
+    // 检查技能使用次数限�?
+  if (skill.maxUsesPerBattle !== undefined) {
       if (!attacker.skillUseCount) attacker.skillUseCount = {}
       const currentUseCount = attacker.skillUseCount[skillId] || 0
       if (currentUseCount >= skill.maxUsesPerBattle) {
-        battleLog.value.push(`�?{attacker.characterId}】的�?{skill.name}】已达到本局战斗最大使用次�?${skill.maxUsesPerBattle}�?`)
+        battleLog.value.push(`�?${attacker.characterId}】的�?${skill.name}】已达到本局战斗最大使用次�?${skill.maxUsesPerBattle}�?`)
         return false
       }
     }
     
-    // 召唤数量限制检�?    if (skill.summonMaxCount && skill.summonCountId && battleMap.value) {
+    // 召唤数量限制检�?
+  if (skill.summonMaxCount && skill.summonCountId && battleMap.value) {
       const currentSide = attacker.isPlayer ? battleMap.value.players : battleMap.value.enemies
       const existingCount = currentSide.filter(c => c.characterId === skill.summonCountId).length
       if (existingCount >= skill.summonMaxCount) return false
     }
     
-    // 沉默状态：无法使用技�?    if (hasStatus(attacker, 'silenced')) return false
+    // 沉默状态：无法使用技�?
+  if (hasStatus(attacker, 'silenced')) return false
 
     // 恐惧状态：无法攻击或使用技能，只能移动
     if (hasStatus(attacker, 'fear')) return false
@@ -6244,7 +6452,8 @@ export const useGameStore = defineStore('game', () => {
       }
     }
     
-    // 记录技能使用次�?    if (skill.maxUsesPerBattle !== undefined) {
+    // 记录技能使用次�?
+  if (skill.maxUsesPerBattle !== undefined) {
       if (!attacker.skillUseCount) attacker.skillUseCount = {}
       attacker.skillUseCount[skillId] = (attacker.skillUseCount[skillId] || 0) + 1
     }
@@ -6254,7 +6463,8 @@ export const useGameStore = defineStore('game', () => {
     const targetIds: string[] = isMultiTarget ? [...targetId] : (targetId ? [targetId] : [])
     const singleTargetId: string | undefined = !isMultiTarget ? targetId : undefined
 
-    // 解析目标位置（如果singleTargetId是pos_row_col格式�?    let targetPos: { row: number; col: number } | null = null
+    // 解析目标位置（如果singleTargetId是pos_row_col格式�?
+  let targetPos: { row: number; col: number } | null = null
     if (singleTargetId && singleTargetId.startsWith('pos_')) {
       const parts = singleTargetId.split('_')
       if (parts.length === 3) {
@@ -6265,7 +6475,8 @@ export const useGameStore = defineStore('game', () => {
       }
     }
 
-    // 处理障碍物目标（obstacle_row_col格式�?    if (singleTargetId && singleTargetId.startsWith('obstacle_')) {
+    // 处理障碍物目标（obstacle_row_col格式�?
+  if (singleTargetId && singleTargetId.startsWith('obstacle_')) {
       const parts = singleTargetId.split('_')
       if (parts.length === 3) {
         const row = parseInt(parts[1])
@@ -6274,19 +6485,21 @@ export const useGameStore = defineStore('game', () => {
         const damage = Math.floor(skill.power / 100 * (charTemplate.attack || charTemplate.baseAttack || 20))
 
         // 处理有自身buff的技能：即使目标是障碍物，也触发自身效果
-        // 【红花绿叶】：提高自身血量上限并恢复（攻击力�?0%�?        // 【蛮甲冲击】：使自身进入【刚毅】状态（防御�?30%，持续到战斗结束�?        if (skillId === 'hong_hua_lv_ye') {
+        // 【红花绿叶】：提高自身血量上限并恢复（攻击力�?0%�?
+      // 【蛮甲冲击】：使自身进入【刚毅】状态（防御�?30%，持续到战斗结束�?
+      if (skillId === 'hong_hua_lv_ye') {
           const attackPower = computeAttackPower(attacker)
           const hpBuff = Math.floor(attackPower * 0.8)
           attacker.maxHp = (attacker.maxHp || charTemplate?.maxHp || 100) + hpBuff
           attacker.hp = Math.min(attacker.hp + hpBuff, attacker.maxHp)
           if (attacker.totalHeal === undefined) attacker.totalHeal = 0
           attacker.totalHeal += hpBuff
-          battleLog.value.push(`�?{charTemplate?.name || attacker.characterId}】使用技能�?{skill.name}】摧毁了一个障碍物！生命值上�?${hpBuff}并恢�?{hpBuff}生命！`)
+          battleLog.value.push(`�?${charTemplate?.name || attacker.characterId}】使用技能�?${skill.name}】摧毁了一个障碍物！生命值上�?${hpBuff}并恢�?${hpBuff}生命！`)
         } else if (skillId === 'man_jia_chong_ji') {
           addStatusToCharacter(attacker, 'resolute', true)
-          battleLog.value.push(`�?{charTemplate?.name || attacker.characterId}】使用技能�?{skill.name}】摧毁了一个障碍物！自身进入【刚毅】状态！`)
+          battleLog.value.push(`�?${charTemplate?.name || attacker.characterId}】使用技能�?${skill.name}】摧毁了一个障碍物！自身进入【刚毅】状态！`)
         } else {
-          battleLog.value.push(`�?{charTemplate?.name || attacker.characterId}】使用技能�?{skill.name}】摧毁了一个障碍物！`)
+          battleLog.value.push(`�?${charTemplate?.name || attacker.characterId}】使用技能�?${skill.name}】摧毁了一个障碍物！`)
         }
 
         attacker.hasActed = true
@@ -6332,8 +6545,8 @@ export const useGameStore = defineStore('game', () => {
           triggerSkillEffect(pos.row, pos.col, skill.attribute || 'normal', 'medium', skill.type as any)
         })
         
-        const obstacleNames = obstacleTargets.map(() => '障碍�?)
-        battleLog.value.push(`�?{charTemplate?.name || attacker.characterId}】使用技能�?{skill.name}】，摧毁�?{obstacleTargets.length}个障碍物！`)
+        const obstacleNames = obstacleTargets.map(() => '障碍�?')
+        battleLog.value.push(`�?${charTemplate?.name || attacker.characterId}】使用技能�?${skill.name}】，摧毁�?${obstacleTargets.length}个障碍物！`)
         
         // 如果没有其他目标了，直接结算
         if (remainingTargetIds.length === 0) {
@@ -6370,7 +6583,8 @@ export const useGameStore = defineStore('game', () => {
       
       processAOEAttackSkill(attacker, skill, centerRow, centerCol, charTemplate)
       
-      // 在攻击者位置触发技能光�?      const aoeSkillAttr = skill.attribute || 'normal'
+      // 在攻击者位置触发技能光�?
+    const aoeSkillAttr = skill.attribute || 'normal'
       const aoeSkillType = skill.type as 'attack' | 'heal' | 'support' | 'summon' | 'special'
       triggerSkillEffect(attacker.row, attacker.col, aoeSkillAttr, 'large', aoeSkillType)
       
@@ -6400,15 +6614,18 @@ export const useGameStore = defineStore('game', () => {
       }
     }
 
-    // 特殊处理「爱的抱抱」「爱的飞吻」「爱的回忆」「余音绕梁」「疯魔琴心」等治疗技�?    // 统一使用 processHealSkill 处理
+    // 特殊处理「爱的抱抱」「爱的飞吻」「爱的回忆」「余音绕梁」「疯魔琴心」等治疗技�?
+  // 统一使用 processHealSkill 处理
     const healSkillIds = ['ai_de_bao_bao', 'ai_de_fei_wen', 'ai_de_hui_yi', 'yu_yin_rao_liang', 'feng_mo_qin_xin', 'ning_xin_jue', 'wan_gu_jie_jie', 'fa_xiang_chong_yuan']
     let skillHandled = false
     if (healSkillIds.includes(skillId)) {
       processHealSkill(attacker, skill, targetId)
       skillHandled = true
     }
-    // 特殊处理「噬心食髓」技�?    else if (skillId === 'shi_xin_shi_sui') {
-      // 选择3格范围内�?个敌方角色，造成150%攻击力的伤害，并陷入【中毒】状�?      if (targetId) {
+    // 特殊处理「噬心食髓」技�?
+  else if (skillId === 'shi_xin_shi_sui') {
+      // 选择3格范围内�?个敌方角色，造成150%攻击力的伤害，并陷入【中毒】状�?
+    if (targetId) {
         const actualTargetId = Array.isArray(targetId) ? targetId[0] : targetId
 
         let charTargets = attacker.isPlayer
@@ -6436,13 +6653,14 @@ export const useGameStore = defineStore('game', () => {
           
           showFloatingText(target.row, target.col, damage, 'damage')
 
-          // 施加中毒状�?          addStatusToCharacter(target, 'poison', true)
+          // 施加中毒状�?
+        addStatusToCharacter(target, 'poison', true)
 
-          battleLog.value.push(`�?{charTemplate?.name || attacker.characterId}】使用技能�?{skill.name}】，对�?{targetName}】造成${totalDamage}点伤害！目标陷入【中毒】状态！`)
+          battleLog.value.push(`�?${charTemplate?.name || attacker.characterId}】使用技能�?${skill.name}】，对�?${targetName}】造成${totalDamage}点伤害！目标陷入【中毒】状态！`)
 
           if (target.hp <= 0) {
             removeCharacterFromBattle(target.id, target.isPlayer)
-            battleLog.value.push(`�?{targetName}】被击败！`)
+            battleLog.value.push(`�?${targetName}】被击败！`)
           }
         } else if (buildingTargets.length > 0) {
           const targetBuilding = buildingTargets[0]
@@ -6463,9 +6681,9 @@ export const useGameStore = defineStore('game', () => {
           if (targetBuilding.hp <= 0) {
             removeBuildingFromBattle(targetBuilding.id)
             battleMap.value!.tiles[targetBuilding.row]![targetBuilding.col]!.building = null
-            battleLog.value.push(`�?{targetName}】被摧毁！`)
+            battleLog.value.push(`�?${targetName}】被摧毁！`)
           } else {
-            battleLog.value.push(`�?{charTemplate?.name || attacker.characterId}】使用技能�?{skill.name}】，对�?{targetName}】造成${totalDamage}点伤害！`)
+            battleLog.value.push(`�?${charTemplate?.name || attacker.characterId}】使用技能�?${skill.name}】，对�?${targetName}】造成${totalDamage}点伤害！`)
           }
         }
 
@@ -6475,8 +6693,10 @@ export const useGameStore = defineStore('game', () => {
         }
       }
     }
-    // 特殊处理「天罗地网」技�?    else if (skillId === 'tian_luo_di_wang') {
-      // 选择3格范围内�?个敌方角色，造成120%攻击力的伤害，并陷入【瘸腿】状�?      if (targetId) {
+    // 特殊处理「天罗地网」技�?
+  else if (skillId === 'tian_luo_di_wang') {
+      // 选择3格范围内�?个敌方角色，造成120%攻击力的伤害，并陷入【瘸腿】状�?
+    if (targetId) {
         const actualTargetIds = Array.isArray(targetId) ? [...targetId].slice(0, 2) : [targetId]
 
         const attackPower = computeAttackPower(attacker)
@@ -6506,11 +6726,12 @@ export const useGameStore = defineStore('game', () => {
             
             showFloatingText(target.row, target.col, damage, 'damage')
 
-            // 施加瘸腿状�?            addStatusToCharacter(target, 'lame', true)
+            // 施加瘸腿状�?
+          addStatusToCharacter(target, 'lame', true)
 
             if (target.hp <= 0) {
               removeCharacterFromBattle(target.id, target.isPlayer)
-              battleLog.value.push(`�?{tName}】被击败！`)
+              battleLog.value.push(`�?${tName}】被击败！`)
             }
           } else if (buildingTargets.length > 0) {
             const targetBuilding = buildingTargets[0]
@@ -6531,7 +6752,7 @@ export const useGameStore = defineStore('game', () => {
             if (targetBuilding.hp <= 0) {
               removeBuildingFromBattle(targetBuilding.id)
               battleMap.value!.tiles[targetBuilding.row]![targetBuilding.col]!.building = null
-              battleLog.value.push(`�?{targetBuilding.name}】被摧毁！`)
+              battleLog.value.push(`�?${targetBuilding.name}】被摧毁！`)
             }
           }
         }
@@ -6540,14 +6761,16 @@ export const useGameStore = defineStore('game', () => {
         attacker.totalDamage += totalDamageAll
 
         if (damagedTargets.length > 0) {
-          battleLog.value.push(`�?{charTemplate?.name || attacker.characterId}】使用技能�?{skill.name}】，对�?{damagedTargets.join('�?)}】分别造成伤害并陷入【瘸腿】状态`)
+          battleLog.value.push(`�?${charTemplate?.name || attacker.characterId}】使用技能�?${skill.name}】，对�?${damagedTargets.join('�?')}】分别造成伤害并陷入【瘸腿】状态`)
         } else {
-          battleLog.value.push(`�?{charTemplate?.name || attacker.characterId}】使用技能�?{skill.name}】，但没有命中有效目标`)
+          battleLog.value.push(`�?${charTemplate?.name || attacker.characterId}】使用技能�?${skill.name}】，但没有命中有效目标`)
         }
       }
     }
-    // 特殊处理「桃之夭夭」技�?    else if (skillId === 'tao_zhi_yao_yao') {
-      // 选择3格范围内�?个敌方角色，造成150%攻击力的伤害，并陷入【迷离】状�?      if (targetId) {
+    // 特殊处理「桃之夭夭」技�?
+  else if (skillId === 'tao_zhi_yao_yao') {
+      // 选择3格范围内�?个敌方角色，造成150%攻击力的伤害，并陷入【迷离】状�?
+    if (targetId) {
         const actualTargetId = Array.isArray(targetId) ? targetId[0] : targetId
 
         let charTargets = attacker.isPlayer
@@ -6575,13 +6798,14 @@ export const useGameStore = defineStore('game', () => {
           
           showFloatingText(target.row, target.col, damage, 'damage')
 
-          // 施加迷离状�?          addStatusToCharacter(target, 'mili', true)
+          // 施加迷离状�?
+        addStatusToCharacter(target, 'mili', true)
 
-          battleLog.value.push(`�?{charTemplate?.name || attacker.characterId}】使用技能�?{skill.name}】，对�?{targetName}】造成${totalDamage}点伤害！目标陷入【迷离】状态！`)
+          battleLog.value.push(`�?${charTemplate?.name || attacker.characterId}】使用技能�?${skill.name}】，对�?${targetName}】造成${totalDamage}点伤害！目标陷入【迷离】状态！`)
 
           if (target.hp <= 0) {
             removeCharacterFromBattle(target.id, target.isPlayer)
-            battleLog.value.push(`�?{targetName}】被击败！`)
+            battleLog.value.push(`�?${targetName}】被击败！`)
           }
         } else if (buildingTargets.length > 0) {
           const targetBuilding = buildingTargets[0]
@@ -6602,9 +6826,9 @@ export const useGameStore = defineStore('game', () => {
           if (targetBuilding.hp <= 0) {
             removeBuildingFromBattle(targetBuilding.id)
             battleMap.value!.tiles[targetBuilding.row]![targetBuilding.col]!.building = null
-            battleLog.value.push(`�?{targetName}】被摧毁！`)
+            battleLog.value.push(`�?${targetName}】被摧毁！`)
           } else {
-            battleLog.value.push(`�?{charTemplate?.name || attacker.characterId}】使用技能�?{skill.name}】，对�?{targetName}】造成${totalDamage}点伤害！`)
+            battleLog.value.push(`�?${charTemplate?.name || attacker.characterId}】使用技能�?${skill.name}】，对�?${targetName}】造成${totalDamage}点伤害！`)
           }
         }
 
@@ -6614,13 +6838,16 @@ export const useGameStore = defineStore('game', () => {
         }
       }
     }
-    // 特殊处理「桃花灼灼」「浮光掠影」「阴阳气合」等治疗技�?    const healSkillIds2 = ['tao_hua_zhuo_zhuo', 'fu_guang_lue_ying', 'yin_yang_qi_he']
+    // 特殊处理「桃花灼灼」「浮光掠影」「阴阳气合」等治疗技�?
+  const healSkillIds2 = ['tao_hua_zhuo_zhuo', 'fu_guang_lue_ying', 'yin_yang_qi_he']
     if (healSkillIds2.includes(skillId)) {
       processHealSkill(attacker, skill, targetId)
       skillHandled = true
     }
-    // 特殊处理「藏剑一叶」技�?    else if (skillId === 'cang_jian_yi_ye') {
-      // 选择2格菱形范围内�?个敌方单位，造成200%攻击力的伤害，并使目标陷入【迷离】状�?      if (targetId) {
+    // 特殊处理「藏剑一叶」技�?
+  else if (skillId === 'cang_jian_yi_ye') {
+      // 选择2格菱形范围内�?个敌方单位，造成200%攻击力的伤害，并使目标陷入【迷离】状�?
+    if (targetId) {
         const actualTargetId = Array.isArray(targetId) ? targetId[0] : targetId
 
         let charTargets = attacker.isPlayer
@@ -6648,13 +6875,14 @@ export const useGameStore = defineStore('game', () => {
           
           showFloatingText(target.row, target.col, damage, 'damage')
 
-          // 施加迷离状�?          addStatusToCharacter(target, 'mili', true)
+          // 施加迷离状�?
+        addStatusToCharacter(target, 'mili', true)
 
-          battleLog.value.push(`�?{charTemplate?.name || attacker.characterId}】使用技能�?{skill.name}】，对�?{targetName}】造成${totalDamage}点伤害！目标陷入【迷离】状态！`)
+          battleLog.value.push(`�?${charTemplate?.name || attacker.characterId}】使用技能�?${skill.name}】，对�?${targetName}】造成${totalDamage}点伤害！目标陷入【迷离】状态！`)
 
           if (target.hp <= 0) {
             removeCharacterFromBattle(target.id, target.isPlayer)
-            battleLog.value.push(`�?{targetName}】被击败！`)
+            battleLog.value.push(`�?${targetName}】被击败！`)
           }
         } else if (buildingTargets.length > 0) {
           const targetBuilding = buildingTargets[0]
@@ -6675,9 +6903,9 @@ export const useGameStore = defineStore('game', () => {
           if (targetBuilding.hp <= 0) {
             removeBuildingFromBattle(targetBuilding.id)
             battleMap.value!.tiles[targetBuilding.row]![targetBuilding.col]!.building = null
-            battleLog.value.push(`�?{targetName}】被摧毁！`)
+            battleLog.value.push(`�?${targetName}】被摧毁！`)
           } else {
-            battleLog.value.push(`�?{charTemplate?.name || attacker.characterId}】使用技能�?{skill.name}】，对�?{targetName}】造成${totalDamage}点伤害！`)
+            battleLog.value.push(`�?${charTemplate?.name || attacker.characterId}】使用技能�?${skill.name}】，对�?${targetName}】造成${totalDamage}点伤害！`)
           }
         }
 
@@ -6687,13 +6915,16 @@ export const useGameStore = defineStore('game', () => {
         }
       }
     }
-    // 特殊处理「沐风为裳」等治疗技�?    const healSkillIds3 = ['mu_feng_wei_shang']
+    // 特殊处理「沐风为裳」等治疗技�?
+  const healSkillIds3 = ['mu_feng_wei_shang']
     if (healSkillIds3.includes(skillId)) {
       processHealSkill(attacker, skill, targetId)
       skillHandled = true
     }
-    // 特殊处理「怒砸葫芦」技�?    else if (skillId === 'nu_za_hu_lu') {
-      // 选择3格范围内�?个敌方角色，造成150%攻击力的伤害，自身获得【脆皮】状�?      if (targetId) {
+    // 特殊处理「怒砸葫芦」技�?
+  else if (skillId === 'nu_za_hu_lu') {
+      // 选择3格范围内�?个敌方角色，造成150%攻击力的伤害，自身获得【脆皮】状�?
+    if (targetId) {
         const actualTargetIds = Array.isArray(targetId) ? [...targetId].slice(0, 2) : [targetId]
 
         const attackPower = computeAttackPower(attacker)
@@ -6725,7 +6956,7 @@ export const useGameStore = defineStore('game', () => {
 
             if (target.hp <= 0) {
               removeCharacterFromBattle(target.id, target.isPlayer)
-              battleLog.value.push(`�?{tName}】被击败！`)
+              battleLog.value.push(`�?${tName}】被击败！`)
             }
           } else if (buildingTargets.length > 0) {
             const targetBuilding = buildingTargets[0]
@@ -6746,7 +6977,7 @@ export const useGameStore = defineStore('game', () => {
             if (targetBuilding.hp <= 0) {
               removeBuildingFromBattle(targetBuilding.id)
               battleMap.value!.tiles[targetBuilding.row]![targetBuilding.col]!.building = null
-              battleLog.value.push(`�?{targetBuilding.name}】被摧毁！`)
+              battleLog.value.push(`�?${targetBuilding.name}】被摧毁！`)
             }
           }
         }
@@ -6754,30 +6985,36 @@ export const useGameStore = defineStore('game', () => {
         if (attacker.totalDamage === undefined) attacker.totalDamage = 0
         attacker.totalDamage += totalDamageAll
 
-        // 自身获得脆皮状�?        addStatusToCharacter(attacker, 'crumble', true)
+        // 自身获得脆皮状�?
+      addStatusToCharacter(attacker, 'crumble', true)
 
         if (damagedTargets.length > 0) {
-          battleLog.value.push(`�?{charTemplate?.name || attacker.characterId}】使用技能�?{skill.name}】，对�?{damagedTargets.join('�?)}】分别造成伤害并进入【脆皮】状态`)
+          battleLog.value.push(`�?${charTemplate?.name || attacker.characterId}】使用技能�?${skill.name}】，对�?${damagedTargets.join('�?')}】分别造成伤害并进入【脆皮】状态`)
         } else {
-          battleLog.value.push(`�?{charTemplate?.name || attacker.characterId}】使用技能�?{skill.name}】，但没有命中有效目标`)
+          battleLog.value.push(`�?${charTemplate?.name || attacker.characterId}】使用技能�?${skill.name}】，但没有命中有效目标`)
         }
       }
     }
-    // 特殊处理「碧海潮生」等AOE治疗技�?    const healSkillIds4 = ['bi_hai_chao_sheng']
+    // 特殊处理「碧海潮生」等AOE治疗技�?
+  const healSkillIds4 = ['bi_hai_chao_sheng']
     if (healSkillIds4.includes(skillId)) {
       processHealSkill(attacker, skill, targetId)
       skillHandled = true
     }
-    // 特殊处理「墨影剑光」技�?    else if (skillId === 'mo_ying_jian_guang') {
+    // 特殊处理「墨影剑光」技�?
+  else if (skillId === 'mo_ying_jian_guang') {
       processAOEAttackSkill(attacker, skill, attacker.row, attacker.col, charTemplate)
     }
-    // 特殊处理「幽驹袭天」技�?    else if (skillId === 'you_ju_xi_tian') {
+    // 特殊处理「幽驹袭天」技�?
+  else if (skillId === 'you_ju_xi_tian') {
       processAOEAttackSkill(attacker, skill, attacker.row, attacker.col, charTemplate)
     }
-    // 特殊处理「水漫金山」技�?    else if (skillId === 'shui_man_jin_shan') {
+    // 特殊处理「水漫金山」技�?
+  else if (skillId === 'shui_man_jin_shan') {
       processAOEAttackSkill(attacker, skill, attacker.row, attacker.col, charTemplate)
     
-      // 设置冷却和状�?      attacker.hasActed = true
+      // 设置冷却和状�?
+    attacker.hasActed = true
       if (attacker.isPlayer) {
         const attackerChar = player.value.characters.find(c => c.id === attacker.characterId)
         if (attackerChar) {
@@ -6791,8 +7028,10 @@ export const useGameStore = defineStore('game', () => {
       triggerStatusOnAction(attacker)
       return true
     }
-    // 特殊处理「红莲花火」技�?    else if (skillId === 'hong_lian_hua_huo') {
-      // 选择3格范围内�?个敌方目标，造成150%攻击力伤害并施加【燃烧�?      const enemyPool = attacker.isPlayer ? battleMap.value.enemies : battleMap.value.players
+    // 特殊处理「红莲花火」技�?
+  else if (skillId === 'hong_lian_hua_huo') {
+      // 选择3格范围内�?个敌方目标，造成150%攻击力伤害并施加【燃烧�?
+    const enemyPool = attacker.isPlayer ? battleMap.value.enemies : battleMap.value.players
       const buildingPool = battleMap.value.buildings.filter(b => b.isPlayer !== attacker.isPlayer)
       const attackPower = computeAttackPower(attacker)
       const damageResults: string[] = []
@@ -6814,10 +7053,10 @@ export const useGameStore = defineStore('game', () => {
             showFloatingText(target.row, target.col, damage, 'damage')
             
             addStatusToCharacter(target, 'burning', true)
-            damageResults.push(`对�?{targetTemplate?.name || target.characterId}】造成${damage}点伤害并使其陷入【燃烧】状态`)
+            damageResults.push(`对�?${targetTemplate?.name || target.characterId}】造成${damage}点伤害并使其陷入【燃烧】状态`)
             if (target.hp <= 0) {
               removeCharacterFromBattle(target.id, target.isPlayer)
-              battleLog.value.push(`�?{targetTemplate?.name || target.characterId}】被击败！`)
+              battleLog.value.push(`�?${targetTemplate?.name || target.characterId}】被击败！`)
             }
             handled++
           } else {
@@ -6829,10 +7068,10 @@ export const useGameStore = defineStore('game', () => {
               attacker.totalDamage += damage
               triggerShake(building.row, building.col, 'building')
               showFloatingText(building.row, building.col, damage, 'damage')
-              damageResults.push(`对�?{building.name}】造成${damage}点伤害`)
+              damageResults.push(`对�?${building.name}】造成${damage}点伤害`)
               if (building.hp <= 0) {
                 removeBuildingFromBattle(building.id)
-                battleLog.value.push(`�?{building.name}】被摧毁！`)
+                battleLog.value.push(`�?${building.name}】被摧毁！`)
               }
               handled++
             }
@@ -6841,13 +7080,15 @@ export const useGameStore = defineStore('game', () => {
       }
 
       if (handled > 0) {
-        battleLog.value.push(`�?{charTemplate?.name || attacker.characterId}】使用技能�?{skill.name}】，${damageResults.join('�?)}！`)
+        battleLog.value.push(`�?${charTemplate?.name || attacker.characterId}】使用技能�?${skill.name}】，${damageResults.join('�?')}！`)
       } else {
-        battleLog.value.push(`�?{charTemplate?.name || attacker.characterId}】使用技能�?{skill.name}】，未命中任何目标！`)
+        battleLog.value.push(`�?${charTemplate?.name || attacker.characterId}】使用技能�?${skill.name}】，未命中任何目标！`)
       }
     }
-    // 特殊处理「蛇剑毒吻」技�?    else if (skillId === 'she_jian_du_wen') {
-      // 选择3格范围内�?个敌方目标，造成120%攻击力伤害并施加【流血�?      const enemyPool = attacker.isPlayer ? battleMap.value.enemies : battleMap.value.players
+    // 特殊处理「蛇剑毒吻」技�?
+  else if (skillId === 'she_jian_du_wen') {
+      // 选择3格范围内�?个敌方目标，造成120%攻击力伤害并施加【流血�?
+    const enemyPool = attacker.isPlayer ? battleMap.value.enemies : battleMap.value.players
       const buildingPool = battleMap.value.buildings.filter(b => b.isPlayer !== attacker.isPlayer)
       const attackPower = computeAttackPower(attacker)
       const damageResults: string[] = []
@@ -6869,10 +7110,10 @@ export const useGameStore = defineStore('game', () => {
             showFloatingText(target.row, target.col, damage, 'damage')
             
             addStatusToCharacter(target, 'bleeding', true)
-            damageResults.push(`对�?{targetTemplate?.name || target.characterId}】造成${damage}点伤害并使其陷入【流血】状态`)
+            damageResults.push(`对�?${targetTemplate?.name || target.characterId}】造成${damage}点伤害并使其陷入【流血】状态`)
             if (target.hp <= 0) {
               removeCharacterFromBattle(target.id, target.isPlayer)
-              battleLog.value.push(`�?{targetTemplate?.name || target.characterId}】被击败！`)
+              battleLog.value.push(`�?${targetTemplate?.name || target.characterId}】被击败！`)
             }
             handled++
           } else {
@@ -6884,10 +7125,10 @@ export const useGameStore = defineStore('game', () => {
               attacker.totalDamage += damage
               triggerShake(building.row, building.col, 'building')
               showFloatingText(building.row, building.col, damage, 'damage')
-              damageResults.push(`对�?{building.name}】造成${damage}点伤害`)
+              damageResults.push(`对�?${building.name}】造成${damage}点伤害`)
               if (building.hp <= 0) {
                 removeBuildingFromBattle(building.id)
-                battleLog.value.push(`�?{building.name}】被摧毁！`)
+                battleLog.value.push(`�?${building.name}】被摧毁！`)
               }
               handled++
             }
@@ -6896,16 +7137,19 @@ export const useGameStore = defineStore('game', () => {
       }
 
       if (handled > 0) {
-        battleLog.value.push(`�?{charTemplate?.name || attacker.characterId}】使用技能�?{skill.name}】，${damageResults.join('�?)}！`)
+        battleLog.value.push(`�?${charTemplate?.name || attacker.characterId}】使用技能�?${skill.name}】，${damageResults.join('�?')}！`)
       } else {
-        battleLog.value.push(`�?{charTemplate?.name || attacker.characterId}】使用技能�?{skill.name}】，未命中任何目标！`)
+        battleLog.value.push(`�?${charTemplate?.name || attacker.characterId}】使用技能�?${skill.name}】，未命中任何目标！`)
       }
     }
-    // 特殊处理「邪神低语」技�?    else if (skillId === 'xie_shen_di_yu') {
+    // 特殊处理「邪神低语」技�?
+  else if (skillId === 'xie_shen_di_yu') {
       processAOEAttackSkill(attacker, skill, attacker.row, attacker.col, charTemplate)
     }
-    // 特殊处理「扰乱心神」技�?    else if (skillId === 'rao_luan_xin_shen') {
-      // 选择2格菱形范围内�?个敌方目标，造成180%攻击力伤害，并驱散目标所有正面状�?      let targetPool = attacker.isPlayer ? battleMap.value.enemies : battleMap.value.players
+    // 特殊处理「扰乱心神」技�?
+  else if (skillId === 'rao_luan_xin_shen') {
+      // 选择2格菱形范围内�?个敌方目标，造成180%攻击力伤害，并驱散目标所有正面状�?
+    let targetPool = attacker.isPlayer ? battleMap.value.enemies : battleMap.value.players
       let buildingPool = battleMap.value.buildings.filter(b => b.isPlayer !== attacker.isPlayer)
       const damageResults: string[] = []
       let handled = 0
@@ -6946,12 +7190,12 @@ export const useGameStore = defineStore('game', () => {
             }
           }
 
-          let log = `对�?{targetTemplate?.name || target.characterId}】造成${damage}点伤害`
+          let log = `对�?${targetTemplate?.name || target.characterId}】造成${damage}点伤害`
           if (dispelCount > 0) log += `，并驱散${dispelCount}个正面状态`
           damageResults.push(log)
           if (target.hp <= 0) {
             removeCharacterFromBattle(target.id, target.isPlayer)
-            battleLog.value.push(`�?{targetTemplate?.name || target.characterId}】被击败！`)
+            battleLog.value.push(`�?${targetTemplate?.name || target.characterId}】被击败！`)
           }
           handled++
         } else {
@@ -6963,10 +7207,10 @@ export const useGameStore = defineStore('game', () => {
             attacker.totalDamage += damage
             triggerShake(building.row, building.col, 'building')
             showFloatingText(building.row, building.col, damage, 'damage')
-            damageResults.push(`对�?{building.name}】造成${damage}点伤害`)
+            damageResults.push(`对�?${building.name}】造成${damage}点伤害`)
             if (building.hp <= 0) {
               removeBuildingFromBattle(building.id)
-              battleLog.value.push(`�?{building.name}】被摧毁！`)
+              battleLog.value.push(`�?${building.name}】被摧毁！`)
             }
             handled++
           }
@@ -6974,19 +7218,22 @@ export const useGameStore = defineStore('game', () => {
       }
 
       if (handled > 0) {
-        battleLog.value.push(`�?{charTemplate?.name || attacker.characterId}】使用技能�?{skill.name}】，${damageResults.join('�?)}！`)
+        battleLog.value.push(`�?${charTemplate?.name || attacker.characterId}】使用技能�?${skill.name}】，${damageResults.join('�?')}！`)
       } else {
-        battleLog.value.push(`�?{charTemplate?.name || attacker.characterId}】使用技能�?{skill.name}】，未命中任何目标！`)
+        battleLog.value.push(`�?${charTemplate?.name || attacker.characterId}】使用技能�?${skill.name}】，未命中任何目标！`)
       }
     }
-    // 特殊处理「奕剑听雨」技�?    else if (skillId === 'yi_jian_ting_yu') {
+    // 特殊处理「奕剑听雨」技�?
+  else if (skillId === 'yi_jian_ting_yu') {
       processAOEAttackSkill(attacker, skill, attacker.row, attacker.col, charTemplate)
       addStatusToCharacter(attacker, 'strong', true)
       addStatusToCharacter(attacker, 'swift', true)
-      battleLog.value.push(`�?{charTemplate?.name || attacker.characterId}】使用技能�?{skill.name}】，自身获得【强力】和【迅捷】状态`)
+      battleLog.value.push(`�?${charTemplate?.name || attacker.characterId}】使用技能�?${skill.name}】，自身获得【强力】和【迅捷】状态`)
     }
-    // 特殊处理「凌云飞剑」技�?    else if (skillId === 'ling_yun_fei_jian') {
-      // 选择3格菱形范围内�?个敌方目标，造成130%攻击力伤�?      const range = skill.range || 3
+    // 特殊处理「凌云飞剑」技�?
+  else if (skillId === 'ling_yun_fei_jian') {
+      // 选择3格菱形范围内�?个敌方目标，造成130%攻击力伤�?
+    const range = skill.range || 3
       const maxTargets = skill.targetCount || 3
       const enemyPool = attacker.isPlayer ? battleMap.value.enemies : battleMap.value.players
       const buildingPool = battleMap.value.buildings.filter(b => b.isPlayer !== attacker.isPlayer)
@@ -7014,10 +7261,10 @@ export const useGameStore = defineStore('game', () => {
             
             showFloatingText(target.row, target.col, damage, 'damage')
             
-            damageResults.push(`对�?{targetTemplate?.name || target.characterId}】造成${damage}点伤害`)
+            damageResults.push(`对�?${targetTemplate?.name || target.characterId}】造成${damage}点伤害`)
             if (target.hp <= 0) {
               removeCharacterFromBattle(target.id, target.isPlayer)
-              battleLog.value.push(`�?{targetTemplate?.name || target.characterId}】被击败！`)
+              battleLog.value.push(`�?${targetTemplate?.name || target.characterId}】被击败！`)
             }
             handled++
           } else {
@@ -7033,10 +7280,10 @@ export const useGameStore = defineStore('game', () => {
               attacker.totalDamage += damage
               triggerShake(building.row, building.col, 'building')
               showFloatingText(building.row, building.col, damage, 'damage')
-              damageResults.push(`对�?{building.name}】造成${damage}点伤害`)
+              damageResults.push(`对�?${building.name}】造成${damage}点伤害`)
               if (building.hp <= 0) {
                 removeBuildingFromBattle(building.id)
-                battleLog.value.push(`�?{building.name}】被摧毁！`)
+                battleLog.value.push(`�?${building.name}】被摧毁！`)
               }
               handled++
             }
@@ -7045,13 +7292,15 @@ export const useGameStore = defineStore('game', () => {
       }
 
       if (handled > 0) {
-        battleLog.value.push(`�?{charTemplate?.name || attacker.characterId}】使用技能�?{skill.name}】，${damageResults.join('�?)}！`)
+        battleLog.value.push(`�?${charTemplate?.name || attacker.characterId}】使用技能�?${skill.name}】，${damageResults.join('�?')}！`)
       } else {
-        battleLog.value.push(`�?{charTemplate?.name || attacker.characterId}】使用技能�?{skill.name}】，未命中任何目标！`)
+        battleLog.value.push(`�?${charTemplate?.name || attacker.characterId}】使用技能�?${skill.name}】，未命中任何目标！`)
       }
     }
-    // 特殊处理「聚气成刃」技�?    else if (skillId === 'ju_qi_cheng_ren') {
-      // 选择3格菱形范围内�?个敌方目标，造成150%攻击力伤�?      const range = skill.range || 3
+    // 特殊处理「聚气成刃」技�?
+  else if (skillId === 'ju_qi_cheng_ren') {
+      // 选择3格菱形范围内�?个敌方目标，造成150%攻击力伤�?
+    const range = skill.range || 3
       const maxTargets = skill.targetCount || 2
       const enemyPool = attacker.isPlayer ? battleMap.value.enemies : battleMap.value.players
       const buildingPool = battleMap.value.buildings.filter(b => b.isPlayer !== attacker.isPlayer)
@@ -7078,10 +7327,10 @@ export const useGameStore = defineStore('game', () => {
             
             showFloatingText(target.row, target.col, damage, 'damage')
             
-            damageResults.push(`对�?{targetTemplate?.name || target.characterId}】造成${damage}点伤害`)
+            damageResults.push(`对�?${targetTemplate?.name || target.characterId}】造成${damage}点伤害`)
             if (target.hp <= 0) {
               removeCharacterFromBattle(target.id, target.isPlayer)
-              battleLog.value.push(`�?{targetTemplate?.name || target.characterId}】被击败！`)
+              battleLog.value.push(`�?${targetTemplate?.name || target.characterId}】被击败！`)
             }
             handled++
           } else {
@@ -7097,10 +7346,10 @@ export const useGameStore = defineStore('game', () => {
               attacker.totalDamage += damage
               triggerShake(building.row, building.col, 'building')
               showFloatingText(building.row, building.col, damage, 'damage')
-              damageResults.push(`对�?{building.name}】造成${damage}点伤害`)
+              damageResults.push(`对�?${building.name}】造成${damage}点伤害`)
               if (building.hp <= 0) {
                 removeBuildingFromBattle(building.id)
-                battleLog.value.push(`�?{building.name}】被摧毁！`)
+                battleLog.value.push(`�?${building.name}】被摧毁！`)
               }
               handled++
             }
@@ -7109,13 +7358,15 @@ export const useGameStore = defineStore('game', () => {
       }
 
       if (handled > 0) {
-        battleLog.value.push(`�?{charTemplate?.name || attacker.characterId}】使用技能�?{skill.name}】，${damageResults.join('�?)}！`)
+        battleLog.value.push(`�?${charTemplate?.name || attacker.characterId}】使用技能�?${skill.name}】，${damageResults.join('�?')}！`)
       } else {
-        battleLog.value.push(`�?{charTemplate?.name || attacker.characterId}】使用技能�?{skill.name}】，未命中任何目标！`)
+        battleLog.value.push(`�?${charTemplate?.name || attacker.characterId}】使用技能�?${skill.name}】，未命中任何目标！`)
       }
     }
-    // 特殊处理「阴阳傀儡术」技�?    else if (skillId === 'yin_yang_kui_lei_shu') {
-      // 选择3格菱形范围内�?个敌方目标，造成180%攻击力伤害，并使目标陷入【脆弱】状�?      const range = skill.range || 3
+    // 特殊处理「阴阳傀儡术」技�?
+  else if (skillId === 'yin_yang_kui_lei_shu') {
+      // 选择3格菱形范围内�?个敌方目标，造成180%攻击力伤害，并使目标陷入【脆弱】状�?
+    const range = skill.range || 3
       const maxTargets = skill.targetCount || 1
       const enemyPool = attacker.isPlayer ? battleMap.value.enemies : battleMap.value.players
       const buildingPool = battleMap.value.buildings.filter(b => b.isPlayer !== attacker.isPlayer)
@@ -7142,11 +7393,11 @@ export const useGameStore = defineStore('game', () => {
             
             showFloatingText(target.row, target.col, damage, 'damage')
             
-            damageResults.push(`对�?{targetTemplate?.name || target.characterId}】造成${damage}点伤害，并陷入【脆弱】状态`)
+            damageResults.push(`对�?${targetTemplate?.name || target.characterId}】造成${damage}点伤害，并陷入【脆弱】状态`)
             addStatusToCharacter(target, 'fragile')
             if (target.hp <= 0) {
               removeCharacterFromBattle(target.id, target.isPlayer)
-              battleLog.value.push(`�?{targetTemplate?.name || target.characterId}】被击败！`)
+              battleLog.value.push(`�?${targetTemplate?.name || target.characterId}】被击败！`)
             }
             handled++
           } else {
@@ -7162,10 +7413,10 @@ export const useGameStore = defineStore('game', () => {
               attacker.totalDamage += damage
               triggerShake(building.row, building.col, 'building')
               showFloatingText(building.row, building.col, damage, 'damage')
-              damageResults.push(`对�?{building.name}】造成${damage}点伤害`)
+              damageResults.push(`对�?${building.name}】造成${damage}点伤害`)
               if (building.hp <= 0) {
                 removeBuildingFromBattle(building.id)
-                battleLog.value.push(`�?{building.name}】被摧毁！`)
+                battleLog.value.push(`�?${building.name}】被摧毁！`)
               }
               handled++
             }
@@ -7174,12 +7425,13 @@ export const useGameStore = defineStore('game', () => {
       }
 
       if (handled > 0) {
-        battleLog.value.push(`�?{charTemplate?.name || attacker.characterId}】使用技能�?{skill.name}】，${damageResults.join('�?)}！`)
+        battleLog.value.push(`�?${charTemplate?.name || attacker.characterId}】使用技能�?${skill.name}】，${damageResults.join('�?')}！`)
       } else {
-        battleLog.value.push(`�?{charTemplate?.name || attacker.characterId}】使用技能�?{skill.name}】，未命中任何目标！`)
+        battleLog.value.push(`�?${charTemplate?.name || attacker.characterId}】使用技能�?${skill.name}】，未命中任何目标！`)
       }
     }
-    // 特殊处理「猛虎下山」技�?    else if (skillId === 'meng_hu_xia_shan') {
+    // 特殊处理「猛虎下山」技�?
+  else if (skillId === 'meng_hu_xia_shan') {
       const range = skill.range || 1
       const maxTargets = skill.targetCount || 1
       const enemyPool = attacker.isPlayer ? battleMap.value.enemies : battleMap.value.players
@@ -7207,10 +7459,10 @@ export const useGameStore = defineStore('game', () => {
             
             showFloatingText(target.row, target.col, damage, 'damage')
             
-            damageResults.push(`对�?{targetTemplate?.name || target.characterId}】造成${damage}点伤害`)
+            damageResults.push(`对�?${targetTemplate?.name || target.characterId}】造成${damage}点伤害`)
             if (target.hp <= 0) {
               removeCharacterFromBattle(target.id, target.isPlayer)
-              battleLog.value.push(`�?{targetTemplate?.name || target.characterId}】被击败！`)
+              battleLog.value.push(`�?${targetTemplate?.name || target.characterId}】被击败！`)
             }
             handled++
           } else {
@@ -7226,10 +7478,10 @@ export const useGameStore = defineStore('game', () => {
               attacker.totalDamage += damage
               triggerShake(building.row, building.col, 'building')
               showFloatingText(building.row, building.col, damage, 'damage')
-              damageResults.push(`对�?{building.name}】造成${damage}点伤害`)
+              damageResults.push(`对�?${building.name}】造成${damage}点伤害`)
               if (building.hp <= 0) {
                 removeBuildingFromBattle(building.id)
-                battleLog.value.push(`�?{building.name}】被摧毁！`)
+                battleLog.value.push(`�?${building.name}】被摧毁！`)
               }
               handled++
             }
@@ -7238,12 +7490,13 @@ export const useGameStore = defineStore('game', () => {
       }
 
       if (handled > 0) {
-        battleLog.value.push(`�?{charTemplate?.name || attacker.characterId}】使用技能�?{skill.name}】，${damageResults.join('�?)}！`)
+        battleLog.value.push(`�?${charTemplate?.name || attacker.characterId}】使用技能�?${skill.name}】，${damageResults.join('�?')}！`)
       } else {
-        battleLog.value.push(`�?{charTemplate?.name || attacker.characterId}】使用技能�?{skill.name}】，未命中任何目标！`)
+        battleLog.value.push(`�?${charTemplate?.name || attacker.characterId}】使用技能�?${skill.name}】，未命中任何目标！`)
       }
     }
-    // 特殊处理「猛虎嘶吼」技�?    else if (skillId === 'meng_hu_si_hou') {
+    // 特殊处理「猛虎嘶吼」技�?
+  else if (skillId === 'meng_hu_si_hou') {
       const range = skill.range || 3
       const maxTargets = skill.targetCount || 2
       const enemyPool = attacker.isPlayer ? battleMap.value.enemies : battleMap.value.players
@@ -7271,11 +7524,11 @@ export const useGameStore = defineStore('game', () => {
             
             showFloatingText(target.row, target.col, damage, 'damage')
             
-            damageResults.push(`对�?{targetTemplate?.name || target.characterId}】造成${damage}点伤害，并陷入【脆弱】状态`)
+            damageResults.push(`对�?${targetTemplate?.name || target.characterId}】造成${damage}点伤害，并陷入【脆弱】状态`)
             addStatusToCharacter(target, 'fragile')
             if (target.hp <= 0) {
               removeCharacterFromBattle(target.id, target.isPlayer)
-              battleLog.value.push(`�?{targetTemplate?.name || target.characterId}】被击败！`)
+              battleLog.value.push(`�?${targetTemplate?.name || target.characterId}】被击败！`)
             }
             handled++
           } else {
@@ -7291,10 +7544,10 @@ export const useGameStore = defineStore('game', () => {
               attacker.totalDamage += damage
               triggerShake(building.row, building.col, 'building')
               showFloatingText(building.row, building.col, damage, 'damage')
-              damageResults.push(`对�?{building.name}】造成${damage}点伤害`)
+              damageResults.push(`对�?${building.name}】造成${damage}点伤害`)
               if (building.hp <= 0) {
                 removeBuildingFromBattle(building.id)
-                battleLog.value.push(`�?{building.name}】被摧毁！`)
+                battleLog.value.push(`�?${building.name}】被摧毁！`)
               }
               handled++
             }
@@ -7303,12 +7556,13 @@ export const useGameStore = defineStore('game', () => {
       }
 
       if (handled > 0) {
-        battleLog.value.push(`�?{charTemplate?.name || attacker.characterId}】使用技能�?{skill.name}】，${damageResults.join('�?)}！`)
+        battleLog.value.push(`�?${charTemplate?.name || attacker.characterId}】使用技能�?${skill.name}】，${damageResults.join('�?')}！`)
       } else {
-        battleLog.value.push(`�?{charTemplate?.name || attacker.characterId}】使用技能�?{skill.name}】，未命中任何目标！`)
+        battleLog.value.push(`�?${charTemplate?.name || attacker.characterId}】使用技能�?${skill.name}】，未命中任何目标！`)
       }
     }
-    // 特殊处理「远程导弹」技�?    else if (skillId === 'yuan_cheng_dao_dan') {
+    // 特殊处理「远程导弹」技�?
+  else if (skillId === 'yuan_cheng_dao_dan') {
       let centerRow = attacker.row
       let centerCol = attacker.col
       
@@ -7331,10 +7585,12 @@ export const useGameStore = defineStore('game', () => {
       }
       processAOEAttackSkill(attacker, skill, centerRow, centerCol, charTemplate)
     }
-    // 特殊处理「千里冰封」技�?    else if (skillId === 'qian_li_bing_feng') {
+    // 特殊处理「千里冰封」技�?
+  else if (skillId === 'qian_li_bing_feng') {
       processAOEAttackSkill(attacker, skill, attacker.row, attacker.col, charTemplate)
     } 
-    // 特殊处理「凶猛攻击」技�?    else if (skillId === 'fierce_attack') {
+    // 特殊处理「凶猛攻击」技�?
+  else if (skillId === 'fierce_attack') {
       // 对范�?格的指定目标，造成150%攻击力的伤害
       let hadValidTargets = false
       if (targetId) {
@@ -7358,15 +7614,16 @@ export const useGameStore = defineStore('game', () => {
           if (attacker.totalDamage === undefined) attacker.totalDamage = 0
           attacker.totalDamage += damage
           
-          // 添加被攻击抖动特�?          triggerShake(target.row, target.col, 'character')
+          // 添加被攻击抖动特�?
+        triggerShake(target.row, target.col, 'character')
           
           showFloatingText(target.row, target.col, damage, 'damage')
           
-          battleLog.value.push(`�?{charTemplate?.name || attacker.characterId}】使用技能�?{skill.name}】，对�?{targetTemplate?.name || target.characterId}】造成${damage}点伤害！`)
+          battleLog.value.push(`�?${charTemplate?.name || attacker.characterId}】使用技能�?${skill.name}】，对�?${targetTemplate?.name || target.characterId}】造成${damage}点伤害！`)
 
           if (target.hp <= 0) {
             removeCharacterFromBattle(target.id, target.isPlayer)
-            battleLog.value.push(`�?{targetTemplate?.name || target.characterId}】被击败！`)
+            battleLog.value.push(`�?${targetTemplate?.name || target.characterId}】被击败！`)
           }
           
           // 清除范围内的所有障碍物（凶猛攻击范�?格）
@@ -7386,12 +7643,13 @@ export const useGameStore = defineStore('game', () => {
             }
           }
           if (destroyedCount > 0) {
-            battleLog.value.push(`�?{charTemplate?.name || attacker.characterId}】使用技能�?{skill.name}】，摧毁�?{destroyedCount}个障碍物！`)
+            battleLog.value.push(`�?${charTemplate?.name || attacker.characterId}】使用技能�?${skill.name}】，摧毁�?${destroyedCount}个障碍物！`)
           }
         }
       }
     }
-    // 特殊处理「暗影刺杀」技�?    else if (skillId === 'shadow_assassination') {
+    // 特殊处理「暗影刺杀」技�?
+  else if (skillId === 'shadow_assassination') {
       processAOEAttackSkill(attacker, skill, attacker.row, attacker.col, charTemplate)
     }
     // 特殊处理「投掷手雷」技能（参考远程导弹）
@@ -7404,7 +7662,8 @@ export const useGameStore = defineStore('game', () => {
         centerRow = targetPos.row
         centerCol = targetPos.col
       } else if (singleTargetId && singleTargetId !== 'empty') {
-        // 尝试从目标ID查找角色或建筑位�?        const allChars = [...battleMap.value.players, ...battleMap.value.enemies]
+        // 尝试从目标ID查找角色或建筑位�?
+      const allChars = [...battleMap.value.players, ...battleMap.value.enemies]
         const targetChar = allChars.find(c => c.id === singleTargetId)
         if (targetChar) {
           centerRow = targetChar.row
@@ -7419,7 +7678,8 @@ export const useGameStore = defineStore('game', () => {
       }
       const areaRange = skill.areaRange || 1
       
-      // 收集敌方角色（曼哈顿距离 <= areaRange�?      const enemyChars = attacker.isPlayer 
+      // 收集敌方角色（曼哈顿距离 <= areaRange�?
+    const enemyChars = attacker.isPlayer 
         ? battleMap.value.enemies.filter(enemy => {
             const dist = Math.abs(enemy.row - centerRow) + Math.abs(enemy.col - centerCol)
             return dist <= areaRange && isCellVisibleToActor(attacker, enemy.row, enemy.col)
@@ -7429,12 +7689,14 @@ export const useGameStore = defineStore('game', () => {
             return dist <= areaRange && isCellVisibleToActor(attacker, playerChar.row, playerChar.col)
           })
       
-      // 收集敌方建筑（曼哈顿距离 <= areaRange�?      const enemyBuildings = battleMap.value.buildings.filter(building => {
+      // 收集敌方建筑（曼哈顿距离 <= areaRange�?
+    const enemyBuildings = battleMap.value.buildings.filter(building => {
         const dist = Math.abs(building.row - centerRow) + Math.abs(building.col - centerCol)
         return dist <= areaRange && building.isPlayer !== attacker.isPlayer && isCellVisibleToActor(attacker, building.row, building.col)
       })
       
-      // 收集范围内的障碍物位置（曼哈顿距�?<= areaRange�?      const obstaclePositions: { row: number; col: number }[] = []
+      // 收集范围内的障碍物位置（曼哈顿距�?<= areaRange�?
+    const obstaclePositions: { row: number; col: number }[] = []
       const aoeGridPositions: { row: number; col: number }[] = []
       for (let dr = -areaRange; dr <= areaRange; dr++) {
         for (let dc = -areaRange; dc <= areaRange; dc++) {
@@ -7454,7 +7716,8 @@ export const useGameStore = defineStore('game', () => {
       
       triggerAOEEffects(centerRow, centerCol, areaRange, skill.attribute || 'normal', 'diamond', 'attack', '轰炸')
       
-      // 投射物动�?      const projType = getProjectileTypeForSkill(skill)
+      // 投射物动�?
+    const projType = getProjectileTypeForSkill(skill)
       if (projType) {
         triggerProjectile(attacker.row, attacker.col, centerRow, centerCol, projType, skill.attribute || 'fire')
       }
@@ -7481,12 +7744,12 @@ export const useGameStore = defineStore('game', () => {
         
         showFloatingText(target.row, target.col, damage, 'damage')
         
-        damageResults.push(`对�?{targetTemplate?.name || target.characterId}】造成${damage}点伤害`)
+        damageResults.push(`对�?${targetTemplate?.name || target.characterId}】造成${damage}点伤害`)
         
         if (target.hp <= 0) {
           removeCharacterFromBattle(target.id, target.isPlayer)
           triggerDefeatAnimation(target.row, target.col, 'kill')
-          battleLog.value.push(`�?{targetTemplate?.name || target.characterId}】被击败！`)
+          battleLog.value.push(`�?${targetTemplate?.name || target.characterId}】被击败！`)
         }
       })
       
@@ -7505,7 +7768,7 @@ export const useGameStore = defineStore('game', () => {
         
         showFloatingText(building.row, building.col, damage, 'damage', attribute, true)
         
-        damageResults.push(`对�?{building.name}】造成${damage}点伤害`)
+        damageResults.push(`对�?${building.name}】造成${damage}点伤害`)
         
         if (building.type === 'heart' && !building.hasSpawnedBonus) {
           building.hasSpawnedBonus = true
@@ -7515,7 +7778,7 @@ export const useGameStore = defineStore('game', () => {
         if (building.hp <= 0) {
           removeBuildingFromBattle(building.id)
           triggerDefeatAnimation(building.row, building.col, 'kill')
-          battleLog.value.push(`�?{building.name}】被摧毁！`)
+          battleLog.value.push(`�?${building.name}】被摧毁！`)
         }
       })
       
@@ -7527,13 +7790,14 @@ export const useGameStore = defineStore('game', () => {
       })
       
       if (hadValidTargets) {
-        const summary = damageResults.join('�?)
-        battleLog.value.push(`�?{charTemplate?.name || attacker.characterId}】使用技能�?{skill.name}】命�?${enemyChars.length + enemyBuildings.length + obstaclePositions.length} 个目标：${summary}`)
+        const summary = damageResults.join('�?')
+        battleLog.value.push(`�?${charTemplate?.name || attacker.characterId}】使用技能�?${skill.name}】命�?${enemyChars.length + enemyBuildings.length + obstaclePositions.length} 个目标：${summary}`)
       } else {
-        battleLog.value.push(`�?{charTemplate?.name || attacker.characterId}】使用技能�?{skill.name}】，但范围内没有可攻击目标`)
+        battleLog.value.push(`�?${charTemplate?.name || attacker.characterId}】使用技能�?${skill.name}】，但范围内没有可攻击目标`)
       }
     }
-    // 特殊处理「口吐粘液」技�?    else if (skillId === 'spit_slime') {
+    // 特殊处理「口吐粘液」技�?
+  else if (skillId === 'spit_slime') {
       // �?格范围内的指定目标吐出粘液，造成140%攻击力的伤害，并且防御力减少50%
       if (targetId) {
         const targets = attacker.isPlayer 
@@ -7555,19 +7819,22 @@ export const useGameStore = defineStore('game', () => {
           if (attacker.totalDamage === undefined) attacker.totalDamage = 0
           attacker.totalDamage += damage
 
-          // 添加被攻击抖动特�?          triggerShake(target.row, target.col, 'character')
+          // 添加被攻击抖动特�?
+        triggerShake(target.row, target.col, 'character')
           
-          // 使目标进入【虚弱】状态（防御�?50%，持续到战斗结束，可叠加�?          addStatusToCharacter(target, 'weak', true)
-          battleLog.value.push(`�?{charTemplate?.name || attacker.characterId}】使用技能�?{skill.name}】，对�?{targetTemplate?.name || target.characterId}】造成${damage}点伤害！�?{targetTemplate?.name || target.characterId}】进入【虚弱】状态！`)
+          // 使目标进入【虚弱】状态（防御�?50%，持续到战斗结束，可叠加�?
+        addStatusToCharacter(target, 'weak', true)
+          battleLog.value.push(`�?${charTemplate?.name || attacker.characterId}】使用技能�?${skill.name}】，对�?${targetTemplate?.name || target.characterId}】造成${damage}点伤害！�?${targetTemplate?.name || target.characterId}】进入【虚弱】状态！`)
 
           if (target.hp <= 0) {
             removeCharacterFromBattle(target.id, target.isPlayer)
-            battleLog.value.push(`�?{targetTemplate?.name || target.characterId}】被击败！`)
+            battleLog.value.push(`�?${targetTemplate?.name || target.characterId}】被击败！`)
           }
         }
       }
     } 
-    // 特殊处理「二爷咆哮」技能：对目标造成150%攻击力伤害，并使自身进入【愤怒】状�?    else if (skillId === 'er_ye_pao_xiao') {
+    // 特殊处理「二爷咆哮」技能：对目标造成150%攻击力伤害，并使自身进入【愤怒】状�?
+  else if (skillId === 'er_ye_pao_xiao') {
       if (targetId) {
         const targets = attacker.isPlayer 
           ? battleMap.value.enemies.filter(e => e.id === targetId)
@@ -7584,25 +7851,29 @@ export const useGameStore = defineStore('game', () => {
           const damage = Math.max(1, Math.floor((skill.power / 100 * attackPower - defense)))
           target.hp -= damage
           
-          // 添加被攻击抖动特�?          triggerShake(target.row, target.col, 'character')
+          // 添加被攻击抖动特�?
+        triggerShake(target.row, target.col, 'character')
           
           // 更新伤害统计
           if (attacker.totalDamage === undefined) attacker.totalDamage = 0
           attacker.totalDamage += damage
           
-          // 使自身进入【愤怒】状态（攻击�?20%，防御力-20%�?          addStatusToCharacter(attacker, 'fury')
+          // 使自身进入【愤怒】状态（攻击�?20%，防御力-20%�?
+        addStatusToCharacter(attacker, 'fury')
           
-          battleLog.value.push(`�?{charTemplate?.name || attacker.characterId}】使用技能�?{skill.name}】，对�?{targetTemplate?.name || target.characterId}】造成${damage}点伤害，自身进入【愤怒】状态！`)
+          battleLog.value.push(`�?${charTemplate?.name || attacker.characterId}】使用技能�?${skill.name}】，对�?${targetTemplate?.name || target.characterId}】造成${damage}点伤害，自身进入【愤怒】状态！`)
 
           if (target.hp <= 0) {
             removeCharacterFromBattle(target.id, target.isPlayer)
-            battleLog.value.push(`�?{targetTemplate?.name || target.characterId}】被击败！`)
+            battleLog.value.push(`�?${targetTemplate?.name || target.characterId}】被击败！`)
           }
         }
       }
     } 
-    // 特殊处理「邪恶捆绑」技�?    else if (skillId === 'xie_e_kun_bang') {
-      // �?格范围内的一个指定目标造成150%攻击力的伤害，并使目标陷入【禁锢】状�?      if (targetId) {
+    // 特殊处理「邪恶捆绑」技�?
+  else if (skillId === 'xie_e_kun_bang') {
+      // �?格范围内的一个指定目标造成150%攻击力的伤害，并使目标陷入【禁锢】状�?
+    if (targetId) {
         const targets = attacker.isPlayer 
           ? battleMap.value.enemies.filter(e => e.id === targetId)
           : battleMap.value.players.filter(p => p.id === targetId)
@@ -7622,23 +7893,27 @@ export const useGameStore = defineStore('game', () => {
           if (attacker.totalDamage === undefined) attacker.totalDamage = 0
           attacker.totalDamage += damage
 
-          // 添加被攻击抖动特�?          triggerShake(target.row, target.col, 'character')
+          // 添加被攻击抖动特�?
+        triggerShake(target.row, target.col, 'character')
           
           showFloatingText(target.row, target.col, damage, 'damage')
 
-          // 施加禁锢状�?          addStatusToCharacter(target, 'imprison')
+          // 施加禁锢状�?
+        addStatusToCharacter(target, 'imprison')
 
-          battleLog.value.push(`�?{charTemplate?.name || attacker.characterId}】使用技能�?{skill.name}】，对�?{targetTemplate?.name || target.characterId}】造成${damage}点伤害！�?{targetTemplate?.name || target.characterId}】陷入【禁锢】状态！`)
+          battleLog.value.push(`�?${charTemplate?.name || attacker.characterId}】使用技能�?${skill.name}】，对�?${targetTemplate?.name || target.characterId}】造成${damage}点伤害！�?${targetTemplate?.name || target.characterId}】陷入【禁锢】状态！`)
 
           if (target.hp <= 0) {
             removeCharacterFromBattle(target.id, target.isPlayer)
-            battleLog.value.push(`�?{targetTemplate?.name || target.characterId}】被击败！`)
+            battleLog.value.push(`�?${targetTemplate?.name || target.characterId}】被击败！`)
           }
         }
       }
     } 
-    // 特殊处理「汲取生命」技�?    else if (skillId === 'life_drain') {
-      // �?格范围内的一个指定目标造成120%攻击力的伤害，并恢复自身造成伤害33%的生命�?      if (targetId) {
+    // 特殊处理「汲取生命」技�?
+  else if (skillId === 'life_drain') {
+      // �?格范围内的一个指定目标造成120%攻击力的伤害，并恢复自身造成伤害33%的生命�?
+    if (targetId) {
         const targets = attacker.isPlayer 
           ? battleMap.value.enemies.filter(e => e.id === targetId)
           : battleMap.value.players.filter(p => p.id === targetId)
@@ -7659,13 +7934,15 @@ export const useGameStore = defineStore('game', () => {
           if (attacker.totalDamage === undefined) attacker.totalDamage = 0
           attacker.totalDamage += damage
           
-          // 添加被攻击抖动特�?          triggerShake(target.row, target.col, 'character')
+          // 添加被攻击抖动特�?
+        triggerShake(target.row, target.col, 'character')
           
           showFloatingText(target.row, target.col, damage, 'damage')
           
-          battleLog.value.push(`�?{charTemplate?.name || attacker.characterId}】使用技能�?{skill.name}】，对�?{targetTemplate?.name || target.characterId}】造成${damage}点伤害！`)
+          battleLog.value.push(`�?${charTemplate?.name || attacker.characterId}】使用技能�?${skill.name}】，对�?${targetTemplate?.name || target.characterId}】造成${damage}点伤害！`)
           
-          // 恢复自身生命�?          const attackerCharTemplate = findCharacterTemplateInStore(attacker.characterId)
+          // 恢复自身生命�?
+        const attackerCharTemplate = findCharacterTemplateInStore(attacker.characterId)
           const maxHp = attackerCharTemplate?.maxHp || attackerCharTemplate?.baseMaxHp || 100
           attacker.hp = Math.min(attacker.hp + healAmount, maxHp)
           
@@ -7673,17 +7950,19 @@ export const useGameStore = defineStore('game', () => {
           if (attacker.totalHeal === undefined) attacker.totalHeal = 0
           attacker.totalHeal += healAmount
           
-          battleLog.value.push(`�?{charTemplate?.name || attacker.characterId}】恢复了${healAmount}点生命值（造成伤害�?3%）！`)
+          battleLog.value.push(`�?${charTemplate?.name || attacker.characterId}】恢复了${healAmount}点生命值（造成伤害�?3%）！`)
 
           if (target.hp <= 0) {
             removeCharacterFromBattle(target.id, target.isPlayer)
-            battleLog.value.push(`�?{targetTemplate?.name || target.characterId}】被击败！`)
+            battleLog.value.push(`�?${targetTemplate?.name || target.characterId}】被击败！`)
           }
         }
       }
     }
-    // 特殊处理「息壤再生」技�?    else if (skillId === 'xi_rang_zai_sheng') {
-      // 选择相邻1格范围内的一个敌方目标，造成120%攻击力的伤害，恢复自�?0%攻击力的生命值，自身获得【刚毅】状�?      if (targetId) {
+    // 特殊处理「息壤再生」技�?
+  else if (skillId === 'xi_rang_zai_sheng') {
+      // 选择相邻1格范围内的一个敌方目标，造成120%攻击力的伤害，恢复自�?0%攻击力的生命值，自身获得【刚毅】状�?
+    if (targetId) {
         const targets = attacker.isPlayer 
           ? battleMap.value.enemies.filter(e => e.id === targetId)
           : battleMap.value.players.filter(p => p.id === targetId)
@@ -7704,23 +7983,25 @@ export const useGameStore = defineStore('game', () => {
           
           triggerShake(target.row, target.col, 'character')
           
-          battleLog.value.push(`�?{charTemplate?.name || attacker.characterId}】使用技能�?{skill.name}】，对�?{targetTemplate?.name || target.characterId}】造成${damage}点伤害！`)
+          battleLog.value.push(`�?${charTemplate?.name || attacker.characterId}】使用技能�?${skill.name}】，对�?${targetTemplate?.name || target.characterId}】造成${damage}点伤害！`)
           
-          // 恢复自身生命�?          const attackerCharTemplate = findCharacterTemplateInStore(attacker.characterId)
+          // 恢复自身生命�?
+        const attackerCharTemplate = findCharacterTemplateInStore(attacker.characterId)
           const maxHp = attackerCharTemplate?.maxHp || attackerCharTemplate?.baseMaxHp || 100
           attacker.hp = Math.min(attacker.hp + healAmount, maxHp)
           
           if (attacker.totalHeal === undefined) attacker.totalHeal = 0
           attacker.totalHeal += healAmount
           
-          battleLog.value.push(`�?{charTemplate?.name || attacker.characterId}】恢复了${healAmount}点生命值！`)
+          battleLog.value.push(`�?${charTemplate?.name || attacker.characterId}】恢复了${healAmount}点生命值！`)
           
-          // 自身获得【刚毅】状�?          addStatusToCharacter(attacker, 'resolute')
-          battleLog.value.push(`�?{charTemplate?.name || attacker.characterId}】进入【刚毅】状态！`)
+          // 自身获得【刚毅】状�?
+        addStatusToCharacter(attacker, 'resolute')
+          battleLog.value.push(`�?${charTemplate?.name || attacker.characterId}】进入【刚毅】状态！`)
 
           if (target.hp <= 0) {
             removeCharacterFromBattle(target.id, target.isPlayer)
-            battleLog.value.push(`�?{targetTemplate?.name || target.characterId}】被击败！`)
+            battleLog.value.push(`�?${targetTemplate?.name || target.characterId}】被击败！`)
           }
         }
       }
@@ -7741,7 +8022,8 @@ export const useGameStore = defineStore('game', () => {
         if (r < 0 || r >= map.height || c < 0 || c >= map.width) continue
         const tile = map.tiles[r]?.[c]
         if (!tile) continue
-        // 确保格子是空格（没有角色、没有建筑、不是障碍物/河流�?        const hasChar = [...map.players, ...map.enemies].some(x => x.row === r && x.col === c)
+        // 确保格子是空格（没有角色、没有建筑、不是障碍物/河流�?
+      const hasChar = [...map.players, ...map.enemies].some(x => x.row === r && x.col === c)
         const hasBuilding = map.buildings.some(b => b.row === r && b.col === c)
         if (hasChar || hasBuilding) continue
         if (tile.terrain === 'obstacle' || tile.terrain === 'river') continue
@@ -7751,13 +8033,15 @@ export const useGameStore = defineStore('game', () => {
         triggerShake(r, c, 'character')
       }
       if (createdCount > 0) {
-        battleLog.value.push(`�?{charTemplate?.name || attacker.characterId}】使用技能�?{skill.name}】，生成�?{createdCount}个障碍物！`)
+        battleLog.value.push(`�?${charTemplate?.name || attacker.characterId}】使用技能�?${skill.name}】，生成�?${createdCount}个障碍物！`)
       } else {
-        battleLog.value.push(`�?{charTemplate?.name || attacker.characterId}】使用技能�?{skill.name}】，但没有合适的目标位置。`)
+        battleLog.value.push(`�?${charTemplate?.name || attacker.characterId}】使用技能�?${skill.name}】，但没有合适的目标位置。`)
       }
     }
-    // 特殊处理【绝处逢生】技�?    else if (skillId === 'jue_chu_feng_sheng') {
-      // 消耗自身最大生命�?0%的生命（消耗后生命值至少为1�?      const attackerCharTemplate = findCharacterTemplateInStore(attacker.characterId)
+    // 特殊处理【绝处逢生】技�?
+  else if (skillId === 'jue_chu_feng_sheng') {
+      // 消耗自身最大生命�?0%的生命（消耗后生命值至少为1�?
+    const attackerCharTemplate = findCharacterTemplateInStore(attacker.characterId)
       const maxHp = attackerCharTemplate?.maxHp || attackerCharTemplate?.baseMaxHp || 100
       const hpCost = Math.floor(maxHp * 0.2)
       const newHp = Math.max(1, attacker.hp - hpCost)
@@ -7766,12 +8050,15 @@ export const useGameStore = defineStore('game', () => {
       // 显示伤害飘字（自身消耗）
       showFloatingText(attacker.row, attacker.col, hpCost, 'damage')
 
-      // 进入【愤怒】状态（攻击�?20%，防御力-20%，持续到战斗结束�?      addStatusToCharacter(attacker, 'fury')
+      // 进入【愤怒】状态（攻击�?20%，防御力-20%，持续到战斗结束�?
+    addStatusToCharacter(attacker, 'fury')
 
-      battleLog.value.push(`�?{charTemplate?.name || attacker.characterId}】使用技能�?{skill.name}】，消�?{hpCost}点生命值，进入【愤怒】状态！`)
+      battleLog.value.push(`�?${charTemplate?.name || attacker.characterId}】使用技能�?${skill.name}】，消�?${hpCost}点生命值，进入【愤怒】状态！`)
     }
-    // 特殊处理【红花绿叶】技�?    else if (skillId === 'hong_hua_lv_ye') {
-      // 选择1格范围内�?个指定目标，造成攻击�?20%的伤�?      // 同时提高生命值上限并恢复生命值，提高和恢复量为攻击力�?0%
+    // 特殊处理【红花绿叶】技�?
+  else if (skillId === 'hong_hua_lv_ye') {
+      // 选择1格范围内�?个指定目标，造成攻击�?20%的伤�?
+    // 同时提高生命值上限并恢复生命值，提高和恢复量为攻击力�?0%
       if (targetId) {
         // 计算攻击力（包含装备加成和技能效果）- 先计算好用于自身buff
         const attackPower = computeAttackPower(attacker)
@@ -7803,7 +8090,7 @@ export const useGameStore = defineStore('game', () => {
 
           if (target.hp <= 0) {
             removeCharacterFromBattle(target.id, target.isPlayer)
-            battleLog.value.push(`�?{targetName}】被击败！`)
+            battleLog.value.push(`�?${targetName}】被击败！`)
           }
         } else if (buildingTargets.length > 0) {
           const targetBuilding = buildingTargets[0]
@@ -7823,11 +8110,12 @@ export const useGameStore = defineStore('game', () => {
 
           if (targetBuilding.hp <= 0) {
             removeBuildingFromBattle(targetBuilding.id)
-            battleLog.value.push(`�?{targetName}】被摧毁！`)
+            battleLog.value.push(`�?${targetName}】被摧毁！`)
           }
         }
 
-        // 3. 只要有有效目标就提高自身血量上限并恢复（攻击力�?0%�?        if (charTargets.length > 0 || buildingTargets.length > 0) {
+        // 3. 只要有有效目标就提高自身血量上限并恢复（攻击力�?0%�?
+      if (charTargets.length > 0 || buildingTargets.length > 0) {
           if (attacker.totalDamage === undefined) attacker.totalDamage = 0
           attacker.totalDamage += totalDamage
 
@@ -7838,12 +8126,14 @@ export const useGameStore = defineStore('game', () => {
           if (attacker.totalHeal === undefined) attacker.totalHeal = 0
           attacker.totalHeal += hpBuff
 
-          battleLog.value.push(`�?{charTemplate?.name || attacker.characterId}】使用技能�?{skill.name}】，对�?{targetName}】造成${totalDamage}点伤害！生命值上�?${hpBuff}并恢�?{hpBuff}生命！`)
+          battleLog.value.push(`�?${charTemplate?.name || attacker.characterId}】使用技能�?${skill.name}】，对�?${targetName}】造成${totalDamage}点伤害！生命值上�?${hpBuff}并恢�?${hpBuff}生命！`)
         }
       }
     }
-    // 特殊处理【天寒地冻】技�?    else if (skillId === 'tian_han_di_dong') {
-      // 选择3格范围内�?个角色，造成攻击�?50%的伤�?      // 同时在目标脚下产生雪地，持续1秒
+    // 特殊处理【天寒地冻】技�?
+  else if (skillId === 'tian_han_di_dong') {
+      // 选择3格范围内�?个角色，造成攻击�?50%的伤�?
+    // 同时在目标脚下产生雪地，持续1秒
       if (targetId) {
         // 1. 对目标造成150%攻击力的伤害
         const damageTargets = attacker.isPlayer
@@ -7884,20 +8174,24 @@ export const useGameStore = defineStore('game', () => {
             })
           }
 
-          battleLog.value.push(`�?{charTemplate?.name || attacker.characterId}】使用技能�?{skill.name}】，对�?{targetTemplate?.name || target.characterId}】造成${damage}点伤害！目标脚下产生雪地！`)
+          battleLog.value.push(`�?${charTemplate?.name || attacker.characterId}】使用技能�?${skill.name}】，对�?${targetTemplate?.name || target.characterId}】造成${damage}点伤害！目标脚下产生雪地！`)
 
           if (target.hp <= 0) {
             removeCharacterFromBattle(target.id, target.isPlayer)
-            battleLog.value.push(`�?{targetTemplate?.name || target.characterId}】被击败！`)
+            battleLog.value.push(`�?${targetTemplate?.name || target.characterId}】被击败！`)
           }
         }
       }
     }
-    // 特殊处理【恐怖尖叫】技�?    else if (skillId === 'terror_scream') {
+    // 特殊处理【恐怖尖叫】技�?
+  else if (skillId === 'terror_scream') {
       processAOEAttackSkill(attacker, skill, attacker.row, attacker.col, charTemplate)
     }
-    // 特殊处理【腐蚀粘液】技�?    else if (skillId === 'fushi_nianye') {
-      // 生命�?=20%时才能使用，以自身为中心�?格范围内所有敌方目标造成225%攻击力伤�?      // 同时减少目标50%防御（持续到战斗结束），使用后自身直接战败退�?      const areaRange = skill.areaRange || 2
+    // 特殊处理【腐蚀粘液】技�?
+  else if (skillId === 'fushi_nianye') {
+      // 生命�?=20%时才能使用，以自身为中心�?格范围内所有敌方目标造成225%攻击力伤�?
+    // 同时减少目标50%防御（持续到战斗结束），使用后自身直接战败退�?
+    const areaRange = skill.areaRange || 2
 
       // 检查生命值条件（仅玩家角色需要检查，AI会自己判断）
       const attackerMaxHp = attacker.maxHp || (charTemplate?.maxHp || charTemplate?.baseMaxHp || 100)
@@ -7905,7 +8199,7 @@ export const useGameStore = defineStore('game', () => {
 
       if (hpPercent > 0.2 && attacker.isPlayer) {
         // 玩家使用时生命值不符合条件
-        battleLog.value.push(`�?{charTemplate?.name || attacker.characterId}】生命值过高，无法使用�?{skill.name}】！`)
+        battleLog.value.push(`�?${charTemplate?.name || attacker.characterId}】生命值过高，无法使用�?${skill.name}】！`)
         return
       }
 
@@ -7946,7 +8240,8 @@ export const useGameStore = defineStore('game', () => {
       // 计算攻击力（包含装备加成和技能效果）
       const attackPower = computeAttackPower(attacker)
 
-      // 对范围内敌方角色造成伤害并减少防�?      const damageResults: string[] = []
+      // 对范围内敌方角色造成伤害并减少防�?
+    const damageResults: string[] = []
       const defeatedNames: string[] = []
 
       enemyTargets.forEach(target => {
@@ -7956,7 +8251,8 @@ export const useGameStore = defineStore('game', () => {
         const damage = Math.max(1, Math.floor((skill.power / 100 * attackPower - defense)))
         target.hp -= damage
 
-        // 使目标进入【虚弱】状态（防御�?50%，持续到战斗结束�?        addStatusToCharacter(target, 'weak', true)
+        // 使目标进入【虚弱】状态（防御�?50%，持续到战斗结束�?
+      addStatusToCharacter(target, 'weak', true)
 
         // 更新伤害统计
         if (attacker.totalDamage === undefined) attacker.totalDamage = 0
@@ -7967,7 +8263,7 @@ export const useGameStore = defineStore('game', () => {
         
         showFloatingText(target.row, target.col, damage, 'damage')
 
-        damageResults.push(`对�?{targetTemplate?.name || target.characterId}】造成${damage}点伤害`)
+        damageResults.push(`对�?${targetTemplate?.name || target.characterId}】造成${damage}点伤害`)
 
         if (target.hp <= 0) {
           removeCharacterFromBattle(target.id, target.isPlayer)
@@ -7990,7 +8286,7 @@ export const useGameStore = defineStore('game', () => {
         
         showFloatingText(building.row, building.col, damage, 'damage')
 
-        damageResults.push(`对�?{building.name}】造成${damage}点伤害`)
+        damageResults.push(`对�?${building.name}】造成${damage}点伤害`)
 
         trySpawnZombieFromHeart(building)
 
@@ -8001,38 +8297,42 @@ export const useGameStore = defineStore('game', () => {
         }
       })
 
-      // 清除范围内的障碍�?      obstaclePositions.forEach(pos => {
+      // 清除范围内的障碍�?
+    obstaclePositions.forEach(pos => {
         battleMap.value.tiles[pos.row]![pos.col]!.terrain = 'empty'
         triggerShake(pos.row, pos.col, 'character')
       })
       if (obstaclePositions.length > 0) {
-        damageResults.push(`清除�?{obstaclePositions.length}个障碍物`)
+        damageResults.push(`清除�?${obstaclePositions.length}个障碍物`)
       }
 
       // 合并日志输出
       const totalHits = enemyTargets.length + enemyBuildings.length + obstaclePositions.length
       if (totalHits > 0) {
-        const summary = damageResults.join('�?)
-        battleLog.value.push(`�?{charTemplate?.name || attacker.characterId}】使用技能�?{skill.name}】命�?${totalHits} 个目标：${summary}，受击目标防御力-50%`)
+        const summary = damageResults.join('�?')
+        battleLog.value.push(`�?${charTemplate?.name || attacker.characterId}】使用技能�?${skill.name}】命�?${totalHits} 个目标：${summary}，受击目标防御力-50%`)
       } else {
-        battleLog.value.push(`�?{charTemplate?.name || attacker.characterId}】使用技能�?{skill.name}】，但范围内没有可攻击目标`)
+        battleLog.value.push(`�?${charTemplate?.name || attacker.characterId}】使用技能�?${skill.name}】，但范围内没有可攻击目标`)
       }
 
       defeatedNames.forEach(name => {
-        battleLog.value.push(`�?{name}】被击败！`)
+        battleLog.value.push(`�?${name}】被击败！`)
       })
       destroyedBuildings.forEach(name => {
-        battleLog.value.push(`�?{name}】被摧毁！`)
+        battleLog.value.push(`�?${name}】被摧毁！`)
       })
 
-      // 使用后自身直接战败退�?      const attackerName = charTemplate?.name || attacker.characterId
-      battleLog.value.push(`�?{attackerName}】在腐蚀粘液的爆炸中化为灰烬！`)
+      // 使用后自身直接战败退�?
+    const attackerName = charTemplate?.name || attacker.characterId
+      battleLog.value.push(`�?${attackerName}】在腐蚀粘液的爆炸中化为灰烬！`)
       removeCharacterFromBattle(attacker.id, attacker.isPlayer)
     }
-    // 特殊处理【天崩地裂】技�?    else if (skillId === 'tian_beng_di_lie') {
+    // 特殊处理【天崩地裂】技�?
+  else if (skillId === 'tian_beng_di_lie') {
       processAOEAttackSkill(attacker, skill, attacker.row, attacker.col, charTemplate)
     }
-    // 特殊处理【举火焚天】技能：对目标造成120%攻击力伤害，并使自身进入【强力】状态（攻击+10%�?    else if (skillId === 'ju_huo_fen_tian') {
+    // 特殊处理【举火焚天】技能：对目标造成120%攻击力伤害，并使自身进入【强力】状态（攻击+10%�?
+  else if (skillId === 'ju_huo_fen_tian') {
       if (targetId) {
         // 1. 对角色目标造成伤害
         let charTargets = attacker.isPlayer
@@ -8064,7 +8364,7 @@ export const useGameStore = defineStore('game', () => {
 
           if (target.hp <= 0) {
             removeCharacterFromBattle(target.id, target.isPlayer)
-            battleLog.value.push(`�?{targetName}】被击败！`)
+            battleLog.value.push(`�?${targetName}】被击败！`)
           }
         } else if (buildingTargets.length > 0) {
           const targetBuilding = buildingTargets[0]
@@ -8085,21 +8385,24 @@ export const useGameStore = defineStore('game', () => {
           if (targetBuilding.hp <= 0) {
             removeBuildingFromBattle(targetBuilding.id)
             battleMap.value!.tiles[targetBuilding.row]![targetBuilding.col]!.building = null
-            battleLog.value.push(`�?{targetName}】被摧毁！`)
+            battleLog.value.push(`�?${targetName}】被摧毁！`)
           }
         }
 
-        // 3. 有有效目标时，使自身进入【强力】状态（攻击+10%�?        if (charTargets.length > 0 || buildingTargets.length > 0) {
+        // 3. 有有效目标时，使自身进入【强力】状态（攻击+10%�?
+      if (charTargets.length > 0 || buildingTargets.length > 0) {
           if (attacker.totalDamage === undefined) attacker.totalDamage = 0
           attacker.totalDamage += totalDamage
 
-          // 使自身进入【强力】状�?          addStatusToCharacter(attacker, 'strong')
+          // 使自身进入【强力】状�?
+        addStatusToCharacter(attacker, 'strong')
 
-          battleLog.value.push(`�?{charTemplate?.name || attacker.characterId}】使用技能�?{skill.name}】，对�?{targetName}】造成${totalDamage}点伤害！自身进入【强力】状态！`)
+          battleLog.value.push(`�?${charTemplate?.name || attacker.characterId}】使用技能�?${skill.name}】，对�?${targetName}】造成${totalDamage}点伤害！自身进入【强力】状态！`)
         }
       }
     }
-    // 特殊处理【落土飞岩】技�?    else if (skillId === 'luo_tu_fei_yan') {
+    // 特殊处理【落土飞岩】技�?
+  else if (skillId === 'luo_tu_fei_yan') {
       if (targetId) {
         // 1. 对角色目标造成伤害
         let charTargets = attacker.isPlayer
@@ -8130,7 +8433,7 @@ export const useGameStore = defineStore('game', () => {
 
           if (target.hp <= 0) {
             removeCharacterFromBattle(target.id, target.isPlayer)
-            battleLog.value.push(`�?{targetName}】被击败！`)
+            battleLog.value.push(`�?${targetName}】被击败！`)
           }
         } else if (buildingTargets.length > 0) {
           const targetBuilding = buildingTargets[0]
@@ -8151,27 +8454,31 @@ export const useGameStore = defineStore('game', () => {
           if (targetBuilding.hp <= 0) {
             removeBuildingFromBattle(targetBuilding.id)
             battleMap.value!.tiles[targetBuilding.row]![targetBuilding.col]!.building = null
-            battleLog.value.push(`�?{targetName}】被摧毁！`)
+            battleLog.value.push(`�?${targetName}】被摧毁！`)
           }
         }
 
-        // 3. 有有效目标时，使自身进入【强力】状�?        if (charTargets.length > 0 || buildingTargets.length > 0) {
+        // 3. 有有效目标时，使自身进入【强力】状�?
+      if (charTargets.length > 0 || buildingTargets.length > 0) {
           if (attacker.totalDamage === undefined) attacker.totalDamage = 0
           attacker.totalDamage += totalDamage
 
           addStatusToCharacter(attacker, 'strong')
 
-          battleLog.value.push(`�?{charTemplate?.name || attacker.characterId}】使用技能�?{skill.name}】，对�?{targetName}】造成${totalDamage}点伤害！自身进入【强力】状态！`)
+          battleLog.value.push(`�?${charTemplate?.name || attacker.characterId}】使用技能�?${skill.name}】，对�?${targetName}】造成${totalDamage}点伤害！自身进入【强力】状态！`)
         }
       }
     }
-    // 特殊处理【大地重击】技�?    else if (skillId === 'da_di_zhong_ji') {
+    // 特殊处理【大地重击】技�?
+  else if (skillId === 'da_di_zhong_ji') {
       processAOEAttackSkill(attacker, skill, attacker.row, attacker.col, charTemplate)
     }
-    // 特殊处理【魔殓鬼手】技�?    else if (skillId === 'mo_lian_gui_shou') {
+    // 特殊处理【魔殓鬼手】技�?
+  else if (skillId === 'mo_lian_gui_shou') {
       processAOEAttackSkill(attacker, skill, attacker.row, attacker.col, charTemplate)
     }
-    // 特殊处理【蛮甲冲击】技能：对目标造成伤害，并使自身进入【刚毅】状态（防御+30%�?    else if (skillId === 'man_jia_chong_ji') {
+    // 特殊处理【蛮甲冲击】技能：对目标造成伤害，并使自身进入【刚毅】状态（防御+30%�?
+  else if (skillId === 'man_jia_chong_ji') {
       if (targetId) {
         // 1. 对角色目标造成伤害
         let charTargets = attacker.isPlayer
@@ -8203,7 +8510,7 @@ export const useGameStore = defineStore('game', () => {
 
           if (target.hp <= 0) {
             removeCharacterFromBattle(target.id, target.isPlayer)
-            battleLog.value.push(`�?{targetName}】被击败！`)
+            battleLog.value.push(`�?${targetName}】被击败！`)
           }
         } else if (buildingTargets.length > 0) {
           const targetBuilding = buildingTargets[0]
@@ -8224,23 +8531,28 @@ export const useGameStore = defineStore('game', () => {
           if (targetBuilding.hp <= 0) {
             removeBuildingFromBattle(targetBuilding.id)
             battleMap.value!.tiles[targetBuilding.row]![targetBuilding.col]!.building = null
-            battleLog.value.push(`�?{targetName}】被摧毁！`)
+            battleLog.value.push(`�?${targetName}】被摧毁！`)
           }
         }
 
-        // 有有效目标时，使自身进入【刚毅】状态（防御�?30%，持续到战斗结束�?        if (charTargets.length > 0 || buildingTargets.length > 0) {
+        // 有有效目标时，使自身进入【刚毅】状态（防御�?30%，持续到战斗结束�?
+      if (charTargets.length > 0 || buildingTargets.length > 0) {
           if (attacker.totalDamage === undefined) attacker.totalDamage = 0
           attacker.totalDamage += totalDamage
 
-          // 进入【刚毅】状�?          addStatusToCharacter(attacker, 'resolute')
+          // 进入【刚毅】状�?
+        addStatusToCharacter(attacker, 'resolute')
 
-          battleLog.value.push(`�?{charTemplate?.name || attacker.characterId}】使用技能�?{skill.name}】，对�?{targetName}】造成${totalDamage}点伤害！自身进入【刚毅】状态！`)
+          battleLog.value.push(`�?${charTemplate?.name || attacker.characterId}】使用技能�?${skill.name}】，对�?${targetName}】造成${totalDamage}点伤害！自身进入【刚毅】状态！`)
         }
       }
     }
-    // 特殊处理【碎裂重击】技�?    else if (skillId === 'sui_lie_zhong_ji') {
-      // 选择相邻1格的1个目标，造成攻击�?00%的伤害，并使目标陷入【眩晕】状态（持续1秒�?      if (targetId) {
-        // 1. 对角色目标造成伤害并施加眩�?        let charTargets = attacker.isPlayer
+    // 特殊处理【碎裂重击】技�?
+  else if (skillId === 'sui_lie_zhong_ji') {
+      // 选择相邻1格的1个目标，造成攻击�?00%的伤害，并使目标陷入【眩晕】状态（持续1秒�?
+    if (targetId) {
+        // 1. 对角色目标造成伤害并施加眩�?
+      let charTargets = attacker.isPlayer
           ? battleMap.value.enemies.filter(e => e.id === targetId)
           : battleMap.value.players.filter(p => p.id === targetId)
 
@@ -8267,13 +8579,14 @@ export const useGameStore = defineStore('game', () => {
           
           showFloatingText(target.row, target.col, damage, 'damage')
 
-          // 施加眩晕状态（持续1秒，秒结束时自动清除�?          addStatusToCharacter(target, 'stun')
+          // 施加眩晕状态（持续1秒，秒结束时自动清除�?
+        addStatusToCharacter(target, 'stun')
 
-          battleLog.value.push(`�?{charTemplate?.name || attacker.characterId}】使用技能�?{skill.name}】，对�?{targetName}】造成${totalDamage}点伤害！目标陷入【眩晕】状态！`)
+          battleLog.value.push(`�?${charTemplate?.name || attacker.characterId}】使用技能�?${skill.name}】，对�?${targetName}】造成${totalDamage}点伤害！目标陷入【眩晕】状态！`)
 
           if (target.hp <= 0) {
             removeCharacterFromBattle(target.id, target.isPlayer)
-            battleLog.value.push(`�?{targetName}】被击败！`)
+            battleLog.value.push(`�?${targetName}】被击败！`)
           }
         } else if (buildingTargets.length > 0) {
           const targetBuilding = buildingTargets[0]
@@ -8294,9 +8607,9 @@ export const useGameStore = defineStore('game', () => {
           if (targetBuilding.hp <= 0) {
             removeBuildingFromBattle(targetBuilding.id)
             battleMap.value!.tiles[targetBuilding.row]![targetBuilding.col]!.building = null
-            battleLog.value.push(`�?{targetName}】被摧毁！`)
+            battleLog.value.push(`�?${targetName}】被摧毁！`)
           } else {
-            battleLog.value.push(`�?{charTemplate?.name || attacker.characterId}】使用技能�?{skill.name}】，对�?{targetName}】造成${totalDamage}点伤害！`)
+            battleLog.value.push(`�?${charTemplate?.name || attacker.characterId}】使用技能�?${skill.name}】，对�?${targetName}】造成${totalDamage}点伤害！`)
           }
         }
 
@@ -8306,8 +8619,10 @@ export const useGameStore = defineStore('game', () => {
         }
       }
     }
-    // 特殊处理【碎星】技�?    else if (skillId === 'sui_xing') {
-      // 选择4格范围内�?个敌方单位，造成200%攻击力的伤害，并使目标陷入【流血】状�?      if (targetId) {
+    // 特殊处理【碎星】技�?
+  else if (skillId === 'sui_xing') {
+      // 选择4格范围内�?个敌方单位，造成200%攻击力的伤害，并使目标陷入【流血】状�?
+    if (targetId) {
         const actualTargetId = Array.isArray(targetId) ? targetId[0] : targetId
 
         let charTargets = attacker.isPlayer
@@ -8337,11 +8652,11 @@ export const useGameStore = defineStore('game', () => {
           const skillAttribute = skill.attribute || 'normal'
           triggerSkillEffect(target.row, target.col, skillAttribute, 'medium', 'attack', '指定', attacker.row, attacker.col)
 
-          battleLog.value.push(`�?{charTemplate?.name || attacker.characterId}】使用技能�?{skill.name}】，对�?{targetName}】造成${totalDamage}点伤害！目标进入【流血】状态！`)
+          battleLog.value.push(`�?${charTemplate?.name || attacker.characterId}】使用技能�?${skill.name}】，对�?${targetName}】造成${totalDamage}点伤害！目标进入【流血】状态！`)
 
           if (target.hp <= 0) {
             removeCharacterFromBattle(target.id, target.isPlayer)
-            battleLog.value.push(`�?{targetName}】被击败！`)
+            battleLog.value.push(`�?${targetName}】被击败！`)
           }
         } else if (buildingTargets.length > 0) {
           const targetBuilding = buildingTargets[0]
@@ -8362,9 +8677,9 @@ export const useGameStore = defineStore('game', () => {
           if (targetBuilding.hp <= 0) {
             removeBuildingFromBattle(targetBuilding.id)
             battleMap.value!.tiles[targetBuilding.row]![targetBuilding.col]!.building = null
-            battleLog.value.push(`�?{targetName}】被摧毁！`)
+            battleLog.value.push(`�?${targetName}】被摧毁！`)
           } else {
-            battleLog.value.push(`�?{charTemplate?.name || attacker.characterId}】使用技能�?{skill.name}】，对�?{targetName}】造成${totalDamage}点伤害！`)
+            battleLog.value.push(`�?${charTemplate?.name || attacker.characterId}】使用技能�?${skill.name}】，对�?${targetName}】造成${totalDamage}点伤害！`)
           }
         }
 
@@ -8374,8 +8689,10 @@ export const useGameStore = defineStore('game', () => {
         }
       }
     }
-    // 特殊处理【灵气丝】技�?    else if (skillId === 'lingqisi') {
-      // 选择3格范围内的一个指定目标，造成攻击�?30%的伤害，同时恢复自身造成伤害38%的生�?      if (targetId) {
+    // 特殊处理【灵气丝】技�?
+  else if (skillId === 'lingqisi') {
+      // 选择3格范围内的一个指定目标，造成攻击�?30%的伤害，同时恢复自身造成伤害38%的生�?
+    if (targetId) {
         // 1. 对角色目标造成伤害
         let charTargets = attacker.isPlayer
           ? battleMap.value.enemies.filter(e => e.id === targetId)
@@ -8406,7 +8723,7 @@ export const useGameStore = defineStore('game', () => {
 
           if (target.hp <= 0) {
             removeCharacterFromBattle(target.id, target.isPlayer)
-            battleLog.value.push(`�?{targetName}】被击败！`)
+            battleLog.value.push(`�?${targetName}】被击败！`)
           }
         } else if (buildingTargets.length > 0) {
           const targetBuilding = buildingTargets[0]
@@ -8427,7 +8744,7 @@ export const useGameStore = defineStore('game', () => {
           if (targetBuilding.hp <= 0) {
             removeBuildingFromBattle(targetBuilding.id)
             battleMap.value!.tiles[targetBuilding.row]![targetBuilding.col]!.building = null
-            battleLog.value.push(`�?{targetName}】被摧毁！`)
+            battleLog.value.push(`�?${targetName}】被摧毁！`)
           }
         }
 
@@ -8436,19 +8753,22 @@ export const useGameStore = defineStore('game', () => {
           if (attacker.totalDamage === undefined) attacker.totalDamage = 0
           attacker.totalDamage += totalDamage
 
-          // 恢复自身造成伤害38%的生�?          const healAmount = Math.floor(totalDamage * (skill.lifesteal || 0.385))
+          // 恢复自身造成伤害38%的生�?
+        const healAmount = Math.floor(totalDamage * (skill.lifesteal || 0.385))
           const maxHp = attacker.maxHp || (charTemplate?.maxHp || charTemplate?.baseMaxHp || 100)
           attacker.hp = Math.min(attacker.hp + healAmount, maxHp)
 
           if (attacker.totalHeal === undefined) attacker.totalHeal = 0
           attacker.totalHeal += healAmount
 
-          battleLog.value.push(`�?{charTemplate?.name || attacker.characterId}】使用技能�?{skill.name}】，对�?{targetName}】造成${totalDamage}点伤害！恢复${healAmount}点生命（造成伤害�?8%）！`)
+          battleLog.value.push(`�?${charTemplate?.name || attacker.characterId}】使用技能�?${skill.name}】，对�?${targetName}】造成${totalDamage}点伤害！恢复${healAmount}点生命（造成伤害�?8%）！`)
         }
       }
     }
-    // 特殊处理【摘叶飞花】技�?    else if (skillId === 'zhai_ye_fei_hua') {
-      // 选择3格范围内�?个指定目标，造成(100%+20%*与目标距�?攻击力的伤害，并使目标进入【流血】状�?      if (targetId) {
+    // 特殊处理【摘叶飞花】技�?
+  else if (skillId === 'zhai_ye_fei_hua') {
+      // 选择3格范围内�?个指定目标，造成(100%+20%*与目标距�?攻击力的伤害，并使目标进入【流血】状�?
+    if (targetId) {
         const actualTargetId = Array.isArray(targetId) ? targetId[0] : targetId
 
         // 1. 对角色目标造成伤害
@@ -8492,13 +8812,14 @@ export const useGameStore = defineStore('game', () => {
           
           showFloatingText(target.row, target.col, damage, 'damage')
 
-          // 施加流血状�?          addStatusToCharacter(target, 'bleeding', true)
+          // 施加流血状�?
+        addStatusToCharacter(target, 'bleeding', true)
 
-          battleLog.value.push(`�?{charTemplate?.name || attacker.characterId}】使用技能�?{skill.name}】，对�?{targetName}】造成${totalDamage}点伤害！目标进入【流血】状态！`)
+          battleLog.value.push(`�?${charTemplate?.name || attacker.characterId}】使用技能�?${skill.name}】，对�?${targetName}】造成${totalDamage}点伤害！目标进入【流血】状态！`)
 
           if (target.hp <= 0) {
             removeCharacterFromBattle(target.id, target.isPlayer)
-            battleLog.value.push(`�?{targetName}】被击败！`)
+            battleLog.value.push(`�?${targetName}】被击败！`)
           }
         } else if (buildingTargets.length > 0) {
           const targetBuilding = buildingTargets[0]
@@ -8519,9 +8840,9 @@ export const useGameStore = defineStore('game', () => {
           if (targetBuilding.hp <= 0) {
             removeBuildingFromBattle(targetBuilding.id)
             battleMap.value!.tiles[targetBuilding.row]![targetBuilding.col]!.building = null
-            battleLog.value.push(`�?{targetName}】被摧毁！`)
+            battleLog.value.push(`�?${targetName}】被摧毁！`)
           } else {
-            battleLog.value.push(`�?{charTemplate?.name || attacker.characterId}】使用技能�?{skill.name}】，对�?{targetName}】造成${totalDamage}点伤害！`)
+            battleLog.value.push(`�?${charTemplate?.name || attacker.characterId}】使用技能�?${skill.name}】，对�?${targetName}】造成${totalDamage}点伤害！`)
           }
         }
 
@@ -8531,8 +8852,10 @@ export const useGameStore = defineStore('game', () => {
         }
       }
     }
-    // 特殊处理【万叶飞花】技�?    else if (skillId === 'wan_ye_fei_hua') {
-      // 选择3格范围内的最�?个指定目标，分别造成攻击�?10%的伤害，并使目标进入【流血】状�?      if (targetId) {
+    // 特殊处理【万叶飞花】技�?
+  else if (skillId === 'wan_ye_fei_hua') {
+      // 选择3格范围内的最�?个指定目标，分别造成攻击�?10%的伤害，并使目标进入【流血】状�?
+    if (targetId) {
         const actualTargetIds = Array.isArray(targetId) ? [...targetId].slice(0, 2) : [targetId]
 
         // 计算攻击力（包含装备加成和技能效果）
@@ -8566,11 +8889,12 @@ export const useGameStore = defineStore('game', () => {
             
             showFloatingText(target.row, target.col, damage, 'damage')
 
-            // 施加流血状�?            addStatusToCharacter(target, 'bleeding', true)
+            // 施加流血状�?
+          addStatusToCharacter(target, 'bleeding', true)
 
             if (target.hp <= 0) {
               removeCharacterFromBattle(target.id, target.isPlayer)
-              battleLog.value.push(`�?{tName}】被击败！`)
+              battleLog.value.push(`�?${tName}】被击败！`)
             }
           } else if (buildingTargets.length > 0) {
             const targetBuilding = buildingTargets[0]
@@ -8591,7 +8915,7 @@ export const useGameStore = defineStore('game', () => {
             if (targetBuilding.hp <= 0) {
               removeBuildingFromBattle(targetBuilding.id)
               battleMap.value!.tiles[targetBuilding.row]![targetBuilding.col]!.building = null
-              battleLog.value.push(`�?{targetBuilding.name}】被摧毁！`)
+              battleLog.value.push(`�?${targetBuilding.name}】被摧毁！`)
             }
           }
         }
@@ -8599,20 +8923,23 @@ export const useGameStore = defineStore('game', () => {
         if (totalDamageAll > 0) {
           if (attacker.totalDamage === undefined) attacker.totalDamage = 0
           attacker.totalDamage += totalDamageAll
-          const targetsStr = damagedTargets.join('�?)
-          battleLog.value.push(`�?{charTemplate?.name || attacker.characterId}】使用技能�?{skill.name}】，对�?{targetsStr}】造成总计${totalDamageAll}点伤害！目标进入【流血】状态！`)
+          const targetsStr = damagedTargets.join('�?')
+          battleLog.value.push(`�?${charTemplate?.name || attacker.characterId}】使用技能�?${skill.name}】，对�?${targetsStr}】造成总计${totalDamageAll}点伤害！目标进入【流血】状态！`)
         }
       }
     }
-    // 特殊处理【阴阳玉手印】技�?    else if (skillId === 'yin_yang_yu_shou_yin') {
-      // 选择3格范围内的最�?个指定目标，总计造成300%攻击力的伤害，根据选择的目标数量均摊伤�?      if (targetId) {
+    // 特殊处理【阴阳玉手印】技�?
+  else if (skillId === 'yin_yang_yu_shou_yin') {
+      // 选择3格范围内的最�?个指定目标，总计造成300%攻击力的伤害，根据选择的目标数量均摊伤�?
+    if (targetId) {
         const actualTargetIds = Array.isArray(targetId) ? [...targetId].slice(0, 3) : [targetId]
         const targetCount = actualTargetIds.length
 
         // 计算攻击力（包含装备加成和技能效果）
         const attackPower = computeAttackPower(attacker)
 
-        // 每个目标的伤害威�?= 总威�?/ 目标�?        const perTargetPower = Math.floor(skill.power / targetCount)
+        // 每个目标的伤害威�?= 总威�?/ 目标�?
+      const perTargetPower = Math.floor(skill.power / targetCount)
 
         let totalDamageAll = 0
         const damagedTargets: string[] = []
@@ -8644,7 +8971,7 @@ export const useGameStore = defineStore('game', () => {
 
             if (target.hp <= 0) {
               removeCharacterFromBattle(target.id, target.isPlayer)
-              battleLog.value.push(`�?{tName}】被击败！`)
+              battleLog.value.push(`�?${tName}】被击败！`)
             }
           } else if (buildingTargets.length > 0) {
             const targetBuilding = buildingTargets[0]
@@ -8665,7 +8992,7 @@ export const useGameStore = defineStore('game', () => {
             if (targetBuilding.hp <= 0) {
               removeBuildingFromBattle(targetBuilding.id)
               battleMap.value!.tiles[targetBuilding.row]![targetBuilding.col]!.building = null
-              battleLog.value.push(`�?{targetBuilding.name}】被摧毁！`)
+              battleLog.value.push(`�?${targetBuilding.name}】被摧毁！`)
             }
           }
         }
@@ -8673,13 +9000,15 @@ export const useGameStore = defineStore('game', () => {
         if (totalDamageAll > 0) {
           if (attacker.totalDamage === undefined) attacker.totalDamage = 0
           attacker.totalDamage += totalDamageAll
-          const targetsStr = damagedTargets.join('�?)
-          battleLog.value.push(`�?{charTemplate?.name || attacker.characterId}】使用技能�?{skill.name}】，对�?{targetsStr}】造成总计${totalDamageAll}点伤害！（每个目�?{Math.floor(perTargetPower)}%攻击力伤害）`)
+          const targetsStr = damagedTargets.join('�?')
+          battleLog.value.push(`�?${charTemplate?.name || attacker.characterId}】使用技能�?${skill.name}】，对�?${targetsStr}】造成总计${totalDamageAll}点伤害！（每个目�?${Math.floor(perTargetPower)}%攻击力伤害）`)
         }
       }
     }
-    // 特殊处理【吸血】技�?    else if (skillId === 'xi_xue') {
-      // 选择相邻1格的1个目标，造成120%攻击力的伤害，并恢复自身造成伤害67%的生命�?      if (targetId) {
+    // 特殊处理【吸血】技�?
+  else if (skillId === 'xi_xue') {
+      // 选择相邻1格的1个目标，造成120%攻击力的伤害，并恢复自身造成伤害67%的生命�?
+    if (targetId) {
         const actualTargetId = Array.isArray(targetId) ? targetId[0] : targetId
 
         // 1. 对角色目标造成伤害
@@ -8712,7 +9041,7 @@ export const useGameStore = defineStore('game', () => {
 
           if (target.hp <= 0) {
             removeCharacterFromBattle(target.id, target.isPlayer)
-            battleLog.value.push(`�?{targetName}】被击败！`)
+            battleLog.value.push(`�?${targetName}】被击败！`)
           }
         } else if (buildingTargets.length > 0) {
           const targetBuilding = buildingTargets[0]
@@ -8733,7 +9062,7 @@ export const useGameStore = defineStore('game', () => {
           if (targetBuilding.hp <= 0) {
             removeBuildingFromBattle(targetBuilding.id)
             battleMap.value!.tiles[targetBuilding.row]![targetBuilding.col]!.building = null
-            battleLog.value.push(`�?{targetName}】被摧毁！`)
+            battleLog.value.push(`�?${targetName}】被摧毁！`)
           }
         }
 
@@ -8742,7 +9071,8 @@ export const useGameStore = defineStore('game', () => {
           if (attacker.totalDamage === undefined) attacker.totalDamage = 0
           attacker.totalDamage += totalDamage
 
-          // 恢复自身造成伤害67%的生�?          const healAmount = Math.floor(totalDamage * (skill.lifesteal || 0.667))
+          // 恢复自身造成伤害67%的生�?
+        const healAmount = Math.floor(totalDamage * (skill.lifesteal || 0.667))
           const maxHp = attacker.maxHp || (charTemplate?.maxHp || charTemplate?.baseMaxHp || 100)
           const oldHp = attacker.hp
           attacker.hp = Math.min(attacker.hp + healAmount, maxHp)
@@ -8751,12 +9081,14 @@ export const useGameStore = defineStore('game', () => {
           if (attacker.totalHeal === undefined) attacker.totalHeal = 0
           attacker.totalHeal += actualHeal
 
-          battleLog.value.push(`�?{charTemplate?.name || attacker.characterId}】使用技能�?{skill.name}】，对�?{targetName}】造成${totalDamage}点伤害！恢复${actualHeal}点生命（造成伤害�?7%）！`)
+          battleLog.value.push(`�?${charTemplate?.name || attacker.characterId}】使用技能�?${skill.name}】，对�?${targetName}】造成${totalDamage}点伤害！恢复${actualHeal}点生命（造成伤害�?7%）！`)
         }
       }
     }
-    // 特殊处理【灵魂诅咒】技�?    else if (skillId === 'ling_hun_zu_zhou') {
-      // 选择5格范围内�?个目标，造成110%攻击力的伤害，并使目标进入【沉默】状�?      if (targetId) {
+    // 特殊处理【灵魂诅咒】技�?
+  else if (skillId === 'ling_hun_zu_zhou') {
+      // 选择5格范围内�?个目标，造成110%攻击力的伤害，并使目标进入【沉默】状�?
+    if (targetId) {
         const actualTargetId = Array.isArray(targetId) ? targetId[0] : targetId
 
         // 1. 对角色目标造成伤害
@@ -8767,7 +9099,8 @@ export const useGameStore = defineStore('game', () => {
         // 2. 对建筑目标也造成伤害
         let buildingTargets = battleMap.value.buildings.filter(b => b.id === actualTargetId && b.isPlayer !== attacker.isPlayer)
 
-        // 计算攻击�?        const attackPower = computeAttackPower(attacker)
+        // 计算攻击�?
+      const attackPower = computeAttackPower(attacker)
 
         let totalDamage = 0
         let targetName = ''
@@ -8789,11 +9122,11 @@ export const useGameStore = defineStore('game', () => {
           // 施加沉默状态，持续3秒
           addStatusToCharacter(target, 'silenced', false, 3)
 
-          battleLog.value.push(`�?{charTemplate?.name || attacker.characterId}】使用技能�?{skill.name}】，对�?{targetName}】造成${totalDamage}点伤害！目标进入【沉默】状态！`)
+          battleLog.value.push(`�?${charTemplate?.name || attacker.characterId}】使用技能�?${skill.name}】，对�?${targetName}】造成${totalDamage}点伤害！目标进入【沉默】状态！`)
 
           if (target.hp <= 0) {
             removeCharacterFromBattle(target.id, target.isPlayer)
-            battleLog.value.push(`�?{targetName}】被击败！`)
+            battleLog.value.push(`�?${targetName}】被击败！`)
           }
         } else if (buildingTargets.length > 0) {
           const targetBuilding = buildingTargets[0]
@@ -8814,9 +9147,9 @@ export const useGameStore = defineStore('game', () => {
           if (targetBuilding.hp <= 0) {
             removeBuildingFromBattle(targetBuilding.id)
             battleMap.value!.tiles[targetBuilding.row]![targetBuilding.col]!.building = null
-            battleLog.value.push(`�?{targetName}】被摧毁！`)
+            battleLog.value.push(`�?${targetName}】被摧毁！`)
           } else {
-            battleLog.value.push(`�?{charTemplate?.name || attacker.characterId}】使用技能�?{skill.name}】，对�?{targetName}】造成${totalDamage}点伤害！`)
+            battleLog.value.push(`�?${charTemplate?.name || attacker.characterId}】使用技能�?${skill.name}】，对�?${targetName}】造成${totalDamage}点伤害！`)
           }
         }
 
@@ -8826,11 +9159,14 @@ export const useGameStore = defineStore('game', () => {
         }
       }
     }
-    // 特殊处理【灵魂扰乱】技�?    else if (skillId === 'ling_hun_rao_luan') {
-      // 选择3格范围内�?个指定目标，分别造成75%攻击力的伤害，并使目标进入【心乱】状�?      if (targetId) {
+    // 特殊处理【灵魂扰乱】技�?
+  else if (skillId === 'ling_hun_rao_luan') {
+      // 选择3格范围内�?个指定目标，分别造成75%攻击力的伤害，并使目标进入【心乱】状�?
+    if (targetId) {
         const actualTargetIds = Array.isArray(targetId) ? [...targetId].slice(0, 2) : [targetId]
 
-        // 计算攻击�?        const attackPower = computeAttackPower(attacker)
+        // 计算攻击�?
+      const attackPower = computeAttackPower(attacker)
 
         let totalDamageAll = 0
         const damagedTargets: string[] = []
@@ -8858,11 +9194,12 @@ export const useGameStore = defineStore('game', () => {
 
             triggerShake(target.row, target.col, 'character')
 
-            // 施加心乱状�?            addStatusToCharacter(target, 'xinluan')
+            // 施加心乱状�?
+          addStatusToCharacter(target, 'xinluan')
 
             if (target.hp <= 0) {
               removeCharacterFromBattle(target.id, target.isPlayer)
-              battleLog.value.push(`�?{tName}】被击败！`)
+              battleLog.value.push(`�?${tName}】被击败！`)
             }
           } else if (buildingTargets.length > 0) {
             const targetBuilding = buildingTargets[0]
@@ -8883,7 +9220,7 @@ export const useGameStore = defineStore('game', () => {
             if (targetBuilding.hp <= 0) {
               removeBuildingFromBattle(targetBuilding.id)
               battleMap.value!.tiles[targetBuilding.row]![targetBuilding.col]!.building = null
-              battleLog.value.push(`�?{targetBuilding.name}】被摧毁！`)
+              battleLog.value.push(`�?${targetBuilding.name}】被摧毁！`)
             }
           }
         }
@@ -8891,13 +9228,15 @@ export const useGameStore = defineStore('game', () => {
         if (totalDamageAll > 0) {
           if (attacker.totalDamage === undefined) attacker.totalDamage = 0
           attacker.totalDamage += totalDamageAll
-          const targetsStr = damagedTargets.join('�?)
-          battleLog.value.push(`�?{charTemplate?.name || attacker.characterId}】使用技能�?{skill.name}】，对�?{targetsStr}】造成总计${totalDamageAll}点伤害！目标进入【心乱】状态！`)
+          const targetsStr = damagedTargets.join('�?')
+          battleLog.value.push(`�?${charTemplate?.name || attacker.characterId}】使用技能�?${skill.name}】，对�?${targetsStr}】造成总计${totalDamageAll}点伤害！目标进入【心乱】状态！`)
         }
       }
     }
-    // 特殊处理【魅惑】技�?    else if (skillId === 'mei_huo') {
-      // 选择2格范围内�?个目标，造成120%攻击力的伤害，并使目标进入【心乱】状�?      if (targetId) {
+    // 特殊处理【魅惑】技�?
+  else if (skillId === 'mei_huo') {
+      // 选择2格范围内�?个目标，造成120%攻击力的伤害，并使目标进入【心乱】状�?
+    if (targetId) {
         const actualTargetId = Array.isArray(targetId) ? targetId[0] : targetId
 
         // 1. 对角色目标造成伤害
@@ -8908,7 +9247,8 @@ export const useGameStore = defineStore('game', () => {
         // 2. 对建筑目标也造成伤害
         let buildingTargets = battleMap.value.buildings.filter(b => b.id === actualTargetId && b.isPlayer !== attacker.isPlayer)
 
-        // 计算攻击�?        const attackPower = computeAttackPower(attacker)
+        // 计算攻击�?
+      const attackPower = computeAttackPower(attacker)
 
         let totalDamage = 0
         let targetName = ''
@@ -8927,13 +9267,14 @@ export const useGameStore = defineStore('game', () => {
           
           showFloatingText(target.row, target.col, damage, 'damage')
 
-          // 施加心乱状�?          addStatusToCharacter(target, 'xinluan')
+          // 施加心乱状�?
+        addStatusToCharacter(target, 'xinluan')
 
-          battleLog.value.push(`�?{charTemplate?.name || attacker.characterId}】使用技能�?{skill.name}】，对�?{targetName}】造成${totalDamage}点伤害！目标进入【心乱】状态！`)
+          battleLog.value.push(`�?${charTemplate?.name || attacker.characterId}】使用技能�?${skill.name}】，对�?${targetName}】造成${totalDamage}点伤害！目标进入【心乱】状态！`)
 
           if (target.hp <= 0) {
             removeCharacterFromBattle(target.id, target.isPlayer)
-            battleLog.value.push(`�?{targetName}】被击败！`)
+            battleLog.value.push(`�?${targetName}】被击败！`)
           }
         } else if (buildingTargets.length > 0) {
           const targetBuilding = buildingTargets[0]
@@ -8954,9 +9295,9 @@ export const useGameStore = defineStore('game', () => {
           if (targetBuilding.hp <= 0) {
             removeBuildingFromBattle(targetBuilding.id)
             battleMap.value!.tiles[targetBuilding.row]![targetBuilding.col]!.building = null
-            battleLog.value.push(`�?{targetName}】被摧毁！`)
+            battleLog.value.push(`�?${targetName}】被摧毁！`)
           } else {
-            battleLog.value.push(`�?{charTemplate?.name || attacker.characterId}】使用技能�?{skill.name}】，对�?{targetName}】造成${totalDamage}点伤害！`)
+            battleLog.value.push(`�?${charTemplate?.name || attacker.characterId}】使用技能�?${skill.name}】，对�?${targetName}】造成${totalDamage}点伤害！`)
           }
         }
 
@@ -8966,7 +9307,8 @@ export const useGameStore = defineStore('game', () => {
         }
       }
     }
-    // 特殊处理「普通护理」技�?    else if (skillId === 'pu_tong_hu_li') {
+    // 特殊处理「普通护理」技�?
+  else if (skillId === 'pu_tong_hu_li') {
       // 选择2格范围内�?个友方目标，恢复生命值和法力值，恢复量为50%的攻击力
       if (targetId) {
         const allyPool = attacker.isPlayer ? battleMap.value.players : battleMap.value.enemies
@@ -8980,19 +9322,22 @@ export const useGameStore = defineStore('game', () => {
             target.hp = Math.min(target.hp + healAmount, targetTemplate.maxHp)
             target.mp = Math.min(target.mp + healAmount, targetTemplate.maxMp)
 
-            // 显示治疗和法力飘�?            showFloatingText(target.row, target.col, healAmount, 'heal')
+            // 显示治疗和法力飘�?
+          showFloatingText(target.row, target.col, healAmount, 'heal')
             showFloatingText(target.row, target.col, healAmount, 'mp')
 
             if (attacker.totalHeal === undefined) attacker.totalHeal = 0
             attacker.totalHeal += healAmount
 
-            battleLog.value.push(`�?{charTemplate?.name || attacker.characterId}】使用技能�?{skill.name}】，恢复�?{targetTemplate?.name || target.characterId}�?{healAmount}生命�?{healAmount}法力！`)
+            battleLog.value.push(`�?${charTemplate?.name || attacker.characterId}】使用技能�?${skill.name}】，恢复�?${targetTemplate?.name || target.characterId}�?${healAmount}生命�?${healAmount}法力！`)
           }
         }
       }
     }
-    // 特殊处理「紧急治疗」技�?    else if (skillId === 'jin_ji_zhi_liao') {
-      // 选择2格范围内�?个友方目标，恢复生命值和法力值，恢复量为100%的攻击力，并驱散目标所有不良状�?      if (targetId) {
+    // 特殊处理「紧急治疗」技�?
+  else if (skillId === 'jin_ji_zhi_liao') {
+      // 选择2格范围内�?个友方目标，恢复生命值和法力值，恢复量为100%的攻击力，并驱散目标所有不良状�?
+    if (targetId) {
         const allyPool = attacker.isPlayer ? battleMap.value.players : battleMap.value.enemies
         const targets = allyPool.filter(p => p.id === targetId)
         if (targets.length > 0) {
@@ -9004,10 +9349,12 @@ export const useGameStore = defineStore('game', () => {
             target.hp = Math.min(target.hp + healAmount, targetTemplate.maxHp)
             target.mp = Math.min(target.mp + healAmount, targetTemplate.maxMp)
 
-            // 显示治疗和法力飘�?            showFloatingText(target.row, target.col, healAmount, 'heal')
+            // 显示治疗和法力飘�?
+          showFloatingText(target.row, target.col, healAmount, 'heal')
             showFloatingText(target.row, target.col, healAmount, 'mp')
 
-            // 驱散目标所有不良状态（基于 STATUS_CONFIG �?tag，新增负面状态会自动识别�?            const dispelledStatuses: string[] = []
+            // 驱散目标所有不良状态（基于 STATUS_CONFIG �?tag，新增负面状态会自动识别�?
+          const dispelledStatuses: string[] = []
             NEGATIVE_STATUSES.forEach(status => {
               if (hasStatus(target, status)) {
                 removeStatusFromCharacter(target, status)
@@ -9019,16 +9366,18 @@ export const useGameStore = defineStore('game', () => {
             attacker.totalHeal += healAmount
 
             if (dispelledStatuses.length > 0) {
-              battleLog.value.push(`�?{charTemplate?.name || attacker.characterId}】使用技能�?{skill.name}】，恢复�?{targetTemplate?.name || target.characterId}�?{healAmount}生命�?{healAmount}法力！驱散目标的�?{dispelledStatuses.join('�?)}】状态！`)
+              battleLog.value.push(`�?${charTemplate?.name || attacker.characterId}】使用技能�?${skill.name}】，恢复�?${targetTemplate?.name || target.characterId}�?${healAmount}生命�?${healAmount}法力！驱散目标的�?${dispelledStatuses.join('�?')}】状态！`)
             } else {
-              battleLog.value.push(`�?{charTemplate?.name || attacker.characterId}】使用技能�?{skill.name}】，恢复�?{targetTemplate?.name || target.characterId}�?{healAmount}生命�?{healAmount}法力！`)
+              battleLog.value.push(`�?${charTemplate?.name || attacker.characterId}】使用技能�?${skill.name}】，恢复�?${targetTemplate?.name || target.characterId}�?${healAmount}生命�?${healAmount}法力！`)
             }
           }
         }
       }
     }
-    // 特殊处理「高山流水」技�?    else if (skillId === 'gao_shan_liu_shui') {
-      // 选择4格范围内�?个友方目标，恢复生命值和法力值各75%的攻击力，并驱散目标所有不良状�?      if (targetId) {
+    // 特殊处理「高山流水」技�?
+  else if (skillId === 'gao_shan_liu_shui') {
+      // 选择4格范围内�?个友方目标，恢复生命值和法力值各75%的攻击力，并驱散目标所有不良状�?
+    if (targetId) {
         const actualTargetIds = Array.isArray(targetId) ? targetId.slice(0, 2) : [targetId]
         const allyPool = attacker.isPlayer ? battleMap.value.players : battleMap.value.enemies
         const targets = allyPool.filter(c => actualTargetIds.includes(c.id))
@@ -9043,10 +9392,12 @@ export const useGameStore = defineStore('game', () => {
             target.hp = Math.min(target.hp + healAmount, targetTemplate.maxHp)
             target.mp = Math.min(target.mp + healAmount, targetTemplate.maxMp)
             
-            // 显示治疗和法力飘�?            showFloatingText(target.row, target.col, healAmount, 'heal')
+            // 显示治疗和法力飘�?
+          showFloatingText(target.row, target.col, healAmount, 'heal')
             showFloatingText(target.row, target.col, healAmount, 'mp')
             
-            // 驱散目标所有不良状态（基于 STATUS_CONFIG �?tag，新增负面状态会自动识别�?            const dispelledStatuses: string[] = []
+            // 驱散目标所有不良状态（基于 STATUS_CONFIG �?tag，新增负面状态会自动识别�?
+          const dispelledStatuses: string[] = []
             NEGATIVE_STATUSES.forEach(status => {
               if (hasStatus(target, status)) {
                 removeStatusFromCharacter(target, status)
@@ -9058,27 +9409,32 @@ export const useGameStore = defineStore('game', () => {
             attacker.totalHeal += healAmount
             
             if (dispelledStatuses.length > 0) {
-              battleLog.value.push(`�?{charTemplate.name || attacker.characterId}】使用技能�?{skill.name}】，恢复�?{targetTemplate.name || target.characterId}�?{healAmount}生命�?{healAmount}法力！驱散目标的�?{dispelledStatuses.join('�?)}】状态！`)
+              battleLog.value.push(`�?${charTemplate.name || attacker.characterId}】使用技能�?${skill.name}】，恢复�?${targetTemplate.name || target.characterId}�?${healAmount}生命�?${healAmount}法力！驱散目标的�?${dispelledStatuses.join('�?')}】状态！`)
             } else {
-              battleLog.value.push(`�?{charTemplate.name || attacker.characterId}】使用技能�?{skill.name}】，恢复�?{targetTemplate.name || target.characterId}�?{healAmount}生命�?{healAmount}法力！`)
+              battleLog.value.push(`�?${charTemplate.name || attacker.characterId}】使用技能�?${skill.name}】，恢复�?${targetTemplate.name || target.characterId}�?${healAmount}生命�?${healAmount}法力！`)
             }
           }
         }
       }
     }
-    // 特殊处理「炼狱火海」技�?    else if (skillId === 'lian_yu_huo_hai') {
+    // 特殊处理「炼狱火海」技�?
+  else if (skillId === 'lian_yu_huo_hai') {
       processAOEAttackSkill(attacker, skill, attacker.row, attacker.col, charTemplate)
     }
-    // 特殊处理「亡者之气」技�?    else if (skillId === 'wang_zhe_zhi_qi') {
-      // 选择3格范围内�?个目标，造成100%攻击力的伤害，并使目标陷入【心乱】状�?      if (targetId) {
+    // 特殊处理「亡者之气」技�?
+  else if (skillId === 'wang_zhe_zhi_qi') {
+      // 选择3格范围内�?个目标，造成100%攻击力的伤害，并使目标陷入【心乱】状�?
+    if (targetId) {
         const actualTargetIds = Array.isArray(targetId) ? [...targetId].slice(0, 2) : [targetId]
 
-        // 计算攻击�?        const attackPower = computeAttackPower(attacker)
+        // 计算攻击�?
+      const attackPower = computeAttackPower(attacker)
 
         let totalDamageAll = 0
         const damagedTargets: string[] = []
 
-        // 对每个目标造成伤害并施加心乱状�?        for (const tid of actualTargetIds) {
+        // 对每个目标造成伤害并施加心乱状�?
+      for (const tid of actualTargetIds) {
           let charTargets = attacker.isPlayer
             ? battleMap.value.enemies.filter(e => e.id === tid)
             : battleMap.value.players.filter(p => p.id === tid)
@@ -9098,11 +9454,12 @@ export const useGameStore = defineStore('game', () => {
 
             triggerShake(target.row, target.col, 'character')
 
-            // 施加心乱状�?            addStatusToCharacter(target, 'xinluan')
+            // 施加心乱状�?
+          addStatusToCharacter(target, 'xinluan')
 
             if (target.hp <= 0) {
               removeCharacterFromBattle(target.id, target.isPlayer)
-              battleLog.value.push(`�?{tName}】被击败！`)
+              battleLog.value.push(`�?${tName}】被击败！`)
             }
           } else if (buildingTargets.length > 0) {
             const targetBuilding = buildingTargets[0]
@@ -9123,24 +9480,27 @@ export const useGameStore = defineStore('game', () => {
             if (targetBuilding.hp <= 0) {
               removeBuildingFromBattle(targetBuilding.id)
               battleMap.value!.tiles[targetBuilding.row]![targetBuilding.col]!.building = null
-              battleLog.value.push(`�?{targetBuilding.name}】被摧毁！`)
+              battleLog.value.push(`�?${targetBuilding.name}】被摧毁！`)
             }
           }
         }
 
-        // 更新总伤害统�?        if (attacker.totalDamage === undefined) attacker.totalDamage = 0
+        // 更新总伤害统�?
+      if (attacker.totalDamage === undefined) attacker.totalDamage = 0
         attacker.totalDamage += totalDamageAll
 
         // 日志输出
         if (damagedTargets.length > 0) {
-          battleLog.value.push(`�?{charTemplate?.name || attacker.characterId}】使用技能�?{skill.name}】，对�?{damagedTargets.join('�?)}】分别造成伤害并陷入【紊乱】状态`)
+          battleLog.value.push(`�?${charTemplate?.name || attacker.characterId}】使用技能�?${skill.name}】，对�?${damagedTargets.join('�?')}】分别造成伤害并陷入【紊乱】状态`)
         } else {
-          battleLog.value.push(`�?{charTemplate?.name || attacker.characterId}】使用技能�?{skill.name}】，但没有命中有效目标`)
+          battleLog.value.push(`�?${charTemplate?.name || attacker.characterId}】使用技能�?${skill.name}】，但没有命中有效目标`)
         }
       }
     }
-    // 特殊处理「骷髅血手印」技�?    else if (skillId === 'ku_lou_xue_shou_yin') {
-      // 选择3格范围内�?个目标，造成160%攻击力的伤害，并使目标陷入【流血】状�?      if (targetId) {
+    // 特殊处理「骷髅血手印」技�?
+  else if (skillId === 'ku_lou_xue_shou_yin') {
+      // 选择3格范围内�?个目标，造成160%攻击力的伤害，并使目标陷入【流血】状�?
+    if (targetId) {
         const actualTargetId = Array.isArray(targetId) ? targetId[0] : targetId
 
         let charTargets = attacker.isPlayer
@@ -9168,13 +9528,14 @@ export const useGameStore = defineStore('game', () => {
           
           showFloatingText(target.row, target.col, damage, 'damage')
 
-          // 施加流血状�?          addStatusToCharacter(target, 'bleeding', true)
+          // 施加流血状�?
+        addStatusToCharacter(target, 'bleeding', true)
 
-          battleLog.value.push(`�?{charTemplate?.name || attacker.characterId}】使用技能�?{skill.name}】，对�?{targetName}】造成${totalDamage}点伤害！目标陷入【流血】状态！`)
+          battleLog.value.push(`�?${charTemplate?.name || attacker.characterId}】使用技能�?${skill.name}】，对�?${targetName}】造成${totalDamage}点伤害！目标陷入【流血】状态！`)
 
           if (target.hp <= 0) {
             removeCharacterFromBattle(target.id, target.isPlayer)
-            battleLog.value.push(`�?{targetName}】被击败！`)
+            battleLog.value.push(`�?${targetName}】被击败！`)
           }
         } else if (buildingTargets.length > 0) {
           const targetBuilding = buildingTargets[0]
@@ -9195,9 +9556,9 @@ export const useGameStore = defineStore('game', () => {
           if (targetBuilding.hp <= 0) {
             removeBuildingFromBattle(targetBuilding.id)
             battleMap.value!.tiles[targetBuilding.row]![targetBuilding.col]!.building = null
-            battleLog.value.push(`�?{targetName}】被摧毁！`)
+            battleLog.value.push(`�?${targetName}】被摧毁！`)
           } else {
-            battleLog.value.push(`�?{charTemplate?.name || attacker.characterId}】使用技能�?{skill.name}】，对�?{targetName}】造成${totalDamage}点伤害！`)
+            battleLog.value.push(`�?${charTemplate?.name || attacker.characterId}】使用技能�?${skill.name}】，对�?${targetName}】造成${totalDamage}点伤害！`)
           }
         }
 
@@ -9207,8 +9568,10 @@ export const useGameStore = defineStore('game', () => {
         }
       }
     }
-    // 特殊处理「六魂恐咒」技�?    else if (skillId === 'liu_hun_kong_zhou') {
-      // 选择2格范围内�?个目标，造成150%攻击力的伤害，并使目标陷入【中毒】和【沉默】状�?      if (targetId) {
+    // 特殊处理「六魂恐咒」技�?
+  else if (skillId === 'liu_hun_kong_zhou') {
+      // 选择2格范围内�?个目标，造成150%攻击力的伤害，并使目标陷入【中毒】和【沉默】状�?
+    if (targetId) {
         const actualTargetId = Array.isArray(targetId) ? targetId[0] : targetId
 
         let charTargets = attacker.isPlayer
@@ -9236,14 +9599,15 @@ export const useGameStore = defineStore('game', () => {
           
           showFloatingText(target.row, target.col, damage, 'damage')
 
-          // 施加中毒和沉默状�?          addStatusToCharacter(target, 'poison')
+          // 施加中毒和沉默状�?
+        addStatusToCharacter(target, 'poison')
           addStatusToCharacter(target, 'silenced')
 
-          battleLog.value.push(`�?{charTemplate?.name || attacker.characterId}】使用技能�?{skill.name}】，对�?{targetName}】造成${totalDamage}点伤害！目标陷入【中毒】与【沉默】状态！`)
+          battleLog.value.push(`�?${charTemplate?.name || attacker.characterId}】使用技能�?${skill.name}】，对�?${targetName}】造成${totalDamage}点伤害！目标陷入【中毒】与【沉默】状态！`)
 
           if (target.hp <= 0) {
             removeCharacterFromBattle(target.id, target.isPlayer)
-            battleLog.value.push(`�?{targetName}】被击败！`)
+            battleLog.value.push(`�?${targetName}】被击败！`)
           }
         } else if (buildingTargets.length > 0) {
           const targetBuilding = buildingTargets[0]
@@ -9264,9 +9628,9 @@ export const useGameStore = defineStore('game', () => {
           if (targetBuilding.hp <= 0) {
             removeBuildingFromBattle(targetBuilding.id)
             battleMap.value!.tiles[targetBuilding.row]![targetBuilding.col]!.building = null
-            battleLog.value.push(`�?{targetName}】被摧毁！`)
+            battleLog.value.push(`�?${targetName}】被摧毁！`)
           } else {
-            battleLog.value.push(`�?{charTemplate?.name || attacker.characterId}】使用技能�?{skill.name}】，对�?{targetName}】造成${totalDamage}点伤害！`)
+            battleLog.value.push(`�?${charTemplate?.name || attacker.characterId}】使用技能�?${skill.name}】，对�?${targetName}】造成${totalDamage}点伤害！`)
           }
         }
 
@@ -9276,16 +9640,20 @@ export const useGameStore = defineStore('game', () => {
         }
       }
     }
-    // 特殊处理「治愈之光」技�?    else if (skillId === 'zhi_yu_zhi_guang') {
-      // 选择3格范围内�?个友方目标，恢复自己和该目标100%攻击力的生命值与法力值，并驱散目标所有不良状�?      if (targetId) {
+    // 特殊处理「治愈之光」技�?
+  else if (skillId === 'zhi_yu_zhi_guang') {
+      // 选择3格范围内�?个友方目标，恢复自己和该目标100%攻击力的生命值与法力值，并驱散目标所有不良状�?
+    if (targetId) {
         const allyPool = attacker.isPlayer ? battleMap.value.players : battleMap.value.enemies
         const allyTargets = allyPool.filter(p => p.id === targetId)
-        // 施法者自己也是治疗目�?        const self = attacker
+        // 施法者自己也是治疗目�?
+      const self = attacker
 
         if (charTemplate) {
           const healAmount = Math.floor((charTemplate.attack || charTemplate.baseAttack || 20) * (skill.power / 100))
 
-          // 治疗施法者自�?          const selfTemplate = findCharacterTemplateInStore(self.characterId)
+          // 治疗施法者自�?
+        const selfTemplate = findCharacterTemplateInStore(self.characterId)
           if (selfTemplate) {
             self.hp = Math.min(self.hp + healAmount, selfTemplate.maxHp)
             self.mp = Math.min(self.mp + healAmount, selfTemplate.maxMp)
@@ -9293,14 +9661,16 @@ export const useGameStore = defineStore('game', () => {
             attacker.totalHeal += healAmount
           }
 
-          // 治疗并驱散友方目�?          if (allyTargets.length > 0) {
+          // 治疗并驱散友方目�?
+        if (allyTargets.length > 0) {
             const target = allyTargets[0]
             const targetTemplate = findCharacterTemplateInStore(target.characterId)
             if (targetTemplate) {
               target.hp = Math.min(target.hp + healAmount, targetTemplate.maxHp)
               target.mp = Math.min(target.mp + healAmount, targetTemplate.maxMp)
 
-              // 驱散目标所有不良状态（基于 STATUS_CONFIG �?tag，新增负面状态会自动识别�?              const dispelledStatuses: string[] = []
+              // 驱散目标所有不良状态（基于 STATUS_CONFIG �?tag，新增负面状态会自动识别�?
+            const dispelledStatuses: string[] = []
               NEGATIVE_STATUSES.forEach(status => {
                 if (hasStatus(target, status)) {
                   removeStatusFromCharacter(target, status)
@@ -9312,19 +9682,21 @@ export const useGameStore = defineStore('game', () => {
               attacker.totalHeal += healAmount
 
               if (dispelledStatuses.length > 0) {
-                battleLog.value.push(`�?{charTemplate?.name || attacker.characterId}】使用技能�?{skill.name}】，恢复自身与�?{targetTemplate?.name || target.characterId}】各${healAmount}生命�?{healAmount}法力！驱散目标的�?{dispelledStatuses.join('�?)}】状态！`)
+                battleLog.value.push(`�?${charTemplate?.name || attacker.characterId}】使用技能�?${skill.name}】，恢复自身与�?${targetTemplate?.name || target.characterId}】各${healAmount}生命�?${healAmount}法力！驱散目标的�?${dispelledStatuses.join('�?')}】状态！`)
               } else {
-                battleLog.value.push(`�?{charTemplate?.name || attacker.characterId}】使用技能�?{skill.name}】，恢复自身与�?{targetTemplate?.name || target.characterId}】各${healAmount}生命�?{healAmount}法力！`)
+                battleLog.value.push(`�?${charTemplate?.name || attacker.characterId}】使用技能�?${skill.name}】，恢复自身与�?${targetTemplate?.name || target.characterId}】各${healAmount}生命�?${healAmount}法力！`)
               }
             }
           } else {
-            battleLog.value.push(`�?{charTemplate?.name || attacker.characterId}】使用技能�?{skill.name}】，恢复自身${healAmount}生命�?{healAmount}法力！`)
+            battleLog.value.push(`�?${charTemplate?.name || attacker.characterId}】使用技能�?${skill.name}】，恢复自身${healAmount}生命�?${healAmount}法力！`)
           }
         }
       }
     }
-    // 特殊处理「天雅倾情」技�?    else if (skillId === 'tian_ya_qing_qing') {
-      // 选择4格范围内�?个友方目标，恢复生命值和法力值，恢复量为自身10%生命值和法力值上限，并消除所有不良状�?      if (targetId) {
+    // 特殊处理「天雅倾情」技�?
+  else if (skillId === 'tian_ya_qing_qing') {
+      // 选择4格范围内�?个友方目标，恢复生命值和法力值，恢复量为自身10%生命值和法力值上限，并消除所有不良状�?
+    if (targetId) {
         const allyPool = attacker.isPlayer ? battleMap.value.players : battleMap.value.enemies
         const allyTargets = allyPool.filter(p => p.id === targetId)
 
@@ -9339,7 +9711,8 @@ export const useGameStore = defineStore('game', () => {
               target.hp = Math.min(target.hp + hpHeal, targetTemplate.maxHp)
               target.mp = Math.min(target.mp + mpHeal, targetTemplate.maxMp)
 
-              // 消除目标所有不良状态（基于 STATUS_CONFIG �?tag，新增负面状态会自动识别�?              const dispelledStatuses: string[] = []
+              // 消除目标所有不良状态（基于 STATUS_CONFIG �?tag，新增负面状态会自动识别�?
+            const dispelledStatuses: string[] = []
               NEGATIVE_STATUSES.forEach(status => {
                 if (hasStatus(target, status)) {
                   removeStatusFromCharacter(target, status)
@@ -9351,17 +9724,19 @@ export const useGameStore = defineStore('game', () => {
               attacker.totalHeal += hpHeal
 
               if (dispelledStatuses.length > 0) {
-                battleLog.value.push(`�?{charTemplate?.name || attacker.characterId}】使用技能�?{skill.name}】，恢复�?{targetTemplate?.name || target.characterId}�?{hpHeal}生命�?{mpHeal}法力！驱散目标的�?{dispelledStatuses.join('�?)}】状态！`)
+                battleLog.value.push(`�?${charTemplate?.name || attacker.characterId}】使用技能�?${skill.name}】，恢复�?${targetTemplate?.name || target.characterId}�?${hpHeal}生命�?${mpHeal}法力！驱散目标的�?${dispelledStatuses.join('�?')}】状态！`)
               } else {
-                battleLog.value.push(`�?{charTemplate?.name || attacker.characterId}】使用技能�?{skill.name}】，恢复�?{targetTemplate?.name || target.characterId}�?{hpHeal}生命�?{mpHeal}法力！`)
+                battleLog.value.push(`�?${charTemplate?.name || attacker.characterId}】使用技能�?${skill.name}】，恢复�?${targetTemplate?.name || target.characterId}�?${hpHeal}生命�?${mpHeal}法力！`)
               }
             }
           }
         }
       }
     }
-    // 特殊处理「EMP冲击波」技�?    else if (skillId === 'emp_chong_ji_bo') {
-      // 选择3格范围内�?个目标，造成150%攻击力的伤害，并使目标陷入【沉默】状�?      if (targetId) {
+    // 特殊处理「EMP冲击波」技�?
+  else if (skillId === 'emp_chong_ji_bo') {
+      // 选择3格范围内�?个目标，造成150%攻击力的伤害，并使目标陷入【沉默】状�?
+    if (targetId) {
         const actualTargetId = Array.isArray(targetId) ? targetId[0] : targetId
 
         let charTargets = attacker.isPlayer
@@ -9392,11 +9767,11 @@ export const useGameStore = defineStore('game', () => {
           // 施加沉默状态，持续3秒
           addStatusToCharacter(target, 'silenced', false, 3)
 
-          battleLog.value.push(`�?{charTemplate?.name || attacker.characterId}】使用技能�?{skill.name}】，对�?{targetName}】造成${totalDamage}点伤害！目标陷入【沉默】状态！`)
+          battleLog.value.push(`�?${charTemplate?.name || attacker.characterId}】使用技能�?${skill.name}】，对�?${targetName}】造成${totalDamage}点伤害！目标陷入【沉默】状态！`)
 
           if (target.hp <= 0) {
             removeCharacterFromBattle(target.id, target.isPlayer)
-            battleLog.value.push(`�?{targetName}】被击败！`)
+            battleLog.value.push(`�?${targetName}】被击败！`)
           }
         } else if (buildingTargets.length > 0) {
           const targetBuilding = buildingTargets[0]
@@ -9417,9 +9792,9 @@ export const useGameStore = defineStore('game', () => {
           if (targetBuilding.hp <= 0) {
             removeBuildingFromBattle(targetBuilding.id)
             battleMap.value!.tiles[targetBuilding.row]![targetBuilding.col]!.building = null
-            battleLog.value.push(`�?{targetName}】被摧毁！`)
+            battleLog.value.push(`�?${targetName}】被摧毁！`)
           } else {
-            battleLog.value.push(`�?{charTemplate?.name || attacker.characterId}】使用技能�?{skill.name}】，对�?{targetName}】造成${totalDamage}点伤害！`)
+            battleLog.value.push(`�?${charTemplate?.name || attacker.characterId}】使用技能�?${skill.name}】，对�?${targetName}】造成${totalDamage}点伤害！`)
           }
         }
 
@@ -9429,8 +9804,10 @@ export const useGameStore = defineStore('game', () => {
         }
       }
     }
-    // 特殊处理「辐射打击」技�?    else if (skillId === 'fu_she_da_ji') {
-      // 选择4格范围内�?个目标，造成150%攻击力的伤害，并使目标陷入【中毒】状�?      if (targetId) {
+    // 特殊处理「辐射打击」技�?
+  else if (skillId === 'fu_she_da_ji') {
+      // 选择4格范围内�?个目标，造成150%攻击力的伤害，并使目标陷入【中毒】状�?
+    if (targetId) {
         const actualTargetId = Array.isArray(targetId) ? targetId[0] : targetId
 
         let charTargets = attacker.isPlayer
@@ -9458,13 +9835,14 @@ export const useGameStore = defineStore('game', () => {
           
           showFloatingText(target.row, target.col, damage, 'damage')
 
-          // 施加中毒状�?          addStatusToCharacter(target, 'poison', true)
+          // 施加中毒状�?
+        addStatusToCharacter(target, 'poison', true)
 
-          battleLog.value.push(`�?{charTemplate?.name || attacker.characterId}】使用技能�?{skill.name}】，对�?{targetName}】造成${totalDamage}点伤害！目标陷入【中毒】状态！`)
+          battleLog.value.push(`�?${charTemplate?.name || attacker.characterId}】使用技能�?${skill.name}】，对�?${targetName}】造成${totalDamage}点伤害！目标陷入【中毒】状态！`)
 
           if (target.hp <= 0) {
             removeCharacterFromBattle(target.id, target.isPlayer)
-            battleLog.value.push(`�?{targetName}】被击败！`)
+            battleLog.value.push(`�?${targetName}】被击败！`)
           }
         } else if (buildingTargets.length > 0) {
           const targetBuilding = buildingTargets[0]
@@ -9485,9 +9863,9 @@ export const useGameStore = defineStore('game', () => {
           if (targetBuilding.hp <= 0) {
             removeBuildingFromBattle(targetBuilding.id)
             battleMap.value!.tiles[targetBuilding.row]![targetBuilding.col]!.building = null
-            battleLog.value.push(`�?{targetName}】被摧毁！`)
+            battleLog.value.push(`�?${targetName}】被摧毁！`)
           } else {
-            battleLog.value.push(`�?{charTemplate?.name || attacker.characterId}】使用技能�?{skill.name}】，对�?{targetName}】造成${totalDamage}点伤害！`)
+            battleLog.value.push(`�?${charTemplate?.name || attacker.characterId}】使用技能�?${skill.name}】，对�?${targetName}】造成${totalDamage}点伤害！`)
           }
         }
 
@@ -9497,7 +9875,8 @@ export const useGameStore = defineStore('game', () => {
         }
       }
     }
-    // 统一处理所有召唤类技�?    else if (skill.category === 'summon') {
+    // 统一处理所有召唤类技�?
+  else if (skill.category === 'summon') {
       processSummonSkill(attacker, skill, targetId ? (Array.isArray(targetId) ? targetId : [targetId]) : [], charTemplate)
     }
     else if (skill.category === '直线') {
@@ -9535,7 +9914,7 @@ export const useGameStore = defineStore('game', () => {
             // 施加沉默状态，持续3秒
             addStatusToCharacter(target, 'silenced', false, 3)
             
-            damageResults.push(`对�?{targetTemplate?.name || target.characterId}】造成${damage}点伤害`)
+            damageResults.push(`对�?${targetTemplate?.name || target.characterId}】造成${damage}点伤害`)
             
             if (target.hp <= 0) {
               removeCharacterFromBattle(target.id, target.isPlayer)
@@ -9545,19 +9924,21 @@ export const useGameStore = defineStore('game', () => {
         })
         
         if (damageResults.length > 0) {
-          battleLog.value.push(`�?{charTemplate?.name || attacker.characterId}】使用技能�?{skill.name}】，${damageResults.join('�?)}！目标进入【沉默】状态！`)
+          battleLog.value.push(`�?${charTemplate?.name || attacker.characterId}】使用技能�?${skill.name}】，${damageResults.join('�?')}！目标进入【沉默】状态！`)
         }
         
         defeatedNames.forEach(name => {
-          battleLog.value.push(`�?{name}】被击败！`)
+          battleLog.value.push(`�?${name}】被击败！`)
         })
       }
     }
     else if (skill.type === 'heal') {
-      // 使用统一的治疗技能处理函�?      processHealSkill(attacker, skill, targetId)
+      // 使用统一的治疗技能处理函�?
+    processHealSkill(attacker, skill, targetId)
       skillHandled = true
     } else if (skillId === 'ju_du_shi_gu') {
-      // 巨毒噬骨：对3格范围内1个目标造成120%攻击力伤害，并施加中毒状�?      if (targetId) {
+      // 巨毒噬骨：对3格范围内1个目标造成120%攻击力伤害，并施加中毒状�?
+    if (targetId) {
         // 获取目标角色
         const allChars = [...battleMap.value.players, ...battleMap.value.enemies]
         const target = allChars.find(c => c.id === (Array.isArray(targetId) ? targetId[0] : targetId))
@@ -9583,13 +9964,14 @@ export const useGameStore = defineStore('game', () => {
           
           showFloatingText(target.row, target.col, damage, 'damage')
 
-          // 施加中毒状�?          addStatusToCharacter(target, 'poison', true)
+          // 施加中毒状�?
+        addStatusToCharacter(target, 'poison', true)
 
-          battleLog.value.push(`�?{charTemplate?.name || attacker.characterId}】使用技能�?{skill.name}】，对�?{targetTemplate?.name || target.characterId}】造成${damage}点伤害！目标进入【中毒】状态！`)
+          battleLog.value.push(`�?${charTemplate?.name || attacker.characterId}】使用技能�?${skill.name}】，对�?${targetTemplate?.name || target.characterId}】造成${damage}点伤害！目标进入【中毒】状态！`)
 
           if (target.hp <= 0) {
             removeCharacterFromBattle(target.id, target.isPlayer)
-            battleLog.value.push(`�?{targetTemplate?.name || target.characterId}】被击败！`)
+            battleLog.value.push(`�?${targetTemplate?.name || target.characterId}】被击败！`)
           }
         } else {
           // 检查目标是否是建筑
@@ -9604,17 +9986,18 @@ export const useGameStore = defineStore('game', () => {
 
             triggerShake(buildingTarget.row, buildingTarget.col, 'building')
 
-            battleLog.value.push(`�?{charTemplate?.name || attacker.characterId}】使用技能�?{skill.name}】，对�?{buildingTarget.name}】造成${damage}点伤害！`)
+            battleLog.value.push(`�?${charTemplate?.name || attacker.characterId}】使用技能�?${skill.name}】，对�?${buildingTarget.name}】造成${damage}点伤害！`)
 
             if (buildingTarget.hp <= 0) {
               removeBuildingFromBattle(buildingTarget.id)
-              battleLog.value.push(`�?{buildingTarget.name}】被摧毁！`)
+              battleLog.value.push(`�?${buildingTarget.name}】被摧毁！`)
             }
           }
         }
       }
     } else if (skillId === 'die_xue_ci_ji') {
-      // 喋血刺击：选择相邻1格的1个目标，造成攻击�?50%的伤害，并使目标进入【流血】状�?      if (targetId) {
+      // 喋血刺击：选择相邻1格的1个目标，造成攻击�?50%的伤害，并使目标进入【流血】状�?
+    if (targetId) {
         // 获取目标角色
         const allChars = [...battleMap.value.players, ...battleMap.value.enemies]
         const target = allChars.find(c => c.id === (Array.isArray(targetId) ? targetId[0] : targetId))
@@ -9640,13 +10023,14 @@ export const useGameStore = defineStore('game', () => {
           
           showFloatingText(target.row, target.col, damage, 'damage')
 
-          // 施加流血状�?          addStatusToCharacter(target, 'bleeding', true)
+          // 施加流血状�?
+        addStatusToCharacter(target, 'bleeding', true)
 
-          battleLog.value.push(`�?{charTemplate?.name || attacker.characterId}】使用技能�?{skill.name}】，对�?{targetTemplate?.name || target.characterId}】造成${damage}点伤害！目标进入【流血】状态！`)
+          battleLog.value.push(`�?${charTemplate?.name || attacker.characterId}】使用技能�?${skill.name}】，对�?${targetTemplate?.name || target.characterId}】造成${damage}点伤害！目标进入【流血】状态！`)
 
           if (target.hp <= 0) {
             removeCharacterFromBattle(target.id, target.isPlayer)
-            battleLog.value.push(`�?{targetTemplate?.name || target.characterId}】被击败！`)
+            battleLog.value.push(`�?${targetTemplate?.name || target.characterId}】被击败！`)
           }
         } else {
           // 检查目标是否是建筑
@@ -9661,19 +10045,21 @@ export const useGameStore = defineStore('game', () => {
 
             triggerShake(buildingTarget.row, buildingTarget.col, 'building')
 
-            battleLog.value.push(`�?{charTemplate?.name || attacker.characterId}】使用技能�?{skill.name}】，对�?{buildingTarget.name}】造成${damage}点伤害！`)
+            battleLog.value.push(`�?${charTemplate?.name || attacker.characterId}】使用技能�?${skill.name}】，对�?${buildingTarget.name}】造成${damage}点伤害！`)
 
             if (buildingTarget.hp <= 0) {
               removeBuildingFromBattle(buildingTarget.id)
-              battleLog.value.push(`�?{buildingTarget.name}】被摧毁！`)
+              battleLog.value.push(`�?${buildingTarget.name}】被摧毁！`)
             }
           }
         }
       }
     } else if (skillId === 'zi_bao_du_ye') {
-      // 自爆毒液：自身为中心3*3方形范围，对所有敌方目标造成150%伤害并施加中毒状态，自身战败退�?      const areaRange = skill.areaRange || 1
+      // 自爆毒液：自身为中心3*3方形范围，对所有敌方目标造成150%伤害并施加中毒状态，自身战败退�?
+    const areaRange = skill.areaRange || 1
 
-      // 收集范围内的敌方角色（正方形范围�?      const enemyTargets = attacker.isPlayer
+      // 收集范围内的敌方角色（正方形范围�?
+    const enemyTargets = attacker.isPlayer
         ? battleMap.value.enemies.filter(enemy => {
             const rowDiff = Math.abs(enemy.row - attacker.row)
             const colDiff = Math.abs(enemy.col - attacker.col)
@@ -9695,7 +10081,8 @@ export const useGameStore = defineStore('game', () => {
       // 计算攻击力（包含装备加成和技能效果）
       const attackPower = computeAttackPower(attacker)
 
-      // 对范围内敌方角色造成伤害并施加中�?      const damageResults: string[] = []
+      // 对范围内敌方角色造成伤害并施加中�?
+    const damageResults: string[] = []
       const defeatedNames: string[] = []
 
       enemyTargets.forEach(target => {
@@ -9711,7 +10098,7 @@ export const useGameStore = defineStore('game', () => {
         triggerShake(target.row, target.col, 'character')
 
         addStatusToCharacter(target, 'poison')
-        damageResults.push(`对�?{targetTemplate?.name || target.characterId}】造成${damage}点伤害`)
+        damageResults.push(`对�?${targetTemplate?.name || target.characterId}】造成${damage}点伤害`)
 
         if (target.hp <= 0) {
           removeCharacterFromBattle(target.id, target.isPlayer)
@@ -9732,7 +10119,7 @@ export const useGameStore = defineStore('game', () => {
         
         showFloatingText(building.row, building.col, damage, 'damage')
 
-        damageResults.push(`对�?{building.name}】造成${damage}点伤害`)
+        damageResults.push(`对�?${building.name}】造成${damage}点伤害`)
 
         trySpawnZombieFromHeart(building)
 
@@ -9742,28 +10129,32 @@ export const useGameStore = defineStore('game', () => {
         }
       })
 
-      // 战斗日志：技能效�?      if (damageResults.length > 0) {
-        battleLog.value.push(`�?{charTemplate?.name || attacker.characterId}】使用技能�?{skill.name}】，${damageResults.join('�?)}！目标进入【中毒】状态！`)
+      // 战斗日志：技能效�?
+    if (damageResults.length > 0) {
+        battleLog.value.push(`�?${charTemplate?.name || attacker.characterId}】使用技能�?${skill.name}】，${damageResults.join('�?')}！目标进入【中毒】状态！`)
       } else {
-        battleLog.value.push(`�?{charTemplate?.name || attacker.characterId}】使用技能�?{skill.name}】，但范围内没有可攻击目标！`)
+        battleLog.value.push(`�?${charTemplate?.name || attacker.characterId}】使用技能�?${skill.name}】，但范围内没有可攻击目标！`)
       }
 
       defeatedNames.forEach(name => {
-        battleLog.value.push(`�?{name}】被击败！`)
+        battleLog.value.push(`�?${name}】被击败！`)
       })
       destroyedBuildingNames.forEach(name => {
-        battleLog.value.push(`�?{name}】被摧毁！`)
+        battleLog.value.push(`�?${name}】被摧毁！`)
       })
 
-      // 自爆：自身战败退�?      const selfName = charTemplate?.name || attacker.characterId
+      // 自爆：自身战败退�?
+    const selfName = charTemplate?.name || attacker.characterId
       triggerDefeatAnimation(attacker.row, attacker.col, 'self')
       removeCharacterFromBattle(attacker.id, attacker.isPlayer)
-      battleLog.value.push(`�?{selfName}】在自爆毒液中战败退场！`)
+      battleLog.value.push(`�?${selfName}】在自爆毒液中战败退场！`)
 
       checkBattleEnd()
     }
-    // 特殊处理【告别暝灯】技�?    else if (skillId === 'gao_bie_ming_deng') {
-      // 选择3格范围内�?个敌方单位，造成120%攻击力的伤害，并且使目标陷入【脆皮】状�?      if (targetId) {
+    // 特殊处理【告别暝灯】技�?
+  else if (skillId === 'gao_bie_ming_deng') {
+      // 选择3格范围内�?个敌方单位，造成120%攻击力的伤害，并且使目标陷入【脆皮】状�?
+    if (targetId) {
         const actualTargetIds = Array.isArray(targetId) ? [...targetId].slice(0, 2) : [targetId]
 
         const attackPower = computeAttackPower(attacker)
@@ -9795,7 +10186,7 @@ export const useGameStore = defineStore('game', () => {
 
             if (target.hp <= 0) {
               removeCharacterFromBattle(target.id, target.isPlayer)
-              battleLog.value.push(`�?{tName}】被击败！`)
+              battleLog.value.push(`�?${tName}】被击败！`)
             }
           } else if (buildingTargets.length > 0) {
             const targetBuilding = buildingTargets[0]
@@ -9816,7 +10207,7 @@ export const useGameStore = defineStore('game', () => {
             if (targetBuilding.hp <= 0) {
               removeBuildingFromBattle(targetBuilding.id)
               battleMap.value!.tiles[targetBuilding.row]![targetBuilding.col]!.building = null
-              battleLog.value.push(`�?{targetBuilding.name}】被摧毁！`)
+              battleLog.value.push(`�?${targetBuilding.name}】被摧毁！`)
             }
           }
         }
@@ -9825,14 +10216,16 @@ export const useGameStore = defineStore('game', () => {
         attacker.totalDamage += totalDamageAll
 
         if (damagedTargets.length > 0) {
-          battleLog.value.push(`�?{charTemplate?.name || attacker.characterId}】使用技能�?{skill.name}】，对�?{damagedTargets.join('�?)}】分别造成伤害！目标陷入【脆皮】状态！`)
+          battleLog.value.push(`�?${charTemplate?.name || attacker.characterId}】使用技能�?${skill.name}】，对�?${damagedTargets.join('�?')}】分别造成伤害！目标陷入【脆皮】状态！`)
         } else {
-          battleLog.value.push(`�?{charTemplate?.name || attacker.characterId}】使用技能�?{skill.name}】，但没有命中有效目标`)
+          battleLog.value.push(`�?${charTemplate?.name || attacker.characterId}】使用技能�?${skill.name}】，但没有命中有效目标`)
         }
       }
     }
-    // 特殊处理【月之引力】技�?    else if (skillId === 'yue_zhi_yin_li') {
-      // 选择2格菱形范围内�?个同阵营目标，使自身和该目标都获得【愈合】和【调息】状�?      if (targetId) {
+    // 特殊处理【月之引力】技�?
+  else if (skillId === 'yue_zhi_yin_li') {
+      // 选择2格菱形范围内�?个同阵营目标，使自身和该目标都获得【愈合】和【调息】状�?
+    if (targetId) {
         const actualTargetId = Array.isArray(targetId) ? targetId[0] : targetId
 
         const allyPool = attacker.isPlayer ? battleMap.value.players : battleMap.value.enemies
@@ -9846,14 +10239,15 @@ export const useGameStore = defineStore('game', () => {
           addStatusToCharacter(target, 'heal', true)
           addStatusToCharacter(target, 'meditate', true)
 
-          battleLog.value.push(`�?{charTemplate?.name || attacker.characterId}】使用技能�?{skill.name}】，自身和�?{targetTemplate?.name || target.characterId}】获得【愈合】和【调息】状态！`)
+          battleLog.value.push(`�?${charTemplate?.name || attacker.characterId}】使用技能�?${skill.name}】，自身和�?${targetTemplate?.name || target.characterId}】获得【愈合】和【调息】状态！`)
         } else {
-          battleLog.value.push(`�?{charTemplate?.name || attacker.characterId}】使用技能�?{skill.name}】，但没有找到有效目标！`)
+          battleLog.value.push(`�?${charTemplate?.name || attacker.characterId}】使用技能�?${skill.name}】，但没有找到有效目标！`)
         }
       }
     }
     else if (skillId === 'po_jing_chong_yuan') {
-      // 破镜重圆：选择2格菱形范围内�?个目标，造成150%攻击力的伤害，并且如果目标有增益状态，则自身也获得相同的增益状�?      if (targetId) {
+      // 破镜重圆：选择2格菱形范围内�?个目标，造成150%攻击力的伤害，并且如果目标有增益状态，则自身也获得相同的增益状�?
+    if (targetId) {
         let charTargets = attacker.isPlayer
           ? battleMap.value.enemies.filter(e => e.id === targetId)
           : battleMap.value.players.filter(p => p.id === targetId)
@@ -9891,14 +10285,14 @@ export const useGameStore = defineStore('game', () => {
           }
 
           if (copiedStatusNames.length > 0) {
-            battleLog.value.push(`�?{charTemplate?.name || attacker.characterId}】使用技能�?{skill.name}】，对�?{targetName}】造成${totalDamage}点伤害！复制了目标的�?{copiedStatusNames.join('】�?)}】状态！`)
+            battleLog.value.push(`�?${charTemplate?.name || attacker.characterId}】使用技能�?${skill.name}】，对�?${targetName}】造成${totalDamage}点伤害！复制了目标的�?${copiedStatusNames.join('】�?')}】状态！`)
           } else {
-            battleLog.value.push(`�?{charTemplate?.name || attacker.characterId}】使用技能�?{skill.name}】，对�?{targetName}】造成${totalDamage}点伤害！`)
+            battleLog.value.push(`�?${charTemplate?.name || attacker.characterId}】使用技能�?${skill.name}】，对�?${targetName}】造成${totalDamage}点伤害！`)
           }
 
           if (target.hp <= 0) {
             removeCharacterFromBattle(target.id, target.isPlayer)
-            battleLog.value.push(`�?{targetName}】被击败！`)
+            battleLog.value.push(`�?${targetName}】被击败！`)
           }
         } else if (buildingTargets.length > 0) {
           const targetBuilding = buildingTargets[0]
@@ -9909,12 +10303,12 @@ export const useGameStore = defineStore('game', () => {
 
           triggerShake(targetBuilding.row, targetBuilding.col, 'building')
 
-          battleLog.value.push(`�?{charTemplate?.name || attacker.characterId}】使用技能�?{skill.name}】，对�?{targetName}】造成${totalDamage}点伤害！`)
+          battleLog.value.push(`�?${charTemplate?.name || attacker.characterId}】使用技能�?${skill.name}】，对�?${targetName}】造成${totalDamage}点伤害！`)
 
           if (targetBuilding.hp <= 0) {
             removeBuildingFromBattle(targetBuilding.id)
             battleMap.value!.tiles[targetBuilding.row]![targetBuilding.col]!.building = null
-            battleLog.value.push(`�?{targetName}】被摧毁！`)
+            battleLog.value.push(`�?${targetName}】被摧毁！`)
           }
         }
 
@@ -9924,7 +10318,8 @@ export const useGameStore = defineStore('game', () => {
         }
       }
     }
-    // 特殊处理【箭雨】技�?    else if (skillId === 'jian_yu') {
+    // 特殊处理【箭雨】技�?
+  else if (skillId === 'jian_yu') {
       // 箭雨：选择4格范围内�?个格子为目标，对2格菱形范围内所有敌方目标造成伤害
       let centerRow = attacker.row
       let centerCol = attacker.col
@@ -9948,7 +10343,8 @@ export const useGameStore = defineStore('game', () => {
       }
       processAOEAttackSkill(attacker, skill, centerRow, centerCol, charTemplate)
     }
-    // 特殊处理【妙手】技�?    else if (skillId === 'miao_shou') {
+    // 特殊处理【妙手】技�?
+  else if (skillId === 'miao_shou') {
       if (targetId) {
         const allyPool = attacker.isPlayer ? battleMap.value.players : battleMap.value.enemies
         const target = allyPool.find(p => p.id === targetId)
@@ -9977,9 +10373,9 @@ export const useGameStore = defineStore('game', () => {
           attacker.totalHeal += actualHeal
           
           if (dispelledStatuses.length > 0) {
-            battleLog.value.push(`�?{charTemplate?.name || attacker.characterId}】使用技能�?{skill.name}】，恢复�?{targetTemplate?.name || target.characterId}�?{actualHeal}生命！�?{targetTemplate?.name || target.characterId}】获得【愈合】状态！驱散�?{targetTemplate?.name || target.characterId}】的�?{dispelledStatuses.join('�?)}】状态！`)
+            battleLog.value.push(`�?${charTemplate?.name || attacker.characterId}】使用技能�?${skill.name}】，恢复�?${targetTemplate?.name || target.characterId}�?${actualHeal}生命！�?${targetTemplate?.name || target.characterId}】获得【愈合】状态！驱散�?${targetTemplate?.name || target.characterId}】的�?${dispelledStatuses.join('�?')}】状态！`)
           } else {
-            battleLog.value.push(`�?{charTemplate?.name || attacker.characterId}】使用技能�?{skill.name}】，恢复�?{targetTemplate?.name || target.characterId}�?{actualHeal}生命！�?{targetTemplate?.name || target.characterId}】获得【愈合】状态！`)
+            battleLog.value.push(`�?${charTemplate?.name || attacker.characterId}】使用技能�?${skill.name}】，恢复�?${targetTemplate?.name || target.characterId}�?${actualHeal}生命！�?${targetTemplate?.name || target.characterId}】获得【愈合】状态！`)
           }
         }
       }
@@ -10011,13 +10407,15 @@ export const useGameStore = defineStore('game', () => {
     // 触发中毒（操作时触发的状态）
     triggerStatusOnAction(attacker)
 
-    // 在攻击者位置触发技能光�?    const skillAttribute = skill.attribute || 'normal'
+    // 在攻击者位置触发技能光�?
+  const skillAttribute = skill.attribute || 'normal'
     const skillType = skill.type as 'attack' | 'heal' | 'support' | 'summon' | 'special' || 'attack'
     const skillCategory = skill.category as '指定' | 'aoe' | '直线' | '横扫' | '轰炸' | 'heal' | 'support' | 'summon' | 'special' | undefined
     if (skill.type === 'attack' || skill.type === 'support' || skill.type === 'heal') {
       triggerSkillEffect(attacker.row, attacker.col, skillAttribute, 'large', skillType, skillCategory)
       
-      // 在目标位置触发技能光�?      if (targetIds && targetIds.length > 0) {
+      // 在目标位置触发技能光�?
+    if (targetIds && targetIds.length > 0) {
         targetIds.forEach(tid => {
           const allChars = [...battleMap.value.players, ...battleMap.value.enemies]
           const targetChar = allChars.find(c => c.id === tid)
@@ -10064,7 +10462,8 @@ export const useGameStore = defineStore('game', () => {
         battleMap.value.enemies.splice(idx, 1)
       }
     }
-    // 检查战斗是否结�?    checkBattleEnd()
+    // 检查战斗是否结�?
+  checkBattleEnd()
   }
   
   // 辅助函数：移除建筑并保存�?destroyedBuildings 列表
@@ -10081,18 +10480,21 @@ export const useGameStore = defineStore('game', () => {
       battleMap.value.destroyedBuildings.push(building)
       battleMap.value.buildings.splice(idx, 1)
     }
-    // 检查战斗是否结�?    checkBattleEnd()
+    // 检查战斗是否结�?
+  checkBattleEnd()
   }
 
   // 结算调度标志：防止同一结果重复触发 endBattle
   // 注意：battleEnded �?endBattle 自己置位，这里不能提前置位，
-  // 否则 endBattle 开头的 guard（battleEnded && !isEscape）会导致结算被跳过、战斗卡�?  let endBattleScheduled = false
+  // 否则 endBattle 开头的 guard（battleEnded && !isEscape）会导致结算被跳过、战斗卡�?
+let endBattleScheduled = false
 
   function checkBattleEnd(): boolean {
     if (!battleMap.value) return false
     if (battleMap.value.battleEnded || endBattleScheduled) return false
 
-    // 检查是否还有敌方建�?    const hasEnemyBuildings = battleMap.value.buildings.some(b => !b.isPlayer)
+    // 检查是否还有敌方建�?
+  const hasEnemyBuildings = battleMap.value.buildings.some(b => !b.isPlayer)
 
     if (battleMap.value.enemies.length === 0 && !hasEnemyBuildings) {
       scheduleEndBattle(true)
@@ -10131,21 +10533,25 @@ export const useGameStore = defineStore('game', () => {
   // 计算角色对目标的伤害
   // 从所有角色中查找模板
   function findCharacterTemplateInStore(charId: string) {
-    // 先从玩家角色中查�?    const playerChar = player?.value?.characters.find(c => c.id === charId)
+    // 先从玩家角色中查�?
+  const playerChar = player?.value?.characters.find(c => c.id === charId)
     if (playerChar) return playerChar
-    // 再从初始角色和可雇佣角色中查�?    const allChars = [...INITIAL_CHARACTERS, ...HIREABLE_CHARACTERS]
+    // 再从初始角色和可雇佣角色中查�?
+  const allChars = [...INITIAL_CHARACTERS, ...HIREABLE_CHARACTERS]
     return allChars.find(c => c.id === charId)
   }
 
   function calculateDamage(attacker: BattleCharacter, target: BattleCharacter | null): number {
     if (!battleMap.value) return 0
     
-    // 使用战斗角色存储的攻击力（带装备加成�?    const attackerTemplate = findCharacterTemplateInStore(attacker.characterId)
+    // 使用战斗角色存储的攻击力（带装备加成�?
+  const attackerTemplate = findCharacterTemplateInStore(attacker.characterId)
     const attackPower = computeAttackPower(attacker)
     
     // 对于角色
     if ('characterId' in target) {
-      // 使用战斗角色存储的防御力（带装备加成�?      const defense = computeDefensePower(target)
+      // 使用战斗角色存储的防御力（带装备加成�?
+    const defense = computeDefensePower(target)
       
       return Math.max(1, attackPower - defense)
     }
@@ -10182,7 +10588,8 @@ export const useGameStore = defineStore('game', () => {
     return Math.abs(row1 - row2) + Math.abs(col1 - col2)
   }
   
-  // 找到离角色最近的集结�?  function getNearestGatherPoint(char: BattleCharacter): { row: number; col: number } | null {
+  // 找到离角色最近的集结�?
+function getNearestGatherPoint(char: BattleCharacter): { row: number; col: number } | null {
     if (gatheringPoints.value.length === 0) return null
     
     let nearest = gatheringPoints.value[0]
@@ -10199,14 +10606,16 @@ export const useGameStore = defineStore('game', () => {
     return nearest
   }
   
-  // 获取技能可攻击的目�?  function getSkillAttackTargets(char: BattleCharacter, skill: Skill): (BattleCharacter | any)[] {
+  // 获取技能可攻击的目�?
+function getSkillAttackTargets(char: BattleCharacter, skill: Skill): (BattleCharacter | any)[] {
     if (!battleMap.value) return []
     const targets: (BattleCharacter | any)[] = []
     
     // AOE技能使用areaRange，其他技能使用range
     const skillRange = skill.category === 'aoe' ? (skill.areaRange || skill.range || 1) : (skill.range || 1)
     
-    // 检查敌方角�?    const enemies = char.isPlayer ? battleMap.value.enemies : battleMap.value.players
+    // 检查敌方角�?
+  const enemies = char.isPlayer ? battleMap.value.enemies : battleMap.value.players
     for (const enemy of enemies) {
       const distance = Math.abs(enemy.row - char.row) + Math.abs(enemy.col - char.col)
       if (distance <= skillRange && isCellVisibleToActor(char, enemy.row, enemy.col)) {
@@ -10214,7 +10623,8 @@ export const useGameStore = defineStore('game', () => {
       }
     }
     
-    // 检查建�?    for (const building of battleMap.value.buildings) {
+    // 检查建�?
+  for (const building of battleMap.value.buildings) {
       if (building.isPlayer !== char.isPlayer) {
         const distance = Math.abs(building.row - char.row) + Math.abs(building.col - char.col)
         if (distance <= skillRange && isCellVisibleToActor(char, building.row, building.col)) {
@@ -10223,7 +10633,8 @@ export const useGameStore = defineStore('game', () => {
       }
     }
     
-    // 检查障碍物（技能可以攻击障碍物�?    for (let r = -skillRange; r <= skillRange; r++) {
+    // 检查障碍物（技能可以攻击障碍物�?
+  for (let r = -skillRange; r <= skillRange; r++) {
       for (let c = -skillRange; c <= skillRange; c++) {
         const nr = char.row + r
         const nc = char.col + c
@@ -10277,11 +10688,12 @@ export const useGameStore = defineStore('game', () => {
         return
       }
 
-      // 眩晕：本秒只能防御，不能移�?攻击/使用技�?      if (hasStatus(char, 'stun')) {
+      // 眩晕：本秒只能防御，不能移�?攻击/使用技�?
+    if (hasStatus(char, 'stun')) {
         char.isDefending = true
         char.hasActed = true
         const template = findCharacterTemplateInStore(char.characterId)
-        battleLog.value.push(`�?{template?.name || char.characterId}】因【眩晕】本秒无法行动，只能防御`)
+        battleLog.value.push(`�?${template?.name || char.characterId}】因【眩晕】本秒无法行动，只能防御`)
         return
       }
 
@@ -10412,16 +10824,22 @@ export const useGameStore = defineStore('game', () => {
     if (char.isPlayer && playerChar) {
       availableSkills = playerChar.skills.filter(skill => {
         if (skill.frequency !== 0 || char.mp < skill.mpCost) return false
-        // 阵营灵气/煞气检�?        if (skill.reikiCost && battleMap.value && battleMap.value.playerReiki < skill.reikiCost) return false
+        // 阵营灵气/煞气检�?
+      if (skill.reikiCost && battleMap.value && battleMap.value.playerReiki < skill.reikiCost) return false
         if (skill.shaQiCost && battleMap.value && battleMap.value.playerShaQi < skill.shaQiCost) return false
-        // 腐蚀粘液：HP<=20%时才能使�?        if (skill.id === 'fushi_nianye' && hpPercent > 0.2) return false
-        // 通用HP阈值检�?        if (skill.selfHpThreshold !== undefined && hpPercent < skill.selfHpThreshold) return false
-        // HP > ATK检�?        if (skill.requireHpGtAtk && char.hp <= char.attack) return false
-        // 召唤数量限制检�?        if (skill.summonMaxCount && skill.summonCountId && battleMap.value) {
+        // 腐蚀粘液：HP<=20%时才能使�?
+      if (skill.id === 'fushi_nianye' && hpPercent > 0.2) return false
+        // 通用HP阈值检�?
+      if (skill.selfHpThreshold !== undefined && hpPercent < skill.selfHpThreshold) return false
+        // HP > ATK检�?
+      if (skill.requireHpGtAtk && char.hp <= char.attack) return false
+        // 召唤数量限制检�?
+      if (skill.summonMaxCount && skill.summonCountId && battleMap.value) {
           const existingCount = battleMap.value.players.filter(c => c.characterId === skill.summonCountId).length
           if (existingCount >= skill.summonMaxCount) return false
         }
-        // 技能使用次数限制检�?        if (skill.maxUsesPerBattle !== undefined) {
+        // 技能使用次数限制检�?
+      if (skill.maxUsesPerBattle !== undefined) {
           const useCount = char.skillUseCount ? (char.skillUseCount[skill.id] || 0) : 0
           if (useCount >= skill.maxUsesPerBattle) return false
         }
@@ -10431,16 +10849,22 @@ export const useGameStore = defineStore('game', () => {
       availableSkills = (charTemplate?.skills || []).filter(skill => {
         const cooldown = char.skillCooldowns ? char.skillCooldowns[skill.id] : 0
         if ((cooldown || 0) !== 0 || char.mp < skill.mpCost) return false
-        // 阵营灵气/煞气检�?        if (skill.reikiCost && battleMap.value && battleMap.value.enemyReiki < skill.reikiCost) return false
+        // 阵营灵气/煞气检�?
+      if (skill.reikiCost && battleMap.value && battleMap.value.enemyReiki < skill.reikiCost) return false
         if (skill.shaQiCost && battleMap.value && battleMap.value.enemyShaQi < skill.shaQiCost) return false
-        // 腐蚀粘液：HP<=20%时才能使�?        if (skill.id === 'fushi_nianye' && hpPercent > 0.2) return false
-        // 通用HP阈值检�?        if (skill.selfHpThreshold !== undefined && hpPercent < skill.selfHpThreshold) return false
-        // HP > ATK检�?        if (skill.requireHpGtAtk && char.hp <= char.attack) return false
-        // 召唤数量限制检�?        if (skill.summonMaxCount && skill.summonCountId && battleMap.value) {
+        // 腐蚀粘液：HP<=20%时才能使�?
+      if (skill.id === 'fushi_nianye' && hpPercent > 0.2) return false
+        // 通用HP阈值检�?
+      if (skill.selfHpThreshold !== undefined && hpPercent < skill.selfHpThreshold) return false
+        // HP > ATK检�?
+      if (skill.requireHpGtAtk && char.hp <= char.attack) return false
+        // 召唤数量限制检�?
+      if (skill.summonMaxCount && skill.summonCountId && battleMap.value) {
           const existingCount = battleMap.value.enemies.filter(c => c.characterId === skill.summonCountId).length
           if (existingCount >= skill.summonMaxCount) return false
         }
-        // 技能使用次数限制检�?        if (skill.maxUsesPerBattle !== undefined) {
+        // 技能使用次数限制检�?
+      if (skill.maxUsesPerBattle !== undefined) {
           const useCount = char.skillUseCount ? (char.skillUseCount[skill.id] || 0) : 0
           if (useCount >= skill.maxUsesPerBattle) return false
         }
@@ -10451,7 +10875,8 @@ export const useGameStore = defineStore('game', () => {
     const originalRow = char.row
     const originalCol = char.col
     
-    // 丧尸围城模式：过滤可见目�?    const allEnemies = char.isPlayer ? battleMap.value.enemies : battleMap.value.players
+    // 丧尸围城模式：过滤可见目�?
+  const allEnemies = char.isPlayer ? battleMap.value.enemies : battleMap.value.players
     const visibleEnemies = filterVisibleTargets(char, allEnemies)
     const visibleEnemyBuildings = filterVisibleTargets(char, battleMap.value.buildings.filter(b => char.isPlayer ? !b.isPlayer : b.isPlayer))
     const hasVisibleTargets = visibleEnemies.length > 0 || visibleEnemyBuildings.length > 0
@@ -10466,21 +10891,25 @@ export const useGameStore = defineStore('game', () => {
       ? [{ row: originalRow, col: originalCol }, ...rawMoveRange]
       : [{ row: originalRow, col: originalCol }]
     
-    // 使用角色实际的攻击范围（已含装备加成），并叠加状态效�?    const baseAttackRangeVal = char.attackRange || 1
+    // 使用角色实际的攻击范围（已含装备加成），并叠加状态效�?
+  const baseAttackRangeVal = char.attackRange || 1
     const statusAttackRange = getStatusAttackRange(char)
     
     for (const pos of moveRange) {
-      // 丧尸围城模式：视野内无目标时跳过所有评�?      if (battleMap.value?.visibilityEnabled && !hasVisibleTargets) break
+      // 丧尸围城模式：视野内无目标时跳过所有评�?
+    if (battleMap.value?.visibilityEnabled && !hasVisibleTargets) break
       
       char.row = pos.row
       char.col = pos.col
       
-      // 检查当前位置是否在迷雾�?      let effectiveAttackRange = Math.max(0, baseAttackRangeVal + statusAttackRange)
+      // 检查当前位置是否在迷雾�?
+    let effectiveAttackRange = Math.max(0, baseAttackRangeVal + statusAttackRange)
       if (isFogArea(pos.row, pos.col)) {
         effectiveAttackRange = Math.min(effectiveAttackRange, 1)
       }
       
-      // 检查普攻对敌人的伤�?      for (const enemy of visibleEnemies) {
+      // 检查普攻对敌人的伤�?
+    for (const enemy of visibleEnemies) {
         const dist = Math.abs(enemy.row - char.row) + Math.abs(enemy.col - char.col)
         if (dist <= effectiveAttackRange) {
           const damage = calculateDamage(char, enemy)
@@ -10496,13 +10925,15 @@ export const useGameStore = defineStore('game', () => {
       
       // 检查技能伤害（使用技能的实际范围�? 计算对敌方角色和建筑物的伤害，但不计算障碍物
       for (const skill of availableSkills) {
-        // 特殊处理：奕剑听�?- 以自身为中心的AOE攻击技�?        if (skill.id === 'yi_jian_ting_yu') {
+        // 特殊处理：奕剑听�?- 以自身为中心的AOE攻击技�?
+      if (skill.id === 'yi_jian_ting_yu') {
           const areaRange = skill.areaRange || 2
           const enemies = char.isPlayer ? battleMap.value.enemies : battleMap.value.players
           const buildings = battleMap.value.buildings
           let totalDamage = 0
 
-          // 计算对范围内敌方角色的伤�?          for (const enemy of enemies) {
+          // 计算对范围内敌方角色的伤�?
+        for (const enemy of enemies) {
             const dist = Math.abs(enemy.row - char.row) + Math.abs(enemy.col - char.col)
             if (dist <= areaRange) {
               const defense = computeDefensePower(enemy)
@@ -10512,7 +10943,8 @@ export const useGameStore = defineStore('game', () => {
             }
           }
 
-          // 计算对范围内敌方建筑的伤�?          for (const building of buildings) {
+          // 计算对范围内敌方建筑的伤�?
+        for (const building of buildings) {
             const dist = Math.abs(building.row - char.row) + Math.abs(building.col - char.col)
             if (dist <= areaRange && building.isPlayer !== char.isPlayer) {
               const attackPower = computeAttackPower(char)
@@ -10529,13 +10961,15 @@ export const useGameStore = defineStore('game', () => {
           }
           continue
         }
-        // 特殊处理：水漫金�?- 以自身为中心的AOE攻击技�?        if (skill.id === 'shui_man_jin_shan') {
+        // 特殊处理：水漫金�?- 以自身为中心的AOE攻击技�?
+      if (skill.id === 'shui_man_jin_shan') {
           const areaRange = skill.areaRange || 3
           const enemies = char.isPlayer ? battleMap.value.enemies : battleMap.value.players
           const buildings = battleMap.value.buildings
           let totalDamage = 0
 
-          // 计算对范围内敌方角色的伤�?          for (const enemy of enemies) {
+          // 计算对范围内敌方角色的伤�?
+        for (const enemy of enemies) {
             const dist = Math.abs(enemy.row - char.row) + Math.abs(enemy.col - char.col)
             if (dist <= areaRange) {
               const defense = computeDefensePower(enemy)
@@ -10545,7 +10979,8 @@ export const useGameStore = defineStore('game', () => {
             }
           }
 
-          // 计算对范围内敌方建筑的伤�?          for (const building of buildings) {
+          // 计算对范围内敌方建筑的伤�?
+        for (const building of buildings) {
             const dist = Math.abs(building.row - char.row) + Math.abs(building.col - char.col)
             if (dist <= areaRange && building.isPlayer !== char.isPlayer) {
               const attackPower = computeAttackPower(char)
@@ -10563,13 +10998,15 @@ export const useGameStore = defineStore('game', () => {
           continue
         }
 
-        // 特殊处理：墨影剑�?- 以自身为中心的AOE攻击技�?        if (skill.id === 'mo_ying_jian_guang') {
+        // 特殊处理：墨影剑�?- 以自身为中心的AOE攻击技�?
+      if (skill.id === 'mo_ying_jian_guang') {
           const areaRange = skill.areaRange || 3
           const enemies = char.isPlayer ? battleMap.value.enemies : battleMap.value.players
           const buildings = battleMap.value.buildings
           let totalDamage = 0
 
-          // 计算对范围内敌方角色的伤�?          for (const enemy of enemies) {
+          // 计算对范围内敌方角色的伤�?
+        for (const enemy of enemies) {
             const dist = Math.abs(enemy.row - char.row) + Math.abs(enemy.col - char.col)
             if (dist <= areaRange) {
               const defense = computeDefensePower(enemy)
@@ -10579,7 +11016,8 @@ export const useGameStore = defineStore('game', () => {
             }
           }
 
-          // 计算对范围内敌方建筑的伤�?          for (const building of buildings) {
+          // 计算对范围内敌方建筑的伤�?
+        for (const building of buildings) {
             const dist = Math.abs(building.row - char.row) + Math.abs(building.col - char.col)
             if (dist <= areaRange && building.isPlayer !== char.isPlayer) {
               const attackPower = computeAttackPower(char)
@@ -10597,13 +11035,15 @@ export const useGameStore = defineStore('game', () => {
           continue
         }
 
-        // 特殊处理：千里冰�?- 以自身为中心的AOE攻击技�?        if (skill.id === 'qian_li_bing_feng') {
+        // 特殊处理：千里冰�?- 以自身为中心的AOE攻击技�?
+      if (skill.id === 'qian_li_bing_feng') {
           const areaRange = skill.areaRange || 3
           const enemies = char.isPlayer ? battleMap.value.enemies : battleMap.value.players
           const buildings = battleMap.value.buildings
           let totalDamage = 0
 
-          // 计算对范围内敌方角色的伤�?          for (const enemy of enemies) {
+          // 计算对范围内敌方角色的伤�?
+        for (const enemy of enemies) {
             const dist = Math.abs(enemy.row - char.row) + Math.abs(enemy.col - char.col)
             if (dist <= areaRange) {
               const defense = computeDefensePower(enemy)
@@ -10613,7 +11053,8 @@ export const useGameStore = defineStore('game', () => {
             }
           }
 
-          // 计算对范围内敌方建筑的伤�?          for (const building of buildings) {
+          // 计算对范围内敌方建筑的伤�?
+        for (const building of buildings) {
             const dist = Math.abs(building.row - char.row) + Math.abs(building.col - char.col)
             if (dist <= areaRange && building.isPlayer !== char.isPlayer) {
               const attackPower = computeAttackPower(char)
@@ -10670,13 +11111,15 @@ export const useGameStore = defineStore('game', () => {
           continue
         }
 
-        // 特殊处理：大地重�?- 以自身为中心的AOE攻击技�?        if (skill.id === 'da_di_zhong_ji') {
+        // 特殊处理：大地重�?- 以自身为中心的AOE攻击技�?
+      if (skill.id === 'da_di_zhong_ji') {
           const areaRange = skill.areaRange || 2
           const enemies = char.isPlayer ? battleMap.value.enemies : battleMap.value.players
           const buildings = battleMap.value.buildings
           let totalDamage = 0
 
-          // 计算对范围内敌方角色的伤�?          for (const enemy of enemies) {
+          // 计算对范围内敌方角色的伤�?
+        for (const enemy of enemies) {
             const dist = Math.abs(enemy.row - char.row) + Math.abs(enemy.col - char.col)
             if (dist <= areaRange) {
               const defense = computeDefensePower(enemy)
@@ -10686,7 +11129,8 @@ export const useGameStore = defineStore('game', () => {
             }
           }
 
-          // 计算对范围内敌方建筑的伤�?          for (const building of buildings) {
+          // 计算对范围内敌方建筑的伤�?
+        for (const building of buildings) {
             const dist = Math.abs(building.row - char.row) + Math.abs(building.col - char.col)
             if (dist <= areaRange && building.isPlayer !== char.isPlayer) {
               const attackPower = computeAttackPower(char)
@@ -10734,7 +11178,8 @@ export const useGameStore = defineStore('game', () => {
             }
           }
 
-          // 魔殓鬼手会恢复造成伤害�?5%生命值，所以伤害价值更�?          totalDamage = Math.floor(totalDamage * 1.35)
+          // 魔殓鬼手会恢复造成伤害�?5%生命值，所以伤害价值更�?
+        totalDamage = Math.floor(totalDamage * 1.35)
 
           if (totalDamage > 0 && totalDamage > maxDamage) {
             maxDamage = totalDamage
@@ -10786,13 +11231,15 @@ export const useGameStore = defineStore('game', () => {
           continue
         }
 
-        // 特殊处理：炼狱火�?- 以自身为中心的AOE攻击技�?        if (skill.id === 'lian_yu_huo_hai') {
+        // 特殊处理：炼狱火�?- 以自身为中心的AOE攻击技�?
+      if (skill.id === 'lian_yu_huo_hai') {
           const areaRange = skill.areaRange || 2
           const enemies = char.isPlayer ? battleMap.value.enemies : battleMap.value.players
           const buildings = battleMap.value.buildings
           let totalDamage = 0
 
-          // 计算对范围内敌方角色的伤�?          for (const enemy of enemies) {
+          // 计算对范围内敌方角色的伤�?
+        for (const enemy of enemies) {
             const dist = Math.abs(enemy.row - char.row) + Math.abs(enemy.col - char.col)
             if (dist <= areaRange) {
               const defense = computeDefensePower(enemy)
@@ -10802,7 +11249,8 @@ export const useGameStore = defineStore('game', () => {
             }
           }
 
-          // 计算对范围内敌方建筑的伤�?          for (const building of buildings) {
+          // 计算对范围内敌方建筑的伤�?
+        for (const building of buildings) {
             const dist = Math.abs(building.row - char.row) + Math.abs(building.col - char.col)
             if (dist <= areaRange && building.isPlayer !== char.isPlayer) {
               const attackPower = computeAttackPower(char)
@@ -10820,13 +11268,15 @@ export const useGameStore = defineStore('game', () => {
           continue
         }
 
-        // 特殊处理：邪神低�?- 以自身为中心的AOE攻击技�?        if (skill.id === 'xie_shen_di_yu') {
+        // 特殊处理：邪神低�?- 以自身为中心的AOE攻击技�?
+      if (skill.id === 'xie_shen_di_yu') {
           const areaRange = skill.areaRange || 2
           const enemies = char.isPlayer ? battleMap.value.enemies : battleMap.value.players
           const buildings = battleMap.value.buildings
           let totalDamage = 0
 
-          // 计算对范围内敌方角色的伤�?          for (const enemy of enemies) {
+          // 计算对范围内敌方角色的伤�?
+        for (const enemy of enemies) {
             const dist = Math.abs(enemy.row - char.row) + Math.abs(enemy.col - char.col)
             if (dist <= areaRange) {
               const defense = computeDefensePower(enemy)
@@ -10836,7 +11286,8 @@ export const useGameStore = defineStore('game', () => {
             }
           }
 
-          // 计算对范围内敌方建筑的伤�?          for (const building of buildings) {
+          // 计算对范围内敌方建筑的伤�?
+        for (const building of buildings) {
             const dist = Math.abs(building.row - char.row) + Math.abs(building.col - char.col)
             if (dist <= areaRange && building.isPlayer !== char.isPlayer) {
               const attackPower = computeAttackPower(char)
@@ -10859,7 +11310,8 @@ export const useGameStore = defineStore('game', () => {
           const bestCenterPos = findBestBombingCenter(char, skill)
 
           if (bestCenterPos) {
-            // 计算该中心位置的总伤�?            const areaRange = skill.areaRange || 1
+            // 计算该中心位置的总伤�?
+          const areaRange = skill.areaRange || 1
             const enemies = char.isPlayer ? battleMap.value.enemies : battleMap.value.players
             const buildings = battleMap.value.buildings
             let totalAreaDamage = 0
@@ -10891,13 +11343,15 @@ export const useGameStore = defineStore('game', () => {
           continue
         }
 
-        // 特殊处理：恐怖尖�?- 以自身为中心的AOE攻击技�?        if (skill.id === 'terror_scream') {
+        // 特殊处理：恐怖尖�?- 以自身为中心的AOE攻击技�?
+      if (skill.id === 'terror_scream') {
           const areaRange = skill.areaRange || 3
           const enemies = char.isPlayer ? battleMap.value.enemies : battleMap.value.players
           const buildings = battleMap.value.buildings
           let totalDamage = 0
 
-          // 计算对范围内敌方角色的伤�?          for (const enemy of enemies) {
+          // 计算对范围内敌方角色的伤�?
+        for (const enemy of enemies) {
             const dist = Math.abs(enemy.row - char.row) + Math.abs(enemy.col - char.col)
             if (dist <= areaRange) {
               const defense = computeDefensePower(enemy)
@@ -10907,7 +11361,8 @@ export const useGameStore = defineStore('game', () => {
             }
           }
 
-          // 计算对范围内敌方建筑的伤�?          for (const building of buildings) {
+          // 计算对范围内敌方建筑的伤�?
+        for (const building of buildings) {
             const dist = Math.abs(building.row - char.row) + Math.abs(building.col - char.col)
             if (dist <= areaRange && building.isPlayer !== char.isPlayer) {
               const attackPower = computeAttackPower(char)
@@ -10925,7 +11380,8 @@ export const useGameStore = defineStore('game', () => {
           continue
         }
 
-        // 特殊处理：碧海潮�?- 以自身为中心的AOE治疗技�?        if (skill.id === 'bi_hai_chao_sheng') {
+        // 特殊处理：碧海潮�?- 以自身为中心的AOE治疗技�?
+      if (skill.id === 'bi_hai_chao_sheng') {
           const areaRange = skill.areaRange || 3
           const allies = char.isPlayer ? battleMap.value.players : battleMap.value.enemies
           let totalHeal = 0
@@ -10933,7 +11389,8 @@ export const useGameStore = defineStore('game', () => {
           const attackPower = char.attack || (charTemplate?.baseAttack || 20)
           const healAmountPerTarget = Math.floor(attackPower * (skill.power / 100))
 
-          // 检查自�?          const selfTemplate = findCharacterTemplateInStore(char.characterId)
+          // 检查自�?
+        const selfTemplate = findCharacterTemplateInStore(char.characterId)
           const selfMaxHp = selfTemplate?.maxHp || char.maxHp || 100
           const selfMissingHp = selfMaxHp - char.hp
           if (selfMissingHp > 0) {
@@ -10941,7 +11398,8 @@ export const useGameStore = defineStore('game', () => {
             totalHeal += actualHeal * 3.0
           }
 
-          // 检查友方角�?          for (const ally of allies) {
+          // 检查友方角�?
+        for (const ally of allies) {
             const dist = Math.abs(ally.row - char.row) + Math.abs(ally.col - char.col)
             if (dist <= areaRange && ally.id !== char.id) {
               const allyTemplate = findCharacterTemplateInStore(ally.characterId)
@@ -10971,7 +11429,8 @@ export const useGameStore = defineStore('game', () => {
           continue
         }
         
-        // 特殊处理：直线攻击技�?        if (skill.category === '直线') {
+        // 特殊处理：直线攻击技�?
+      if (skill.category === '直线') {
           const lineRange = skill.range || 1
           const lineWidth = skill.lineWidth || 1
           const enemies = char.isPlayer ? battleMap.value.enemies : battleMap.value.players
@@ -10986,7 +11445,8 @@ export const useGameStore = defineStore('game', () => {
           for (const dir of directions) {
             let totalDamage = 0
             
-            // 计算直线范围内的所有位�?            const linePositions: { row: number; col: number }[] = []
+            // 计算直线范围内的所有位�?
+          const linePositions: { row: number; col: number }[] = []
             switch (dir) {
               case 'up':
                 for (let i = 1; i <= lineRange; i++) {
@@ -11042,7 +11502,8 @@ export const useGameStore = defineStore('game', () => {
                 break
             }
 
-            // 计算对直线范围内敌方角色的伤�?            for (const enemy of enemies) {
+            // 计算对直线范围内敌方角色的伤�?
+          for (const enemy of enemies) {
               if (linePositions.some(pos => pos.row === enemy.row && pos.col === enemy.col)) {
                 const defense = computeDefensePower(enemy)
                 const attackPower = computeAttackPower(char)
@@ -11051,7 +11512,8 @@ export const useGameStore = defineStore('game', () => {
               }
             }
 
-            // 计算对直线范围内敌方建筑的伤�?            for (const building of buildings) {
+            // 计算对直线范围内敌方建筑的伤�?
+          for (const building of buildings) {
               if (linePositions.some(pos => pos.row === building.row && pos.col === building.col) && building.isPlayer !== char.isPlayer) {
                 const attackPower = computeAttackPower(char)
                 const damage = Math.max(1, Math.floor(skill.power / 100 * attackPower))
@@ -11074,7 +11536,8 @@ export const useGameStore = defineStore('game', () => {
           continue
         }
 
-        // 特殊处理：横扫攻击技�?        if (skill.category === '横扫') {
+        // 特殊处理：横扫攻击技�?
+      if (skill.category === '横扫') {
           const sweepLength = skill.sweepLength || 3
           const sweepWidth = skill.sweepWidth || 2
           const startJ = sweepWidth % 2 === 0 ? -(sweepWidth / 2 - 1) : -Math.floor(sweepWidth / 2)
@@ -11163,9 +11626,11 @@ export const useGameStore = defineStore('game', () => {
         if (skill.type === 'attack') {
           const skillTargets = getSkillAttackTargets(char, skill)
           if (skillTargets.length > 0) {
-            // 收集所有候选目标及其伤�?            const targetDamages: { target: BattleCharacter | null; damage: number }[] = []
+            // 收集所有候选目标及其伤�?
+          const targetDamages: { target: BattleCharacter | null; damage: number }[] = []
             const validTargets = skillTargets.filter(t => !t.isObstacle)
-            if (validTargets.length === 0) continue // 没有有效目标，跳过这个技�?            
+            if (validTargets.length === 0) continue // 没有有效目标，跳过这个技�?
+          
             // 计算这个位置的移动距离（如果这是一个移动位置）
             const moveDistance = (pos.row !== originalRow || pos.col !== originalCol) 
               ? Math.abs(pos.row - originalRow) + Math.abs(pos.col - originalCol) 
@@ -11175,9 +11640,11 @@ export const useGameStore = defineStore('game', () => {
               if ('characterId' in target) {
                 const defense = computeDefensePower(target)
 
-                // 攻击者的实际攻击力（包含装备加成和永久buff�?                const attackPower = computeAttackPower(char)
+                // 攻击者的实际攻击力（包含装备加成和永久buff�?
+              const attackPower = computeAttackPower(char)
 
-                // 对于暗影刺杀，伤害公式是 (1 + 0.3 * 移动距离) * 攻击�?                let damage
+                // 对于暗影刺杀，伤害公式是 (1 + 0.3 * 移动距离) * 攻击�?
+              let damage
                 if (skill.id === 'shadow_assassination') {
                   const damageMultiplier = 1 + 0.3 * moveDistance
                   damage = Math.max(1, Math.floor((damageMultiplier * attackPower - defense)))
@@ -11187,7 +11654,8 @@ export const useGameStore = defineStore('game', () => {
 
                 targetDamages.push({ target, damage })
               } else if ('hp' in target && 'maxHp' in target) {
-                // 建筑物伤�?                const attackPower = computeAttackPower(char)
+                // 建筑物伤�?
+              const attackPower = computeAttackPower(char)
 
                 let damage
                 if (skill.id === 'shadow_assassination') {
@@ -11200,17 +11668,21 @@ export const useGameStore = defineStore('game', () => {
               }
             }
 
-            // 根据技能类型决定如何计算总伤�?            let totalDamage = 0
+            // 根据技能类型决定如何计算总伤�?
+          let totalDamage = 0
             let bestSkillTarget: BattleCharacter | null = null
             
             if (skill.category === '指定') {
-              // 指定类技能：只计�?targetCount 个最高伤害目�?              const targetCount = skill.targetCount || 1
-              // 按伤害从高到低排�?              targetDamages.sort((a, b) => b.damage - a.damage)
+              // 指定类技能：只计�?targetCount 个最高伤害目�?
+            const targetCount = skill.targetCount || 1
+              // 按伤害从高到低排�?
+            targetDamages.sort((a, b) => b.damage - a.damage)
               const selected = targetDamages.slice(0, targetCount)
               totalDamage = selected.reduce((sum, t) => sum + t.damage, 0)
               bestSkillTarget = selected[0]?.target || null
             } else {
-              // 其他技能（AOE、轰炸等）：累加所有目标伤�?              totalDamage = targetDamages.reduce((sum, t) => sum + t.damage, 0)
+              // 其他技能（AOE、轰炸等）：累加所有目标伤�?
+            totalDamage = targetDamages.reduce((sum, t) => sum + t.damage, 0)
               bestSkillTarget = targetDamages[0]?.target || null
             }
             
@@ -11222,12 +11694,14 @@ export const useGameStore = defineStore('game', () => {
             }
           }
         }
-        // 特殊处理「高山流水」技能：多目标治疗评�?        else if (skill.id === 'gao_shan_liu_shui') {
+        // 特殊处理「高山流水」技能：多目标治疗评�?
+      else if (skill.id === 'gao_shan_liu_shui') {
           const allies = char.isPlayer ? battleMap.value.players : battleMap.value.enemies
           const skillRange = skill.range || 4
           const targetCount = skill.targetCount || 2
 
-          // 收集范围内所有受伤友军及其缺失血�?          const woundedAllies: { ally: BattleCharacter; missingHp: number }[] = []
+          // 收集范围内所有受伤友军及其缺失血�?
+        const woundedAllies: { ally: BattleCharacter; missingHp: number }[] = []
           for (const ally of allies) {
             const distance = Math.abs(ally.row - char.row) + Math.abs(ally.col - char.col)
             if (distance <= skillRange) {
@@ -11241,7 +11715,8 @@ export const useGameStore = defineStore('game', () => {
           }
 
           if (woundedAllies.length > 0) {
-            // 按缺失血量排序，优先治疗最受伤�?            woundedAllies.sort((a, b) => b.missingHp - a.missingHp)
+            // 按缺失血量排序，优先治疗最受伤�?
+          woundedAllies.sort((a, b) => b.missingHp - a.missingHp)
             let attackPower = char.attack || (charTemplate?.baseAttack || 20)
             const healAmountPerTarget = Math.floor(attackPower * 1.2)
             let totalHeal = 0
@@ -11266,12 +11741,14 @@ export const useGameStore = defineStore('game', () => {
             }
           }
         }
-        // 特殊处理「桃花灼灼」技能：多目标治疗评�?        else if (skill.id === 'tao_hua_zhuo_zhuo') {
+        // 特殊处理「桃花灼灼」技能：多目标治疗评�?
+      else if (skill.id === 'tao_hua_zhuo_zhuo') {
           const allies = char.isPlayer ? battleMap.value.players : battleMap.value.enemies
           const skillRange = skill.range || 3
           const targetCount = skill.targetCount || 2
 
-          // 收集范围内所有受伤友军及其缺失血�?          const woundedAllies: { ally: BattleCharacter; missingHp: number }[] = []
+          // 收集范围内所有受伤友军及其缺失血�?
+        const woundedAllies: { ally: BattleCharacter; missingHp: number }[] = []
           for (const ally of allies) {
             const distance = Math.abs(ally.row - char.row) + Math.abs(ally.col - char.col)
             if (distance <= skillRange) {
@@ -11285,7 +11762,8 @@ export const useGameStore = defineStore('game', () => {
           }
 
           if (woundedAllies.length > 0) {
-            // 按缺失血量排序，优先治疗最受伤�?            woundedAllies.sort((a, b) => b.missingHp - a.missingHp)
+            // 按缺失血量排序，优先治疗最受伤�?
+          woundedAllies.sort((a, b) => b.missingHp - a.missingHp)
             let attackPower = char.attack || (charTemplate?.baseAttack || 20)
             const healAmountPerTarget = Math.floor(attackPower * (skill.power / 100))
             let totalHeal = 0
@@ -11382,7 +11860,8 @@ export const useGameStore = defineStore('game', () => {
             }
           }
         }
-        // 特殊处理「藏剑一叶」技能：单体高伤+迷离，使用通用伤害评估（已在外�?fallback 处理�?        // 特殊处理「沐风为裳」技能：治疗3格内1个友�?自身，评估综合生�?法力恢复
+        // 特殊处理「藏剑一叶」技能：单体高伤+迷离，使用通用伤害评估（已在外�?fallback 处理�?
+      // 特殊处理「沐风为裳」技能：治疗3格内1个友�?自身，评估综合生�?法力恢复
         else if (skill.id === 'mu_feng_wei_shang') {
           const allies = char.isPlayer ? battleMap.value.players : battleMap.value.enemies
           const skillRange = skill.range || 3
@@ -11413,7 +11892,8 @@ export const useGameStore = defineStore('game', () => {
               if (missingHp > 0) allyScore += Math.min(hpHeal, missingHp) * 1.5
               if (missingMp > 0) allyScore += Math.min(mpHeal, missingMp) * 1.0
 
-              // 负面状态驱散加�?              let hasNegativeStatus = false
+              // 负面状态驱散加�?
+            let hasNegativeStatus = false
               for (const status of NEGATIVE_STATUSES) {
                 if (hasStatus(ally, status)) {
                   hasNegativeStatus = true
@@ -11491,7 +11971,8 @@ export const useGameStore = defineStore('game', () => {
         else if (skill.type === 'heal') {
           const allies = char.isPlayer ? battleMap.value.players : battleMap.value.enemies
           
-          // AOE治疗技能（以自身为中心�?          if (skill.range === 0 && skill.areaRange) {
+          // AOE治疗技能（以自身为中心�?
+        if (skill.range === 0 && skill.areaRange) {
             const areaRange = skill.areaRange
             let attackPower = char.attack || (charTemplate?.baseAttack || 20)
             let healAmountPerTarget: number
@@ -11537,7 +12018,8 @@ export const useGameStore = defineStore('game', () => {
             const selfHpPercent = char.hp / selfMaxHp
             let selfHpBonus = 1.0
             if (selfHpPercent < 0.3) {
-              selfHpBonus = 2.0  // 自身血量低�?0%，治疗价值翻�?            } else if (selfHpPercent < 0.5) {
+              selfHpBonus = 2.0  // 自身血量低�?0%，治疗价值翻�?
+          } else if (selfHpPercent < 0.5) {
               selfHpBonus = 1.5  // 自身血量低�?0%，治疗价值增�?0%
             }
 
@@ -11550,9 +12032,11 @@ export const useGameStore = defineStore('game', () => {
                 if (missingHp > 0) {
                   let healAmount: number
                   if (skill.id === 'tian_ya_qing_qing') {
-                    // 天雅倾情：恢复自�?0%生命值和法力值上�?                    healAmount = Math.floor(allyMaxHp * 0.1)
+                    // 天雅倾情：恢复自�?0%生命值和法力值上�?
+                  healAmount = Math.floor(allyMaxHp * 0.1)
                   } else if (skill.id === 'ai_de_bao_bao' || skill.id === 'ai_de_fei_wen') {
-                    // 爱的抱抱/爱的飞吻�?.05*自身最大生命�?+ 0.1*目标最大生命�?                    healAmount = Math.floor(selfMaxHp * 0.05 + allyMaxHp * 0.1)
+                    // 爱的抱抱/爱的飞吻�?.05*自身最大生命�?+ 0.1*目标最大生命�?
+                  healAmount = Math.floor(selfMaxHp * 0.05 + allyMaxHp * 0.1)
                   } else if (skill.id === 'ai_de_hui_yi') {
                     // 爱的回忆：恢复自�?0%最大生命值（仅自己）
                     if (ally.id !== char.id) continue
@@ -11562,7 +12046,8 @@ export const useGameStore = defineStore('game', () => {
                     let atkPower = char.attack || (charTemplate?.baseAttack || 20)
                     healAmount = Math.floor(atkPower * 0.5)
                   } else if (skill.id === 'fa_xiang_chong_yuan') {
-                    // 法相重圆：恢复自�?0%生命�?                    if (ally.id !== char.id) continue
+                    // 法相重圆：恢复自�?0%生命�?
+                  if (ally.id !== char.id) continue
                     healAmount = Math.floor(allyMaxHp * (skill.selfHealPct || 0.5))
                   } else {
                     let attackPower = char.attack || (charTemplate?.baseAttack || 20)
@@ -11674,7 +12159,8 @@ export const useGameStore = defineStore('game', () => {
         }
       }
       
-      // 检查敌方建�?      for (const building of battleMap.value.buildings) {
+      // 检查敌方建�?
+    for (const building of battleMap.value.buildings) {
         if (char.isPlayer ? !building.isPlayer : building.isPlayer) {
           const dist = Math.abs(building.row - char.row) + Math.abs(building.col - char.col)
           if (dist <= effectiveAttackRange) {
@@ -11702,7 +12188,8 @@ export const useGameStore = defineStore('game', () => {
       console.log(`[AI] ${char.id} | current position can act, maxDamage:${maxDamage}, bestSkill:${bestSkill?.name || 'null'}, bestTarget:${bestTarget?.id || 'null'}`)
       if (!char.hasActed) {
         if (bestSkill) {
-          // 对于直线/横扫攻击技能，传递方向参�?          if ((bestSkill.category === '直线' || bestSkill.category === '横扫') && bestTarget && 'direction' in bestTarget) {
+          // 对于直线/横扫攻击技能，传递方向参�?
+        if ((bestSkill.category === '直线' || bestSkill.category === '横扫') && bestTarget && 'direction' in bestTarget) {
             console.log(`[AI] ${char.id} | using skill ${bestSkill.name} in direction ${bestTarget.direction}`)
             useSkill(bestSkill.id, char.id, bestTarget.direction)
             console.log(`[AI] ${char.id} | skill used successfully`)
@@ -11714,7 +12201,8 @@ export const useGameStore = defineStore('game', () => {
               console.log(`[AI] ${char.id} | no valid target position for ${bestSkill.name}, skipping skill`)
             }
           } else if (bestSkill.category === 'aoe' && bestSkill.targetCountTag !== '轰炸') {
-            // 以自身为中心的AOE技能（非轰炸类）：传null，使用自身位�?            console.log(`[AI] ${char.id} | using skill ${bestSkill.name} (self-centered AOE)`)
+            // 以自身为中心的AOE技能（非轰炸类）：传null，使用自身位�?
+          console.log(`[AI] ${char.id} | using skill ${bestSkill.name} (self-centered AOE)`)
             useSkill(bestSkill.id, char.id, null)
             console.log(`[AI] ${char.id} | skill used successfully`)
           } else if (bestSkill.category === 'aoe' && bestSkill.targetCountTag === '轰炸') {
@@ -11762,7 +12250,8 @@ export const useGameStore = defineStore('game', () => {
               console.log(`[AI] ${char.id} | no valid empty tiles for ${bestSkill.name}, skipping skill`)
             }
           } else if (bestSkill.id === 'gao_shan_liu_shui') {
-            // 高山流水：选择4格范围内的最�?个友方目标（优先选择血量缺失最多的�?            const allies = char.isPlayer ? battleMap.value.players : battleMap.value.enemies
+            // 高山流水：选择4格范围内的最�?个友方目标（优先选择血量缺失最多的�?
+          const allies = char.isPlayer ? battleMap.value.players : battleMap.value.enemies
             const skillRange = bestSkill.range || 4
             const targetCount = bestSkill.targetCount || 2
             const woundedAllies: { ally: BattleCharacter; missingHp: number }[] = []
@@ -11831,7 +12320,8 @@ export const useGameStore = defineStore('game', () => {
               console.log(`[AI] ${char.id} | no valid empty tiles for ${bestSkill.name}, skipping skill`)
             }
           } else if (bestSkill.id === 'an_ye_jin_sheng') {
-            // 暗夜噤声：选择3格范围内�?个敌方目�?            const skillTargets = getSkillAttackTargets(char, bestSkill)
+            // 暗夜噤声：选择3格范围内�?个敌方目�?
+          const skillTargets = getSkillAttackTargets(char, bestSkill)
             const validTargets = skillTargets.filter(t => !t.isObstacle)
             if (validTargets.length > 0) {
               const count = Math.min(2, validTargets.length)
@@ -11895,7 +12385,8 @@ export const useGameStore = defineStore('game', () => {
               console.log(`[AI] ${char.id} | no valid targets after moving, skipping skill`)
             }
           } else if (bestSkill.id === 'ju_du_shi_gu') {
-            // 巨毒噬骨：单目标，会触发中毒状�?            const skillTargets = getSkillAttackTargets(char, bestSkill)
+            // 巨毒噬骨：单目标，会触发中毒状�?
+          const skillTargets = getSkillAttackTargets(char, bestSkill)
             const validTargets = skillTargets.filter(t => !t.isObstacle)
             if (validTargets.length > 0) {
               const target = validTargets[0]
@@ -11906,7 +12397,8 @@ export const useGameStore = defineStore('game', () => {
               console.log(`[AI] ${char.id} | no valid targets after moving, skipping skill`)
             }
           } else if (bestSkill.id === 'die_xue_ci_ji') {
-            // 喋血刺击：单目标，会触发出血状�?            const skillTargets = getSkillAttackTargets(char, bestSkill)
+            // 喋血刺击：单目标，会触发出血状�?
+          const skillTargets = getSkillAttackTargets(char, bestSkill)
             const validTargets = skillTargets.filter(t => !t.isObstacle)
             if (validTargets.length > 0) {
               const target = validTargets[0]
@@ -11917,7 +12409,8 @@ export const useGameStore = defineStore('game', () => {
               console.log(`[AI] ${char.id} | no valid targets after moving, skipping skill`)
             }
           } else if (bestSkill.id === 'sui_lie_zhong_ji') {
-            // 碎裂重击：单目标，会触发眩晕状�?            const skillTargets = getSkillAttackTargets(char, bestSkill)
+            // 碎裂重击：单目标，会触发眩晕状�?
+          const skillTargets = getSkillAttackTargets(char, bestSkill)
             const validTargets = skillTargets.filter(t => !t.isObstacle)
             if (validTargets.length > 0) {
               const target = validTargets[0]
@@ -11940,7 +12433,8 @@ export const useGameStore = defineStore('game', () => {
               console.log(`[AI] ${char.id} | no valid targets after moving, skipping skill`)
             }
           } else if (bestSkill.id === 'ling_hun_zu_zhou' || bestSkill.id === 'ku_lou_xue_shou_yin' || bestSkill.id === 'liu_hun_kong_zhou' || bestSkill.id === 'emp_chong_ji_bo' || bestSkill.id === 'fu_she_da_ji' || bestSkill.id === 'shi_xin_shi_sui') {
-            // 灵魂诅咒/骷髅血手印/六魂恐咒/EMP冲击�?辐射打击/噬心食髓：单目标，造成伤害并触发不良状�?            const skillTargets = getSkillAttackTargets(char, bestSkill)
+            // 灵魂诅咒/骷髅血手印/六魂恐咒/EMP冲击�?辐射打击/噬心食髓：单目标，造成伤害并触发不良状�?
+          const skillTargets = getSkillAttackTargets(char, bestSkill)
             const validTargets = skillTargets.filter(t => !t.isObstacle)
             if (validTargets.length > 0) {
               const target = validTargets[0]
@@ -11951,7 +12445,8 @@ export const useGameStore = defineStore('game', () => {
               console.log(`[AI] ${char.id} | no valid targets after moving, skipping skill`)
             }
           } else if (bestSkill.id === 'ling_hun_rao_luan' || bestSkill.id === 'wang_zhe_zhi_qi' || bestSkill.id === 'tian_luo_di_wang') {
-            // 灵魂扰乱/亡者之�?天罗地网：传递最�?个目标ID数组，会触发心乱/瘸腿状�?            const skillTargets = getSkillAttackTargets(char, bestSkill)
+            // 灵魂扰乱/亡者之�?天罗地网：传递最�?个目标ID数组，会触发心乱/瘸腿状�?
+          const skillTargets = getSkillAttackTargets(char, bestSkill)
             const validTargets = skillTargets.filter(t => !t.isObstacle)
             if (validTargets.length > 0) {
               const count = Math.min(2, validTargets.length)
@@ -11963,7 +12458,8 @@ export const useGameStore = defineStore('game', () => {
               console.log(`[AI] ${char.id} | no valid targets after moving, skipping skill`)
             }
           } else if (bestSkill.id === 'mei_huo') {
-            // 魅惑：单目标，造成伤害并触发紊乱状�?            const skillTargets = getSkillAttackTargets(char, bestSkill)
+            // 魅惑：单目标，造成伤害并触发紊乱状�?
+          const skillTargets = getSkillAttackTargets(char, bestSkill)
             const validTargets = skillTargets.filter(t => !t.isObstacle)
             if (validTargets.length > 0) {
               const target = validTargets[0]
@@ -11974,7 +12470,8 @@ export const useGameStore = defineStore('game', () => {
               console.log(`[AI] ${char.id} | no valid targets after moving, skipping skill`)
             }
           } else if (bestSkill.type === 'heal') {
-            // 所有治疗技能：对友方角色进行治�?            const allies = char.isPlayer ? battleMap.value.players : battleMap.value.enemies
+            // 所有治疗技能：对友方角色进行治�?
+          const allies = char.isPlayer ? battleMap.value.players : battleMap.value.enemies
             const skillRange = bestSkill.range || 1
 
             if (skillRange === 0 && bestSkill.areaRange) {
@@ -11983,7 +12480,8 @@ export const useGameStore = defineStore('game', () => {
               useSkill(bestSkill.id, char.id, null)
               console.log(`[AI] ${char.id} | skill used successfully`)
             } else if (bestSkill.id === 'ai_de_hui_yi' || bestSkill.id === 'wu_di_niu_niu' || bestSkill.id === 'ning_xin_jue' || bestSkill.id === 'wan_gu_jie_jie' || bestSkill.id === 'fa_xiang_chong_yuan') {
-              // 自身治疗技�?              console.log(`[AI] ${char.id} | using skill ${bestSkill.name} (self-targeting)`)
+              // 自身治疗技�?
+            console.log(`[AI] ${char.id} | using skill ${bestSkill.name} (self-targeting)`)
               useSkill(bestSkill.id, char.id, char.id)
               console.log(`[AI] ${char.id} | skill used successfully`)
             } else {
@@ -12004,7 +12502,8 @@ export const useGameStore = defineStore('game', () => {
               }
 
               if (healTargets.length > 0) {
-                // 按缺失血量从多到少排�?                healTargets.sort((a, b) => {
+                // 按缺失血量从多到少排�?
+              healTargets.sort((a, b) => {
                   const aT = findCharacterTemplateInStore(a.characterId)
                   const aMax = aT?.maxHp || a.maxHp || 100
                   const bT = findCharacterTemplateInStore(b.characterId)
@@ -12027,11 +12526,13 @@ export const useGameStore = defineStore('game', () => {
               }
             }
           } else if (bestSkill.id === 'jue_chu_feng_sheng') {
-            // 绝处逢生：对自己使用，消耗生命获得愤怒状�?            console.log(`[AI] ${char.id} | using skill ${bestSkill.name} (self-targeting)`)
+            // 绝处逢生：对自己使用，消耗生命获得愤怒状�?
+          console.log(`[AI] ${char.id} | using skill ${bestSkill.name} (self-targeting)`)
             useSkill(bestSkill.id, char.id, char.id)
             console.log(`[AI] ${char.id} | skill used successfully`)
           } else if (bestSkill.id === 'yue_zhi_yin_li') {
-            // 月之引力：选择2格范围内�?个同阵营目标，使自身和该目标都获得愈合和调息状�?            const allies = char.isPlayer ? battleMap.value.players : battleMap.value.enemies
+            // 月之引力：选择2格范围内�?个同阵营目标，使自身和该目标都获得愈合和调息状�?
+          const allies = char.isPlayer ? battleMap.value.players : battleMap.value.enemies
             const skillRange = bestSkill.range || 2
             let targetAlly = null
             for (const ally of allies) {
@@ -12049,11 +12550,13 @@ export const useGameStore = defineStore('game', () => {
               console.log(`[AI] ${char.id} | no valid allies for ${bestSkill.name}, skipping skill`)
             }
           } else if (bestSkill.type === 'support' && bestSkill.category !== 'special') {
-            // 其他辅助技能：使用评估时选定的目�?            console.log(`[AI] ${char.id} | using support skill ${bestSkill.name} on ${bestTarget?.id || 'self'}`)
+            // 其他辅助技能：使用评估时选定的目�?
+          console.log(`[AI] ${char.id} | using support skill ${bestSkill.name} on ${bestTarget?.id || 'self'}`)
             useSkill(bestSkill.id, char.id, bestTarget?.id || char.id)
             console.log(`[AI] ${char.id} | skill used successfully`)
           } else if (bestSkill.id === 'zhai_ye_fei_hua') {
-            // 摘叶飞花：单目标，距离越远伤害越高，会触发出血状�?            const skillTargets = getSkillAttackTargets(char, bestSkill)
+            // 摘叶飞花：单目标，距离越远伤害越高，会触发出血状�?
+          const skillTargets = getSkillAttackTargets(char, bestSkill)
             const validTargets = skillTargets.filter(t => !t.isObstacle)
             if (validTargets.length > 0) {
               const target = validTargets[0]
@@ -12064,7 +12567,8 @@ export const useGameStore = defineStore('game', () => {
               console.log(`[AI] ${char.id} | no valid targets after moving, skipping skill`)
             }
           } else if (bestSkill.id === 'wan_ye_fei_hua') {
-            // 万叶飞花：传递最�?个目标ID数组，会触发出血状�?            const skillTargets = getSkillAttackTargets(char, bestSkill)
+            // 万叶飞花：传递最�?个目标ID数组，会触发出血状�?
+          const skillTargets = getSkillAttackTargets(char, bestSkill)
             const validTargets = skillTargets.filter(t => !t.isObstacle)
             if (validTargets.length > 0) {
               const count = Math.min(2, validTargets.length)
@@ -12076,7 +12580,8 @@ export const useGameStore = defineStore('game', () => {
               console.log(`[AI] ${char.id} | no valid targets after moving, skipping skill`)
             }
           } else if (bestSkill.id === 'yin_yang_yu_shou_yin') {
-            // 阴阳玉手印：传递最�?个目标ID数组，伤害均�?            const skillTargets = getSkillAttackTargets(char, bestSkill)
+            // 阴阳玉手印：传递最�?个目标ID数组，伤害均�?
+          const skillTargets = getSkillAttackTargets(char, bestSkill)
             const validTargets = skillTargets.filter(t => !t.isObstacle)
             if (validTargets.length > 0) {
               const count = Math.min(3, validTargets.length)
@@ -12119,7 +12624,8 @@ export const useGameStore = defineStore('game', () => {
               console.log(`[AI] ${char.id} | no valid targets after moving, skipping skill`)
             }
           } else if (bestSkill.id === 'yin_yang_kui_lei_shu') {
-            // 阴阳傀儡术：单目标，造成伤害并触发脆弱状�?            const skillTargets = getSkillAttackTargets(char, bestSkill)
+            // 阴阳傀儡术：单目标，造成伤害并触发脆弱状�?
+          const skillTargets = getSkillAttackTargets(char, bestSkill)
             const validTargets = skillTargets.filter(t => !t.isObstacle)
             if (validTargets.length > 0) {
               const target = validTargets[0]
@@ -12130,7 +12636,8 @@ export const useGameStore = defineStore('game', () => {
               console.log(`[AI] ${char.id} | no valid targets after moving, skipping skill`)
             }
           } else if (bestSkill.id === 'meng_hu_xia_shan') {
-            // 猛虎下山：相�?格范围内�?个敌方目�?            const skillTargets = getSkillAttackTargets(char, bestSkill)
+            // 猛虎下山：相�?格范围内�?个敌方目�?
+          const skillTargets = getSkillAttackTargets(char, bestSkill)
             const validTargets = skillTargets.filter(t => !t.isObstacle)
             if (validTargets.length > 0) {
               const target = validTargets[0]
@@ -12141,7 +12648,8 @@ export const useGameStore = defineStore('game', () => {
               console.log(`[AI] ${char.id} | no valid targets after moving, skipping skill`)
             }
           } else if (bestSkill.id === 'meng_hu_si_hou') {
-            // 猛虎嘶吼�?格菱形范围内�?个敌方目标，造成伤害并触发脆�?            const skillTargets = getSkillAttackTargets(char, bestSkill)
+            // 猛虎嘶吼�?格菱形范围内�?个敌方目标，造成伤害并触发脆�?
+          const skillTargets = getSkillAttackTargets(char, bestSkill)
             const validTargets = skillTargets.filter(t => !t.isObstacle)
             if (validTargets.length > 0) {
               const count = Math.min(2, validTargets.length)
@@ -12153,7 +12661,8 @@ export const useGameStore = defineStore('game', () => {
               console.log(`[AI] ${char.id} | no valid targets after moving, skipping skill`)
             }
           } else if (bestSkill.category === 'aoe' && bestSkill.targetCountTag !== '轰炸') {
-            // 以自身为中心的AOE技能（非轰炸类）：传null，使用自身位�?            console.log(`[AI] ${char.id} | using skill ${bestSkill.name} (self-centered AOE)`)
+            // 以自身为中心的AOE技能（非轰炸类）：传null，使用自身位�?
+          console.log(`[AI] ${char.id} | using skill ${bestSkill.name} (self-centered AOE)`)
             useSkill(bestSkill.id, char.id, null)
             console.log(`[AI] ${char.id} | skill used successfully`)
           } else if (bestSkill.category === '指定') {
@@ -12170,7 +12679,8 @@ export const useGameStore = defineStore('game', () => {
               console.log(`[AI] ${char.id} | no valid targets after moving, skipping skill`)
             }
           } else {
-            // 对于其他需要目标的技能，使用按伤害排序的最佳目�?            const sortedTargets = getBestSkillTargets(char, bestSkill)
+            // 对于其他需要目标的技能，使用按伤害排序的最佳目�?
+          const sortedTargets = getBestSkillTargets(char, bestSkill)
             if (sortedTargets.length > 0) {
               const target = sortedTargets[0]
               console.log(`[AI] ${char.id} | using skill ${bestSkill.name} on ${target.id}`)
@@ -12182,7 +12692,8 @@ export const useGameStore = defineStore('game', () => {
           }
         } else if (bestTarget) {
           // 对于普通攻击，重新检查目标是否还在范围内
-          // 使用角色实际的攻击范围（已含装备加成�?          const baseAttackRange = char.attackRange || 1
+          // 使用角色实际的攻击范围（已含装备加成�?
+        const baseAttackRange = char.attackRange || 1
           const attackRange = Math.max(0, baseAttackRange + getStatusAttackRange(char))
           const allChars = [...battleMap.value.players, ...battleMap.value.enemies]
           let targetStillValid = false
@@ -12216,7 +12727,8 @@ export const useGameStore = defineStore('game', () => {
       }
     }
     
-    // 如果需要移动到最佳位置才能执行动作，先移�?    if (maxDamage > 0 && bestMove && !char.hasMoved && !currentPositionCanAct) {
+    // 如果需要移动到最佳位置才能执行动作，先移�?
+  if (maxDamage > 0 && bestMove && !char.hasMoved && !currentPositionCanAct) {
       console.log(`[AI] ${char.id} | need to move to act, moving to ${bestMove.row},${bestMove.col}`)
       moveCharacter(char.id, bestMove.row, bestMove.col)
       await new Promise(resolve => setTimeout(resolve, 300 / (gameSpeed.value || 1)))
@@ -12225,7 +12737,8 @@ export const useGameStore = defineStore('game', () => {
       // 移动后再次评估并执行动作
       if (!char.hasActed) {
         if (bestSkill) {
-          // 对于直线/横扫攻击技能，传递方向参�?          if ((bestSkill.category === '直线' || bestSkill.category === '横扫') && bestTarget && 'direction' in bestTarget) {
+          // 对于直线/横扫攻击技能，传递方向参�?
+        if ((bestSkill.category === '直线' || bestSkill.category === '横扫') && bestTarget && 'direction' in bestTarget) {
             console.log(`[AI] ${char.id} | using skill ${bestSkill.name} in direction ${bestTarget.direction}`)
             useSkill(bestSkill.id, char.id, bestTarget.direction)
             console.log(`[AI] ${char.id} | skill used successfully`)
@@ -12245,7 +12758,8 @@ export const useGameStore = defineStore('game', () => {
               console.log(`[AI] ${char.id} | no valid targets for ${bestSkill.name}, skipping skill`)
             }
           } else if (bestSkill.category === 'summon') {
-            // 统一处理所有召唤类技�?            const skillRange = bestSkill.range || 2
+            // 统一处理所有召唤类技�?
+          const skillRange = bestSkill.range || 2
             const targetCount = bestSkill.targetCount || 1
             const map = battleMap.value
             const candidatePositions: { pos: string; dist: number; row: number; col: number }[] = []
@@ -12362,7 +12876,8 @@ export const useGameStore = defineStore('game', () => {
               console.log(`[AI] ${char.id} | skill used successfully`)
             }
           } else if (bestSkill.type === 'heal') {
-            // 所有治疗技能：对友方角色进行治�?            const allies = char.isPlayer ? battleMap.value.players : battleMap.value.enemies
+            // 所有治疗技能：对友方角色进行治�?
+          const allies = char.isPlayer ? battleMap.value.players : battleMap.value.enemies
             const skillRange = bestSkill.range || 1
 
             if (skillRange === 0 && bestSkill.areaRange) {
@@ -12371,7 +12886,8 @@ export const useGameStore = defineStore('game', () => {
               useSkill(bestSkill.id, char.id, null)
               console.log(`[AI] ${char.id} | skill used successfully`)
             } else if (bestSkill.id === 'ai_de_hui_yi' || bestSkill.id === 'wu_di_niu_niu' || bestSkill.id === 'ning_xin_jue' || bestSkill.id === 'wan_gu_jie_jie' || bestSkill.id === 'fa_xiang_chong_yuan') {
-              // 自身治疗技�?              console.log(`[AI] ${char.id} | using skill ${bestSkill.name} (self-targeting)`)
+              // 自身治疗技�?
+            console.log(`[AI] ${char.id} | using skill ${bestSkill.name} (self-targeting)`)
               useSkill(bestSkill.id, char.id, char.id)
               console.log(`[AI] ${char.id} | skill used successfully`)
             } else {
@@ -12392,7 +12908,8 @@ export const useGameStore = defineStore('game', () => {
               }
 
               if (healTargets.length > 0) {
-                // 按缺失血量从多到少排�?                healTargets.sort((a, b) => {
+                // 按缺失血量从多到少排�?
+              healTargets.sort((a, b) => {
                   const aT = findCharacterTemplateInStore(a.characterId)
                   const aMax = aT?.maxHp || a.maxHp || 100
                   const bT = findCharacterTemplateInStore(b.characterId)
@@ -12544,12 +13061,13 @@ export const useGameStore = defineStore('game', () => {
     
     // 如果不能造成伤害，移动到最近的敌人或建筑并防御
     if (!char.hasActed) {
-      // 丧尸围城模式：视野内无目标时不移�?      if (battleMap.value?.visibilityEnabled && !hasVisibleTargets) {
+      // 丧尸围城模式：视野内无目标时不移�?
+    if (battleMap.value?.visibilityEnabled && !hasVisibleTargets) {
         console.log(`[AI] ${char.id} | no visible targets, staying in place`)
         char.isDefending = true
         char.hasActed = true
         const template = findCharacterTemplateInStore(char.characterId)
-        battleLog.value.push(`�?{template?.name || char.characterId}】视野内无目标，原地防御`)
+        battleLog.value.push(`�?${template?.name || char.characterId}】视野内无目标，原地防御`)
         return
       }
       
@@ -12604,7 +13122,8 @@ export const useGameStore = defineStore('game', () => {
         }
       } else {
         console.log(`[AI] ${char.id} | no enemies or buildings found in range, trying to move towards nearest enemy`)
-        // 如果没有敌人和建筑在攻击范围内，寻找地图上最近的敌人并向其移�?        const allEnemies = char.isPlayer ? battleMap.value.enemies : battleMap.value.players
+        // 如果没有敌人和建筑在攻击范围内，寻找地图上最近的敌人并向其移�?
+      const allEnemies = char.isPlayer ? battleMap.value.enemies : battleMap.value.players
         if (allEnemies.length > 0) {
           let nearestEnemy: BattleCharacter | null = null
           let minDist = Infinity
@@ -12637,7 +13156,8 @@ export const useGameStore = defineStore('game', () => {
       }
     }
     
-    // 最后防御：移动后或无法攻击时防御，除非中毒状态需要优先治�?    if (!char.hasActed) {
+    // 最后防御：移动后或无法攻击时防御，除非中毒状态需要优先治�?
+  if (!char.hasActed) {
       const hasPoison = hasStatus(char, 'poison')
       const poisonStacks = getStatusStacks(char, 'poison') || 1
       const poisonDamage = poisonStacks * 50
@@ -12688,7 +13208,8 @@ export const useGameStore = defineStore('game', () => {
     }
   }
   
-  // 处理无法造成伤害的情�?  async function handleNoDamageSituation(char: BattleCharacter) {
+  // 处理无法造成伤害的情�?
+async function handleNoDamageSituation(char: BattleCharacter) {
     if (!battleMap.value || char.hasActed) return
     
     // 移动到最近的敌方
@@ -12702,7 +13223,8 @@ export const useGameStore = defineStore('game', () => {
     }
   }
   
-  // 向最近的敌方移动的辅助函�?  async function moveToNearestEnemy(char: BattleCharacter) {
+  // 向最近的敌方移动的辅助函�?
+async function moveToNearestEnemy(char: BattleCharacter) {
     if (!battleMap.value) return
     
     const enemies = char.isPlayer ? battleMap.value.enemies : battleMap.value.players
@@ -12733,7 +13255,8 @@ export const useGameStore = defineStore('game', () => {
       }
     }
     
-    // 如果找到更好的位置，则移�?    if (bestPosition) {
+    // 如果找到更好的位置，则移�?
+  if (bestPosition) {
       moveCharacter(char.id, bestPosition.row, bestPosition.col)
       await new Promise(resolve => setTimeout(resolve, 300 / (gameSpeed.value || 1)))
     }
@@ -12743,17 +13266,20 @@ export const useGameStore = defineStore('game', () => {
   async function executeGatherMode(char: BattleCharacter) {
     if (!battleMap.value) return
     
-    // 丧尸围城模式：计算可见目�?    const allEnemiesForGather = char.isPlayer ? battleMap.value.enemies : battleMap.value.players
+    // 丧尸围城模式：计算可见目�?
+  const allEnemiesForGather = char.isPlayer ? battleMap.value.enemies : battleMap.value.players
     const visibleEnemies = filterVisibleTargets(char, allEnemiesForGather)
     const visibleEnemyBuildings = filterVisibleTargets(char, battleMap.value.buildings.filter(b => char.isPlayer ? !b.isPlayer : b.isPlayer))
     
     const nearestPoint = getNearestGatherPoint(char)
     if (!nearestPoint) {
-      // 如果没有集结点，切换到攻击模�?      await executeAttackMode(char)
+      // 如果没有集结点，切换到攻击模�?
+    await executeAttackMode(char)
       return
     }
     
-    // 首先，在当前位置检查是否能攻击到敌�?    if (!char.hasActed) {
+    // 首先，在当前位置检查是否能攻击到敌�?
+  if (!char.hasActed) {
       const currentTargets = getAttackableTargets(char)
       if (currentTargets.length > 0) {
         // 攻击能造成最大伤害的目标
@@ -12776,7 +13302,8 @@ export const useGameStore = defineStore('game', () => {
       }
     }
     
-    // 优先移动向最近的集结�?    if (!char.hasMoved) {
+    // 优先移动向最近的集结�?
+  if (!char.hasMoved) {
       const moveRange = getCharacterMoveRange(char)
       
       if (moveRange.length > 0) {
@@ -12791,9 +13318,11 @@ export const useGameStore = defineStore('game', () => {
           }
         }
         
-        // 移动到最佳位�?        moveCharacter(char.id, bestMove.row, bestMove.col)
+        // 移动到最佳位�?
+      moveCharacter(char.id, bestMove.row, bestMove.col)
         
-        // 移动后尝试攻�?        if (!char.hasActed) {
+        // 移动后尝试攻�?
+      if (!char.hasActed) {
           const newTargets = getAttackableTargets(char)
           if (newTargets.length > 0) {
             const target = newTargets[Math.floor(Math.random() * newTargets.length)]
@@ -12803,7 +13332,8 @@ export const useGameStore = defineStore('game', () => {
               attackBuilding(char.id, target.id)
             }
           } else {
-            // 不能攻击：视野内无目标时防御，否则等待下次机�?            if (battleMap.value?.visibilityEnabled && visibleEnemies.length === 0 && visibleEnemyBuildings.length === 0) {
+            // 不能攻击：视野内无目标时防御，否则等待下次机�?
+          if (battleMap.value?.visibilityEnabled && visibleEnemies.length === 0 && visibleEnemyBuildings.length === 0) {
               defend(char.id)
             }
           }
@@ -12823,7 +13353,8 @@ export const useGameStore = defineStore('game', () => {
     const playerChars = battleMap.value.players.filter(p => !p.hasMoved || !p.hasActed)
     
     for (const char of playerChars) {
-      // 如果战斗已结束（敌方全灭或玩家全灭），立即停止执�?      if (battleResult.value || battleMap.value.enemies.length === 0 || battleMap.value.players.length === 0) return
+      // 如果战斗已结束（敌方全灭或玩家全灭），立即停止执�?
+    if (battleResult.value || battleMap.value.enemies.length === 0 || battleMap.value.players.length === 0) return
       await new Promise(resolve => setTimeout(resolve, 750 / gameSpeed.value))
       await executeCharacterAi(char, true)
     }
@@ -12849,7 +13380,8 @@ export const useGameStore = defineStore('game', () => {
       })
       
       for (const char of playerChars) {
-        // 如果战斗已结束（敌方全灭或玩家全灭），立即停止执�?        if (battleResult.value || battleMap.value.enemies.length === 0 || battleMap.value.players.length === 0) return
+        // 如果战斗已结束（敌方全灭或玩家全灭），立即停止执�?
+      if (battleResult.value || battleMap.value.enemies.length === 0 || battleMap.value.players.length === 0) return
         await new Promise(resolve => setTimeout(resolve, 750 / gameSpeed.value))
         await executeCharacterAi(char, true)
       }
@@ -12858,15 +13390,17 @@ export const useGameStore = defineStore('game', () => {
     // 战斗已结束则不再执行秒结束逻辑
     if (battleResult.value || battleMap.value.enemies.length === 0) return
 
-    // 重置玩家角色已完成秒状态，除了防御状�?    battleMap.value.players.forEach(p => {
+    // 重置玩家角色已完成秒状态，除了防御状�?
+  battleMap.value.players.forEach(p => {
       p.hasMoved = false
       p.hasActed = false
       p.isDefending = false
     })
 
     battleMap.value.battlePhase = 'enemy'
-    // 玩家秒结束：清除设置为玩家秒结束后过期的技能雪�?    cleanupExpiredSnowAreas('player')
-    battleLog.value.push('敌方秒开�?)
+    // 玩家秒结束：清除设置为玩家秒结束后过期的技能雪�?
+  cleanupExpiredSnowAreas('player')
+    battleLog.value.push('敌方秒开�?')
     setTimeout(() => executeEnemyTurn(), 750 / gameSpeed.value)
   }
 
@@ -12875,13 +13409,18 @@ export const useGameStore = defineStore('game', () => {
     
     const positions: { row: number; col: number }[] = []
     const offsets = [
-      { row: -1, col: 0 }, // �?      { row: 1, col: 0 },  // �?      { row: 0, col: -1 }, // �?      { row: 0, col: 1 }   // �?    ]
+      { row: -1, col: 0 }, // �?
+    { row: 1, col: 0 },  // �?
+    { row: 0, col: -1 }, // �?
+    { row: 0, col: 1 }   // �?
+  ]
     
     offsets.forEach(offset => {
       const newRow = building.row + offset.row
       const newCol = building.col + offset.col
       
-      // 检查是否在地图范围�?      if (newRow >= 0 && newRow < battleMap.value.height &&
+      // 检查是否在地图范围�?
+    if (newRow >= 0 && newRow < battleMap.value.height &&
           newCol >= 0 && newCol < battleMap.value.width) {
         const tile = battleMap.value.tiles[newRow]?.[newCol]
         
@@ -12891,7 +13430,8 @@ export const useGameStore = defineStore('game', () => {
           const hasCharacter = [...battleMap.value.players, ...battleMap.value.enemies].some(
             char => char.row === newRow && char.col === newCol
           )
-          // 检查是否有收集�?          const hasCollectible = battleMap.value.collectibles.some(
+          // 检查是否有收集�?
+        const hasCollectible = battleMap.value.collectibles.some(
             col => col.row === newRow && col.col === newCol
           )
           
@@ -12910,13 +13450,16 @@ export const useGameStore = defineStore('game', () => {
     
     const positions: { row: number; col: number }[] = []
     
-    // 查找2格范围内的所有位�?    for (let dr = -2; dr <= 2; dr++) {
+    // 查找2格范围内的所有位�?
+  for (let dr = -2; dr <= 2; dr++) {
       for (let dc = -2; dc <= 2; dc++) {
-        if (dr === 0 && dc === 0) continue // 跳过建筑本身的位�?        
+        if (dr === 0 && dc === 0) continue // 跳过建筑本身的位�?
+      
         const newRow = building.row + dr
         const newCol = building.col + dc
         
-        // 检查是否在地图范围�?        if (newRow >= 0 && newRow < battleMap.value.height &&
+        // 检查是否在地图范围�?
+      if (newRow >= 0 && newRow < battleMap.value.height &&
             newCol >= 0 && newCol < battleMap.value.width) {
           const tile = battleMap.value.tiles[newRow]?.[newCol]
           
@@ -12926,7 +13469,8 @@ export const useGameStore = defineStore('game', () => {
             const hasCharacter = [...battleMap.value.players, ...battleMap.value.enemies].some(
               char => char.row === newRow && char.col === newCol
             )
-            // 检查是否有收集�?            const hasCollectible = battleMap.value.collectibles.some(
+            // 检查是否有收集�?
+          const hasCollectible = battleMap.value.collectibles.some(
               col => col.row === newRow && col.col === newCol
             )
             
@@ -12953,9 +13497,11 @@ export const useGameStore = defineStore('game', () => {
     battleMap.value.buildings.forEach(building => {
       console.log(`检查建�? ${building.name}, isPlayer: ${building.isPlayer}, hasSpawnedBonus: ${building.hasSpawnedBonus}`)
       
-      // 处理血心建筑（敌方�?      if (building.type === 'heart' && !building.isPlayer) {
-        // �?秒生成一个普通丧尸（�?�?�?2...秒�?        if (building.spawnRound && currentTurn > 0 && currentTurn % building.spawnRound === 0) {
-          console.log('血心触发生�?)
+      // 处理血心建筑（敌方�?
+    if (building.type === 'heart' && !building.isPlayer) {
+        // �?秒生成一个普通丧尸（�?�?�?2...秒�?
+      if (building.spawnRound && currentTurn > 0 && currentTurn % building.spawnRound === 0) {
+          console.log('血心触发生�?')
           spawnOrdinaryZombieFromHeart(building)
         }
         return
@@ -12972,26 +13518,32 @@ export const useGameStore = defineStore('game', () => {
         return
       }
       
-      // 处理天启炮建筑（敌方�?      if (building.type === 'tianqiPao' && !building.isPlayer) {
+      // 处理天启炮建筑（敌方�?
+    if (building.type === 'tianqiPao' && !building.isPlayer) {
         if (!building.targetPositions) {
           building.targetPositions = []
         }
         
-        // 去掉 currentTurn > 0 的限制，让第一秒就开始瞄�?        if (currentTurn % 2 === 1) {
-          // 奇数秒：瞄准阶段（包括第一秒�?          const targets: { row: number; col: number }[] = []
+        // 去掉 currentTurn > 0 的限制，让第一秒就开始瞄�?
+      if (currentTurn % 2 === 1) {
+          // 奇数秒：瞄准阶段（包括第一秒�?
+        const targets: { row: number; col: number }[] = []
           const playerTargets = []
           
-          // 收集所有玩家角色位�?          battleMap.value.players.forEach(p => {
+          // 收集所有玩家角色位�?
+        battleMap.value.players.forEach(p => {
             playerTargets.push({ row: p.row, col: p.col, type: 'character' as const, target: p })
           })
           
-          // 收集所有玩家建筑位�?          battleMap.value.buildings.forEach(b => {
+          // 收集所有玩家建筑位�?
+        battleMap.value.buildings.forEach(b => {
             if (b.isPlayer) {
               playerTargets.push({ row: b.row, col: b.col, type: 'building' as const, target: b })
             }
           })
           
-          // 随机选择2个目标位�?          if (playerTargets.length > 0) {
+          // 随机选择2个目标位�?
+        if (playerTargets.length > 0) {
             const shuffled = [...playerTargets].sort(() => Math.random() - 0.5)
             const selected = shuffled.slice(0, Math.min(2, shuffled.length))
             
@@ -13007,15 +13559,18 @@ export const useGameStore = defineStore('game', () => {
             battleLog.value.push(`天启炮瞄准了位置 ${posStr}！`)
           }
         } else {
-          // 偶数秒：攻击阶�?          if (building.targetPositions.length > 0) {
+          // 偶数秒：攻击阶�?
+        if (building.targetPositions.length > 0) {
             battleLog.value.push(`天启炮发射！`)
             
             building.targetPositions.forEach(targetPos => {
-              // 检查该位置是否有角�?              const characterAtPos = [...battleMap.value.players, ...battleMap.value.enemies].find(
+              // 检查该位置是否有角�?
+            const characterAtPos = [...battleMap.value.players, ...battleMap.value.enemies].find(
                 c => c.row === targetPos.row && c.col === targetPos.col
               )
               
-              // 检查该位置是否有建�?              const buildingAtPos = battleMap.value.buildings.find(
+              // 检查该位置是否有建�?
+            const buildingAtPos = battleMap.value.buildings.find(
                 b => b.row === targetPos.row && b.col === targetPos.col
               )
               
@@ -13028,9 +13583,10 @@ export const useGameStore = defineStore('game', () => {
                 
                 characterAtPos.hp = Math.max(0, characterAtPos.hp - actualDamage)
                 
-                // 添加被攻击抖动特�?                triggerShake(characterAtPos.row, characterAtPos.col, 'character')
+                // 添加被攻击抖动特�?
+              triggerShake(characterAtPos.row, characterAtPos.col, 'character')
                 
-                battleLog.value.push(`天启炮对�?{characterTemplate?.name || '角色'}】造成 ${actualDamage} 点伤害！`)
+                battleLog.value.push(`天启炮对�?${characterTemplate?.name || '角色'}】造成 ${actualDamage} 点伤害！`)
                 
                 // 更新天启炮的伤害统计
                 if (!building.totalDamage) building.totalDamage = 0
@@ -13046,7 +13602,7 @@ export const useGameStore = defineStore('game', () => {
                 const actualDamage = Math.max(1, damage)
                 
                 buildingAtPos.hp = Math.max(0, buildingAtPos.hp - actualDamage)
-                battleLog.value.push(`天启炮对�?{buildingAtPos.name}】造成 ${actualDamage} 点伤害！`)
+                battleLog.value.push(`天启炮对�?${buildingAtPos.name}】造成 ${actualDamage} 点伤害！`)
                 
                 // 更新天启炮的伤害统计
                 if (!building.totalDamage) building.totalDamage = 0
@@ -13070,7 +13626,8 @@ export const useGameStore = defineStore('game', () => {
       // 处理灵田建筑（我方）
       if (building.type === 'spiritField' && building.isPlayer) {
         const config = (null as any) // @deprecated 实时战斗废弃.spiritField
-        // 只在�?秒生成一�?        if (!building.hasSpawnedBonus && config.spawnRound && currentTurn === config.spawnRound) {
+        // 只在�?秒生成一�?
+      if (!building.hasSpawnedBonus && config.spawnRound && currentTurn === config.spawnRound) {
           console.log('灵田触发生成')
           const emptyPositions = getBuilding4AdjacentEmptyPositions(building)
           console.log('灵田周围空位�?', emptyPositions)
@@ -13103,7 +13660,8 @@ export const useGameStore = defineStore('game', () => {
       // 处理丹房建筑（我方）
       if (building.type === 'elixirRoom' && building.isPlayer) {
         const config = (null as any) // @deprecated 实时战斗废弃.elixirRoom
-        // 只在�?秒生成一�?        if (!building.hasSpawnedBonus && config.spawnRound && currentTurn === config.spawnRound) {
+        // 只在�?秒生成一�?
+      if (!building.hasSpawnedBonus && config.spawnRound && currentTurn === config.spawnRound) {
           console.log('丹房触发生成')
           const emptyPositions = getBuilding4AdjacentEmptyPositions(building)
           console.log('丹房周围空位�?', emptyPositions)
@@ -13143,7 +13701,8 @@ export const useGameStore = defineStore('game', () => {
     })
 
     for (const enemy of sortedEnemies) {
-      // 如果战斗已结束（玩家全灭或敌方全灭），立即停止执�?      if (battleResult.value || battleMap.value.players.length === 0 || battleMap.value.enemies.length === 0) return
+      // 如果战斗已结束（玩家全灭或敌方全灭），立即停止执�?
+    if (battleResult.value || battleMap.value.players.length === 0 || battleMap.value.enemies.length === 0) return
       await new Promise(resolve => setTimeout(resolve, 750 / gameSpeed.value))
       await executeCharacterAi(enemy, false)
     }
@@ -13155,7 +13714,8 @@ export const useGameStore = defineStore('game', () => {
     /* @deprecated 实时战斗废弃 �?状态结算已�?BattleManager.applyStatusTick() 每秒执行 */
     // triggerStatusOnTurnEnd([...battleMap.value.players, ...battleMap.value.enemies])
 
-    // 秒结束：火焰区域伤害（山火/天火区域的角色损�?0%生命�?0%法力�?    if (battleMap.value.fireAreas.length > 0) {
+    // 秒结束：火焰区域伤害（山火/天火区域的角色损�?0%生命�?0%法力�?
+  if (battleMap.value.fireAreas.length > 0) {
       const weather = battleMap.value.weather
       const weatherName = weather === 'sky_fire' ? '天火' : '山火'
       const allChars = [...battleMap.value.players, ...battleMap.value.enemies]
@@ -13179,7 +13739,7 @@ export const useGameStore = defineStore('game', () => {
           }
           
           triggerShake(char.row, char.col, 'character')
-          fireDamageLogs.push(`�?{charTemplate?.name || char.characterId}】因${weatherName}损失${hpDamage}生命�?{mpDamage}法力`)
+          fireDamageLogs.push(`�?${charTemplate?.name || char.characterId}】因${weatherName}损失${hpDamage}生命�?${mpDamage}法力`)
           
           if (char.hp <= 0) {
             char.hp = 1
@@ -13188,7 +13748,7 @@ export const useGameStore = defineStore('game', () => {
       })
       
       if (fireDamageLogs.length > 0) {
-        battleLog.value.push(`${weatherName}效果�?{fireDamageLogs.join('�?)}`)
+        battleLog.value.push(`${weatherName}效果�?${fireDamageLogs.join('�?')}`)
       }
     }
 
@@ -13227,7 +13787,8 @@ export const useGameStore = defineStore('game', () => {
         // 计算伤害：攻击力 - 防御力（最�?点伤害）
         const damage = Math.max(1, (building.attack || 0) - (target.defense || 0))
         
-        // 记录建筑总伤�?        if (!building.totalDamage) building.totalDamage = 0
+        // 记录建筑总伤�?
+      if (!building.totalDamage) building.totalDamage = 0
         building.totalDamage += damage
         
         // 造成伤害
@@ -13241,24 +13802,27 @@ export const useGameStore = defineStore('game', () => {
         triggerSkillEffect(target.row, target.col, 'shadow', 'small', 'attack')
         
         // 战斗日志
-        const buildingName = building.type === 'archerTower' ? '箭塔' : '灵能�?
+        const buildingName = building.type === 'archerTower' ? '箭塔' : '灵能�'
         const targetName = template?.name || target.characterId
-        battleLog.value.push(`�?{buildingName}】攻击�?{targetName}】，造成${damage}点伤害`)
+        battleLog.value.push(`�?${buildingName}】攻击�?${targetName}】，造成${damage}点伤害`)
         
-        // 检查目标是否死�?        if (target.hp <= 0) {
+        // 检查目标是否死�?
+      if (target.hp <= 0) {
           triggerDefeatAnimation(target.row, target.col, 'self')
           removeCharacterFromBattle(target.id, false)
           if (battleMap.value.tiles[target.row]?.[target.col]) {
             battleMap.value.tiles[target.row][target.col].character = null
           }
-          battleLog.value.push(`�?{targetName}】被�?{buildingName}】击败！`)
+          battleLog.value.push(`�?${targetName}】被�?${buildingName}】击败！`)
         }
         
-        // 添加延迟以显示特�?        await new Promise(resolve => setTimeout(resolve, 300 / gameSpeed.value))
+        // 添加延迟以显示特�?
+      await new Promise(resolve => setTimeout(resolve, 300 / gameSpeed.value))
       }
     }
 
-    // 重置敌人状�?    battleMap.value.enemies.forEach(e => {
+    // 重置敌人状�?
+  battleMap.value.enemies.forEach(e => {
       e.hasMoved = false
       e.hasActed = false
       e.isDefending = false
@@ -13280,7 +13844,8 @@ export const useGameStore = defineStore('game', () => {
       p.isDefending = false
       p.movedDistance = 0
       
-      // 减少玩家技能冷却时�?      const char = player.value?.characters.find(c => c.id === p.characterId)
+      // 减少玩家技能冷却时�?
+    const char = player.value?.characters.find(c => c.id === p.characterId)
       char?.skills.forEach(s => {
         if (s.currentCooldown > 0) s.currentCooldown--
       })
@@ -13289,11 +13854,13 @@ export const useGameStore = defineStore('game', () => {
     battleMap.value.turn++
     battleMap.value.battlePhase = 'player'
     
-    // 丧尸围城模式：每秒开始更新视�?    if (battleMap.value.visibilityEnabled) {
+    // 丧尸围城模式：每秒开始更新视�?
+  if (battleMap.value.visibilityEnabled) {
       calculateVisibility()
     }
     
-    // 灵气阵营：人界、神界、仙界；煞气阵营：魔界、鬼界、妖�?    const reikiFactions = ['human', 'god', 'immortal']
+    // 灵气阵营：人界、神界、仙界；煞气阵营：魔界、鬼界、妖�?
+  const reikiFactions = ['human', 'god', 'immortal']
     const shaqiFactions = ['demon', 'ghost', 'beast']
     
     console.log('=== 灵气煞气计算 ===')
@@ -13328,12 +13895,14 @@ export const useGameStore = defineStore('game', () => {
     
     console.log('敌方煞气加成:', enemyShaQiBonus)
     
-    // 计算实际增加值（基础10 + 阵营加成�?    const playerReikiGain = 10 + playerReikiBonus
+    // 计算实际增加值（基础10 + 阵营加成�?
+  const playerReikiGain = 10 + playerReikiBonus
     const playerShaQiGain = 10 + playerShaQiBonus
     const enemyReikiGain = 10 + enemyReikiBonus
     const enemyShaQiGain = 10 + enemyShaQiBonus
     
-    // 更新灵气和煞气值（上限100�?    battleMap.value.playerReiki = Math.min(100, battleMap.value.playerReiki + playerReikiGain)
+    // 更新灵气和煞气值（上限100�?
+  battleMap.value.playerReiki = Math.min(100, battleMap.value.playerReiki + playerReikiGain)
     battleMap.value.playerShaQi = Math.min(100, battleMap.value.playerShaQi + playerShaQiGain)
     battleMap.value.enemyReiki = Math.min(100, battleMap.value.enemyReiki + enemyReikiGain)
     battleMap.value.enemyShaQi = Math.min(100, battleMap.value.enemyShaQi + enemyShaQiGain)
@@ -13409,7 +13978,8 @@ export const useGameStore = defineStore('game', () => {
     const skill = simChar.skills.find(s => s.id === skillId)
     if (!skill) return false
     if (simChar.mp < skill.mpCost) return false
-    // 沉默检�?    if (simChar.statuses.some(s => s.type === 'silenced')) return false
+    // 沉默检�?
+  if (simChar.statuses.some(s => s.type === 'silenced')) return false
     return true
   }
 
@@ -13425,7 +13995,8 @@ export const useGameStore = defineStore('game', () => {
     skillEffects,
     floatingTexts,
     triggerShake,
-    // 新视觉特效系�?    hitFlashTargets,
+    // 新视觉特效系�?
+  hitFlashTargets,
     triggerHitFlash,
     defeatRecords,
     triggerDefeatAnimation,
@@ -13449,7 +14020,8 @@ export const useGameStore = defineStore('game', () => {
     triggerTerrainMark,
     deathEffects,
     triggerDeathEffect,
-    // 地图级震�?    mapShakeTick,
+    // 地图级震�?
+  mapShakeTick,
     mapShakeIntensity,
     triggerMapShake,
     // ============
@@ -13529,7 +14101,8 @@ export const useGameStore = defineStore('game', () => {
     findCharacterTemplateInStore,
     computeAttackPower,
     computeDefensePower,
-    // 状态系�?    addStatusToCharacter,
+    // 状态系�?
+  addStatusToCharacter,
     removeStatusFromCharacter,
   }
 })

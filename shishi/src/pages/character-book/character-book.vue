@@ -393,8 +393,10 @@ function getAiTypeLabel(attackRange: number): { label: string; color: string } {
 function formatMoveFreq(moveSpeed: number): string {
   if (!moveSpeed || moveSpeed <= 0) return '—'
   const secPerStep = 1 / moveSpeed
-  if (secPerStep >= 60) return `${Math.round(secPerStep)}秒/步`
-  return `${secPerStep.toFixed(2)}秒/步`
+  if (secPerStep >= 60) return `${Math.round(secPerStep)}秒/格`
+  // 去掉多余小数位：整数显示整数，否则最多2位小数
+  const rounded = Math.round(secPerStep * 100) / 100
+  return `${rounded}秒/格`
 }
 </script>
 

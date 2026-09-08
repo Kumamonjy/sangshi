@@ -922,7 +922,13 @@ function applyStatusModifiers(char: SimChar): { moveSpeed: number; attackSpeed: 
   let attackSpeed = char.attackSpeed
   for (const st of char.statuses) {
     const cfg = STATUS_CONFIG[st.type]
-    if (cfg.effects?.moveSpeedMod) moveSpeed += cfg.effects.moveSpeedMod
+    if (cfg.effects?.moveIntervalMod) {
+      // 实时战斗：状态影响移动间隔（秒/格）而非直接加减速度
+      // 先把当前速度转成间隔，加上状态间隔增量，再转回速度
+      const baseInterval = moveSpeed > 0 ? 1 / moveSpeed : 999
+      const newInterval = baseInterval + cfg.effects.moveIntervalMod
+      moveSpeed = newInterval > 0 ? 1 / newInterval : 0
+    }
     if (cfg.effects?.attackSpeedMod) attackSpeed += cfg.effects.attackSpeedMod
   }
   return { moveSpeed: Math.max(0, moveSpeed), attackSpeed: Math.max(0, attackSpeed) }
@@ -1471,7 +1477,11 @@ export class BattleManager {
         const target = c.targetCharacterId ? `→${c.targetCharacterId.slice(-4)}` : '无目标'
         const pathLen = c.path?.length ?? 0
         const dmg = c.lastAttackTime > 0 ? `${Math.floor((now - c.lastAttackTime) / 100) / 10}s前攻击` : '未攻击'
-        console.log(`[BT] ${c.id}(${c.isPlayer ? 'P' : 'E'}) (${c.row},${c.col}) mvSpeed=${c.moveSpeed} atkRange=${c.attackRange} atkSpeed=${c.attackSpeed} ${target} path=${pathLen} stuck=${c.stuckCounter} ${dmg} ${blocked}`)
+        const inSnow = this.isInArea(snowAreas, c.row, c.col) ? '❄️' : ''
+        const inFog = this.isInArea(fogAreas, c.row, c.col) ? '🌫️' : ''
+        const inFire = this.isInArea(fireAreas, c.row, c.col) ? '🔥' : ''
+        const weatherTag = `${inSnow}${inFog}${inFire}` || '☀️'
+        console.log(`[BT] ${c.id}(${c.isPlayer ? 'P' : 'E'}) (${c.row},${c.col}) mvSpeed=${c.moveSpeed} atkRange=${c.attackRange} atkSpeed=${c.attackSpeed} ${weatherTag} ${target} path=${pathLen} stuck=${c.stuckCounter} ${dmg} ${blocked}`)
       }
     }
 

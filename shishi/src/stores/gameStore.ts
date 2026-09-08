@@ -1,4 +1,4 @@
-﻿﻿import { defineStore } from 'pinia'
+﻿﻿﻿﻿﻿import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import type { Player, Character, Item, HomeGridCell, BattleMap, BattleCharacter, BattleTile, TerrainType, WeatherType, SnowArea, FireArea, FogArea, StatusType, Attribute, Skill } from '../utils/gameData'
 import { INITIAL_CHARACTERS, HIREABLE_CHARACTERS, FACTION_CONFIG, JOB_CONFIG, createInitialHomeGrid, createCharacterFromTemplate, EQUIPMENT_TEMPLATES, CONSUMABLE_TEMPLATES, BATTLE_CONFIG, TERRAIN_PROBABILITIES, TERRAIN_CONFIG, getExpRequired, getEquipmentStats, getEquipmentUpgradeCost, openChest, DIFFICULTY_CONFIG, SKILL_TEMPLATES, getAvatarPath, getRandomRarity, CHARACTER_SKILLS, buildSkillsForCharacterId, buildFullSkillsForCharacter, STATUS_CONFIG, NEGATIVE_STATUSES, POSITIVE_STATUSES, RARITY_CONFIG, ATTRIBUTE_CONFIG, calculateCharacterStats, calculateSetBonus, CHEST_CONFIG, createChestItem, isChestItem, getChestConfigByName, processEquipmentEffects, createSoulItem, getCharacterBaseTemplate } from '../utils/gameData'
@@ -2157,11 +2157,11 @@ function trimSkillEffects() {
       const attackerChar = player.value.characters.find(c => c.id === attacker.characterId)
       if (attackerChar) {
         const playerSkill = attackerChar.skills.find(s => s.id === skill.id)
-        if (playerSkill) playerSkill.currentCooldown = skill.frequency || 1
+        if (playerSkill) playerSkill.currentCooldown = Date.now()
       }
     } else {
       if (!attacker.skillCooldowns) attacker.skillCooldowns = {}
-      attacker.skillCooldowns[skill.id] = skill.frequency || 1
+      attacker.skillCooldowns[skill.id] = Date.now() || 1
     }
     triggerStatusOnAction(attacker)
     return true
@@ -3553,6 +3553,16 @@ function removeGatheringPoint(row: number, col: number) {
   function startBattle(mode: 'offensive' | 'defensive' | 'zombie', terrain: string, difficulty: 'easy' | 'normal' | 'hard' | 'nightmare' | 'deadly' = 'normal', selectedCharacterIds?: string[], selectedFactions?: string[]) {
     if (!player.value) return
 
+    // 清理上一场战斗可能残留的定时器，防止多个 battleSyncTimer 同时运行导致天气变化过快
+    if (battleSyncTimer) {
+      clearInterval(battleSyncTimer)
+      battleSyncTimer = null
+    }
+    if (battleManager) {
+      battleManager.stop()
+      battleManager = null
+    }
+
     // 重置战斗结果状态，防止上一局的结果影响新战斗
     battleResult.value = null
 
@@ -4008,7 +4018,10 @@ function removeGatheringPoint(row: number, col: number) {
     // 注册 onEnd 回调：BattleManager 检测到一方全灭时自动触发结算
     battleManager.onEnd((winner) => {
       if (battleMap.value && !battleMap.value.battleEnded) {
-        endBattle(winner === 'player')
+        // 延迟 1 秒结束战斗，让最后一次攻击的动画/特效播放完成
+        setTimeout(() => {
+          endBattle(winner === 'player')
+        }, 1000)
       }
     })
 
@@ -4092,15 +4105,18 @@ function removeGatheringPoint(row: number, col: number) {
     battleMap.value.paused = battleManager.isPaused()
       battleMap.value.speedMultiplier = battleManager.getSpeedMultiplier()
 
-      // 检查战斗是否结�?
-    if (battleManager.isEnded()) {
+      // 检查战斗是否结束
+      if (battleManager.isEnded()) {
         if (battleSyncTimer) {
           clearInterval(battleSyncTimer)
           battleSyncTimer = null
         }
         const winner = battleManager.getWinner()
-        battleLog.value.push(winner === 'player' ? '战斗胜利�' : '战斗失败...')
-        endBattle(winner === 'player')
+        battleLog.value.push(winner === 'player' ? '战斗胜利！' : '战斗失败...')
+        // 延迟 1 秒结束战斗，让最后一次攻击的动画/特效播放完成
+        setTimeout(() => {
+          endBattle(winner === 'player')
+        }, 1000)
       }
     }, 100) as unknown as ReturnType<typeof setInterval>
 
@@ -4620,7 +4636,7 @@ async function buyShopEquipment(template: any): Promise<boolean> {
     const rand = Math.random()
     let newWeather: WeatherType = 'normal'
 
-    // 10% 小雪�?0% 中雪�?0% 大雪�?0% 山火�?0% 天火�?0% 迷雾�?0% 鬼雾
+    // 10% 小雪，10% 中雪，10% 大雪，10% 山火，10% 天火，10% 迷雾，10% 鬼雾
     if (rand < 0.10) {
       newWeather = 'light_snow'
     } else if (rand < 0.20) {
@@ -4653,6 +4669,7 @@ async function buyShopEquipment(template: any): Promise<boolean> {
       ghost_fog: '鬼雾'
 
     }
+    console.log('[WEATHER] 天气变化:', weatherNames[newWeather], '时间戳:', Date.now())
     battleLog.value.push(`天气变为【${weatherNames[newWeather]}】`)
   }
 
@@ -6393,16 +6410,16 @@ function processHealSkill(
       if (attackerChar) {
         // 初始上场的玩家角色：从玩家角色列表中检查冷�?
       const playerSkill = attackerChar.skills.find(s => s.id === skillId)
-        if (!playerSkill || playerSkill.currentCooldown > 0) return false
+        if (!playerSkill || Date.now() - playerSkill.currentCooldown < skill.frequency * 1000) return false
       } else {
         // 召唤出来的玩家阵营角色：使用 skillCooldowns 检查冷�?
       if (!attacker.skillCooldowns) attacker.skillCooldowns = {}
-        if ((attacker.skillCooldowns[skillId] || 0) > 0) return false
+        if (Date.now() - (attacker.skillCooldowns[skillId] || 0) < skill.frequency * 1000) return false
       }
     } else {
       // Enemy: check skillCooldowns
       if (!attacker.skillCooldowns) attacker.skillCooldowns = {}
-      if ((attacker.skillCooldowns[skillId] || 0) > 0) return false
+      if (Date.now() - (attacker.skillCooldowns[skillId] || 0) < skill.frequency * 1000) return false
     }
     
     if (attacker.mp < skill.mpCost) return false
@@ -6524,11 +6541,11 @@ function processHealSkill(
           const attackerChar = player.value.characters.find(c => c.id === attacker.characterId)
           if (attackerChar) {
             const playerSkill = attackerChar.skills.find(s => s.id === skillId)
-            if (playerSkill) playerSkill.currentCooldown = skill.frequency || 1
+            if (playerSkill) playerSkill.currentCooldown = Date.now()
           }
         } else {
           if (!attacker.skillCooldowns) attacker.skillCooldowns = {}
-          attacker.skillCooldowns[skillId] = skill.frequency || 1
+          attacker.skillCooldowns[skillId] = Date.now()
         }
         // 触发中毒（操作时触发的状态）
         triggerStatusOnAction(attacker)
@@ -6572,11 +6589,11 @@ function processHealSkill(
             const attackerChar = player.value.characters.find(c => c.id === attacker.characterId)
             if (attackerChar) {
               const playerSkill = attackerChar.skills.find(s => s.id === skillId)
-              if (playerSkill) playerSkill.currentCooldown = skill.frequency || 1
+              if (playerSkill) playerSkill.currentCooldown = Date.now()
             }
           } else {
             if (!attacker.skillCooldowns) attacker.skillCooldowns = {}
-            attacker.skillCooldowns[skillId] = skill.frequency || 1
+            attacker.skillCooldowns[skillId] = Date.now()
           }
           triggerStatusOnAction(attacker)
           return true
@@ -6610,11 +6627,11 @@ function processHealSkill(
         const attackerChar = player.value.characters.find(c => c.id === attacker.characterId)
         if (attackerChar) {
           const playerSkill = attackerChar.skills.find(s => s.id === skillId)
-          if (playerSkill) playerSkill.currentCooldown = skill.frequency || 1
+          if (playerSkill) playerSkill.currentCooldown = Date.now()
         }
       } else {
         if (!attacker.skillCooldowns) attacker.skillCooldowns = {}
-        attacker.skillCooldowns[skillId] = skill.frequency || 1
+        attacker.skillCooldowns[skillId] = Date.now()
       }
       triggerStatusOnAction(attacker)
       return true
@@ -7036,11 +7053,11 @@ function processHealSkill(
         const attackerChar = player.value.characters.find(c => c.id === attacker.characterId)
         if (attackerChar) {
           const playerSkill = attackerChar.skills.find(s => s.id === skillId)
-          if (playerSkill) playerSkill.currentCooldown = skill.frequency || 1
+          if (playerSkill) playerSkill.currentCooldown = Date.now()
         }
       } else {
         if (!attacker.skillCooldowns) attacker.skillCooldowns = {}
-        attacker.skillCooldowns[skillId] = skill.frequency || 1
+        attacker.skillCooldowns[skillId] = Date.now()
       }
       triggerStatusOnAction(attacker)
       return true
@@ -10410,15 +10427,15 @@ function processHealSkill(
       if (attackerChar) {
         // 初始上场的玩家角色：设置玩家角色列表中的冷却
         const playerSkill = attackerChar.skills.find(s => s.id === skillId)
-        if (playerSkill) playerSkill.currentCooldown = skill.frequency
+        if (playerSkill) playerSkill.currentCooldown = Date.now()
       } else {
         // 召唤出来的玩家阵营角色：使用 skillCooldowns 设置冷却
         if (!attacker.skillCooldowns) attacker.skillCooldowns = {}
-        attacker.skillCooldowns[skillId] = skill.frequency
+        attacker.skillCooldowns[skillId] = Date.now()
       }
     } else {
       if (!attacker.skillCooldowns) attacker.skillCooldowns = {}
-      attacker.skillCooldowns[skillId] = skill.frequency
+      attacker.skillCooldowns[skillId] = Date.now()
     }
 
     // 触发中毒（操作时触发的状态）
@@ -10864,8 +10881,8 @@ function getSkillAttackTargets(char: BattleCharacter, skill: Skill): (BattleChar
       })
     } else {
       availableSkills = (charTemplate?.skills || []).filter(skill => {
-        const cooldown = char.skillCooldowns ? char.skillCooldowns[skill.id] : 0
-        if ((cooldown || 0) !== 0 || char.mp < skill.mpCost) return false
+        const lastUsed = char.skillCooldowns ? char.skillCooldowns[skill.id] : 0
+        if (Date.now() - lastUsed < skill.frequency * 1000 || char.mp < skill.mpCost) return false
         // 阵营灵气/煞气检�?
       if (skill.reikiCost && battleMap.value && battleMap.value.enemyReiki < skill.reikiCost) return false
         if (skill.shaQiCost && battleMap.value && battleMap.value.enemyShaQi < skill.shaQiCost) return false
@@ -13184,8 +13201,8 @@ function getSkillAttackTargets(char: BattleCharacter, skill: Skill): (BattleChar
         console.log(`[AI] ${char.id} | poisoned and in danger, trying to heal instead of defend`)
         const allies = char.isPlayer ? battleMap.value.players : battleMap.value.enemies
         const availableSkills = (charTemplate?.skills || []).filter(skill => {
-          const cooldown = char.skillCooldowns ? char.skillCooldowns[skill.id] : 0
-          return cooldown === 0 && char.mp >= skill.mpCost && (skill.type === 'heal' || skill.id === 'bi_hai_chao_sheng' || skill.id === 'mu_feng_wei_shang')
+          const lastUsed = char.skillCooldowns ? char.skillCooldowns[skill.id] : 0
+          return Date.now() - lastUsed >= skill.frequency * 1000 && char.mp >= skill.mpCost && (skill.type === 'heal' || skill.id === 'bi_hai_chao_sheng' || skill.id === 'mu_feng_wei_shang')
         })
         
         if (availableSkills.length > 0) {
@@ -13839,20 +13856,13 @@ async function moveToNearestEnemy(char: BattleCharacter) {
       }
     }
 
-    // 重置敌人状�?
+    // 重置敌人状态
   battleMap.value.enemies.forEach(e => {
       e.hasMoved = false
       e.hasActed = false
       e.isDefending = false
       e.movedDistance = 0
-      // Decrease enemy skill cooldowns
-      if (e.skillCooldowns) {
-        for (const skillId in e.skillCooldowns) {
-          if (e.skillCooldowns[skillId] > 0) {
-            e.skillCooldowns[skillId]--
-          }
-        }
-      }
+      // 实时战斗：技能冷却用时间戳比较，不再需要回合递减
     })
 
     // 重置玩家角色状态（包括防御状态）
@@ -13862,11 +13872,7 @@ async function moveToNearestEnemy(char: BattleCharacter) {
       p.isDefending = false
       p.movedDistance = 0
       
-      // 减少玩家技能冷却时�?
-    const char = player.value?.characters.find(c => c.id === p.characterId)
-      char?.skills.forEach(s => {
-        if (s.currentCooldown > 0) s.currentCooldown--
-      })
+      // 实时战斗：技能冷却用时间戳比较，不再需要回合递减
     })
 
     battleMap.value.turn++

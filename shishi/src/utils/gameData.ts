@@ -1,4 +1,4 @@
-﻿﻿export type Faction = 'human' | 'ghost' | 'beast' | 'immortal' | 'god' | 'demon'
+﻿export type Faction = 'human' | 'ghost' | 'beast' | 'immortal' | 'god' | 'demon'
 export type Job = string
 export type Rarity = 'common' | 'rare' | 'exceptional' | 'treasure' | 'celestial' | 'peerless'
 export type ItemSubtype = 'weapon' | 'armor' | 'helmet' | 'shoes' | 'accessory' | 'book' | 'consumable' | 'chest' | 'soul'
@@ -16,7 +16,7 @@ export type StatusTag = 'positive' | 'negative'
 export interface StatusEffect {
   attackPercent?: number    // 攻击力百分比变化，如 20 表示 +20%
   defensePercent?: number   // 防御力百分比变化，如 -20 表示 -20%
-  moveSpeedMod?: number    // 移动速度变化（每秒格数，可为正负），如 1 表示 +1格/秒
+  moveIntervalMod?: number  // 移动间隔增量（秒/格），正值减速，负值加速；如 2 表示每格多花 2 秒
   attackRange?: number      // 攻击范围变化（整数，可为正负），如 1 表示 +1 格
   attackSpeedMod?: number   // 攻击速度变化（每秒攻击次数，可为正负）
   maxHpPercent?: number     // 生命值上限百分比变化
@@ -132,17 +132,17 @@ export const STATUS_CONFIG: Record<StatusType, StatusConfig> = {
     id: 'swift',
     name: '迅捷',
     icon: '⚡',
-    description: '移动速度+1格/秒',
+    description: '移动间隔-0.5秒',
     tag: 'positive',
-    effects: { moveSpeedMod: 1 },
+    effects: { moveIntervalMod: -0.5 },
   },
   lame: {
     id: 'lame',
     name: '瘸腿',
     icon: '🚶',
-    description: '移动速度-1格/秒',
+    description: '移动间隔+2秒',
     tag: 'negative',
-    effects: { moveSpeedMod: -1 },
+    effects: { moveIntervalMod: 2 },
   },
   weak: {
     id: 'weak',
@@ -230,7 +230,7 @@ export const STATUS_CONFIG: Record<StatusType, StatusConfig> = {
     icon: '🔒',
     description: '不能移动',
     tag: 'negative',
-    effects: { moveSpeedMod: -999 },
+    effects: { moveIntervalMod: 999 },
   },
   mili: {
     id: 'mili',

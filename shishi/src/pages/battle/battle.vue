@@ -667,7 +667,7 @@
                 </view>
               </view>
               <text class="skill-mini-cooldown">
-                {{ getSkillCurrentCooldown(selectedCharacter, skill.id) }}/{{ skill.cooldown }}
+                {{ getSkillCurrentCooldown(selectedCharacter, skill.id) }}/{{ skill.frequency }}
               </text>
             </view>
           </view>
@@ -723,7 +723,7 @@
               <text class="skill-cost">💙 {{ skill.mpCost }}</text>
               <text v-if="skill.reikiCost" class="skill-cost reiki-cost">✨ {{ skill.reikiCost }}</text>
               <text v-if="skill.shaQiCost" class="skill-cost shaqi-cost">💢 {{ skill.shaQiCost }}</text>
-              <text class="skill-cooldown">⌛ {{ getSkillCurrentCooldown(selectedCharacter!, skill.id) }}/{{ skill.cooldown }}秒</text>
+              <text class="skill-cooldown">⌛ {{ getSkillCurrentCooldown(selectedCharacter!, skill.id) }}/{{ skill.frequency }}秒</text>
               <text v-if="skill.maxUsesPerBattle" class="skill-use-count" :class="{ 'maxed': isSkillMaxUsesReached(skill, selectedCharacter!) }">📌 {{ getSkillUseCount(skill, selectedCharacter!) }}/{{ skill.maxUsesPerBattle }}</text>
             </view>
           </view>
@@ -1086,7 +1086,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, nextTick } from 'vue'
+import { ref, computed, watch, nextTick, onMounted, onUnmounted } from 'vue'
 import { useGameStore } from '../../stores/gameStore'
 import { HIREABLE_CHARACTERS, INITIAL_CHARACTERS, getEquipmentStats, getAvatarPath, colorizeBattleLogText, STATUS_CONFIG, getSkillTags, ATTRIBUTE_CONFIG, JOB_CONFIG, SKILL_TEMPLATES } from '../../utils/gameData'
 import type { BattleCharacter, Skill } from '../../utils/gameData'
@@ -1272,10 +1272,18 @@ const weatherText = computed(() => {
 })
 
 /** 实时战斗时长（mm:ss） */
+const battleNow = ref(Date.now())
+let battleTimeTimer: ReturnType<typeof setInterval> | null = null
+onMounted(() => {
+  battleTimeTimer = setInterval(() => { battleNow.value = Date.now() }, 1000)
+})
+onUnmounted(() => {
+  if (battleTimeTimer) { clearInterval(battleTimeTimer); battleTimeTimer = null }
+})
 const formatBattleTime = computed(() => {
   const map = gameStore.battleMap
-  if (!map) return '00:00'
-  const elapsed = Math.floor((Date.now() - map.battleStartTime) / 1000)
+  if (!map || !map.battleStartTime) return '00:00'
+  const elapsed = Math.floor((battleNow.value - map.battleStartTime) / 1000)
   const m = Math.floor(elapsed / 60).toString().padStart(2, '0')
   const s = (elapsed % 60).toString().padStart(2, '0')
   return `${m}:${s}`
@@ -2217,19 +2225,23 @@ function showSkillPanel() {
   showSkillSelection.value = true
 }
 
-// 获取技能当前冷却时间
+// 获取技能当前冷却时间（秒）
 function getSkillCurrentCooldown(skill: BattleCharacter, skillId: string): number {
+  const skillTemplate = SKILL_TEMPLATES[skillId]
+  const frequency = skillTemplate?.frequency || 0
+  let lastUsed = 0
   if (skill.isPlayer) {
-    const template = gameStore.findCharacterTemplateInStore(skill.characterId)
     const playerChar = gameStore.player?.characters.find(c => c.id === skill.characterId)
     if (playerChar) {
       const s = playerChar.skills.find(sk => sk.id === skillId)
-      return s?.currentCooldown || 0
+      lastUsed = s?.currentCooldown || 0
     }
   } else {
-    return skill.skillCooldowns?.[skillId] || 0
+    lastUsed = skill.skillCooldowns?.[skillId] || 0
   }
-  return 0
+  if (!lastUsed || !frequency) return 0
+  const remaining = Math.ceil((lastUsed + frequency * 1000 - Date.now()) / 1000)
+  return Math.max(0, remaining)
 }
 
 function isSkillHpRestricted(skillId: string, char: BattleCharacter): boolean {

@@ -164,7 +164,7 @@
                       <text class="skill-info" style="color: #9333ea;">消耗阵营煞气 {{ skill.shaQiCost }}</text>
                     </view>
                     <view class="skill-info-row">
-                      <text class="skill-info">冷却 {{ skill.cooldown }} 秒</text>
+                      <text class="skill-info">冷却 {{ skill.frequency }} 秒</text>
                     </view>
                   </view>
                 </view>

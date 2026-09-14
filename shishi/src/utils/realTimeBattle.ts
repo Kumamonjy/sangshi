@@ -32,6 +32,15 @@ import type {
 import { STATUS_CONFIG } from './gameData'
 
 // ============================================================
+// 全局常量
+// ============================================================
+
+/** 普攻与技能之间的最小间隔（毫秒）：普攻后至少隔这么久才能放技能，反之亦然 */
+const ATTACK_SKILL_GAP_MS = 300
+/** 技能与技能之间的最小间隔（毫秒）：释放任意技能后，至少隔这么久才能放另一个技能 */
+const SKILL_SKILL_GAP_MS = 1000
+
+// ============================================================
 // 类型定义
 // ============================================================
 
@@ -58,7 +67,12 @@ export interface SimChar {
   statuses: StatusInstance[]
   // 运行时字段
   lastAttackTime: number      // ms
+  lastSkillCastTime: number   // ms，上一次释放任意技能的时间戳（用于技能间/攻技间间隔）
+  skillLastUsedTime?: Record<string, number>  // 每个技能自身的上次释放时间戳（ms）
+  skillCooldownMap?: Record<string, number>   // 每个技能的覆写冷却时长（ms），可选
   targetCharacterId?: string
+  moveTarget?: { row: number; col: number } | null  // 玩家指定的移动目的地（null=自动追击敌人）
+  holdPosition?: boolean  // 镇守模式：不移动，原地攻击/放技能
   path: { row: number; col: number }[]
   stuckCounter: number
   moveAccumulator: number     // 小数累积（moveSpeed × dt）
@@ -81,6 +95,7 @@ export interface SimBattleState {
   paused: boolean
   speedMultiplier: number
   battleStartTime: number
+  battleElapsedMs: number       // 统一战斗时间轴：累积的缩放后战斗时长（ms），暂停时不累加
   battleEnded: boolean
   winner?: 'player' | 'enemy'
   // 事件队列（BattleManager 消费后触发 Vue 渲染层）
@@ -93,13 +108,14 @@ export interface SimBattleState {
 
 /** 战斗事件（用于触发 UI 层的特效/日志等） */
 export type SimBattleEvent =
-  | { type: 'attack'; attackerId: string; targetId: string; damage: number }
-  | { type: 'skill'; casterId: string; skillId: string; targetIds: string[] }
+  | { type: 'attack'; attackerId: string; targetId: string; damage: number; skillId?: string }
+  | { type: 'skill'; casterId: string; skillId: string; targetIds: string[]; targetCells?: { row: number; col: number }[] }
   | { type: 'status'; targetId: string; statusType: StatusType; duration: number }
   | { type: 'death'; charId: string }
   | { type: 'move'; charId: string; fromRow: number; fromCol: number; toRow: number; toCol: number }
   | { type: 'weather_damage'; row: number; col: number; hpDamage: number; mpDamage: number; source: 'fire' | 'sky_fire' }
   | { type: 'weather_heal'; row: number; col: number; hpHeal: number; mpHeal: number }
+  | { type: 'terrain_change'; row: number; col: number; terrain: TerrainType }
 
 // ============================================================
 // 工具函数
@@ -383,6 +399,10 @@ export function canCastSkill(char: SimChar, skill: Skill, now: number): boolean 
   const lastUsed = char.skillLastUsedTime?.[skill.id] ?? 0
   const cdMs = getSkillCooldownMs(skill)
   if (now - lastUsed < cdMs) return false
+  // 普攻→技能间隔：距上次普攻不足 ATTACK_SKILL_GAP_MS 时不能放技能
+  if (now - char.lastAttackTime < ATTACK_SKILL_GAP_MS) return false
+  // 技能→技能间隔：距上次任意技能释放不足 SKILL_SKILL_GAP_MS 时不能放技能
+  if (now - char.lastSkillCastTime < SKILL_SKILL_GAP_MS) return false
   // MP 检查
   if (char.mp < skill.mpCost) return false
   // 沉默检查
@@ -409,6 +429,8 @@ function scoreSkill(char: SimChar, skill: Skill, state: SimBattleState): number 
     const lowestHpAlly = aliveAllies.reduce((lowest, a) =>
       getHpPct(a) < getHpPct(lowest) ? a : lowest, aliveAllies[0])
     const lowestPct = lowestHpAlly ? getHpPct(lowestHpAlly) : 1
+    // 全员满血（或残血比例极低）时不释放治疗，避免浪费
+    if (lowestPct >= 0.95) return -1
     // 队友血越残，越优先
     score += (1 - lowestPct) * 100
     // 自己血少更需要治疗
@@ -420,7 +442,6 @@ function scoreSkill(char: SimChar, skill: Skill, state: SimBattleState): number 
   if (skill.type === 'attack') {
     // AOE 优先（多个敌人能被覆盖）
     if (skill.category === 'aoe' || skill.areaRange) {
-      // 粗略估计：如果有 ≥ 2 个敌人在技能范围内
       const range = skill.range ?? char.attackRange
       let targetsInRange = 0
       for (const e of aliveEnemies) {
@@ -428,13 +449,28 @@ function scoreSkill(char: SimChar, skill: Skill, state: SimBattleState): number 
           targetsInRange++
         }
       }
-      // 多杀奖励
+      if (targetsInRange === 0) return -1  // 范围内无敌人，不选此技能
       score += targetsInRange * 25
-      if (targetsInRange >= 2) score += 40 // AOE 额外加成
+      if (targetsInRange >= 2) score += 40
     }
 
-    // 直线/横扫也有群体覆盖
+    // 直线/横扫也有群体覆盖，但必须4方向之一上有敌人才有效
     if (skill.category === '直线' || skill.category === '横扫') {
+      const range = skill.range ?? char.attackRange
+      const len = skill.category === '直线' ? (skill.lineWidth ?? 3) : (skill.sweepLength ?? 3)
+      const dirs = [[-1, 0], [1, 0], [0, -1], [0, 1]]
+      let hasTarget = false
+      for (const [dr, dc] of dirs) {
+        for (let i = 1; i <= len; i++) {
+          const r = char.row + dr * i
+          const c = char.col + dc * i
+          if (r < 0 || r >= state.mapHeight || c < 0 || c >= state.mapWidth) break
+          if (Math.abs(dr) * i + Math.abs(dc) * i > range) break
+          if (aliveEnemies.some(e => e.row === r && e.col === c)) { hasTarget = true; break }
+        }
+        if (hasTarget) break
+      }
+      if (!hasTarget) return -1  // 4方向都无敌人，不选此技能
       score += 20
     }
 
@@ -507,60 +543,99 @@ export function getSkillTargetCells(
 
   // === 攻击/召唤 → 找敌人 ===
   if (skill.type === 'attack' || skill.category === 'summon') {
-    // AOE / 直线 / 横扫：找覆盖最多敌人的位置
+    const hasAnyEnemy = enemies.some(e => !e.dead)
+    if (!hasAnyEnemy) return []  // 场上无敌人，攻击技能不释放
+
+    // AOE：以射程内最近敌人为中心；range=0 则以自身为中心
     if (skill.areaRange || skill.category === 'aoe') {
-      // 简单策略：以射程内距离最近的敌人为中心
+      if (range === 0) {
+        // 自身为中心的 AOE：检查 areaRange 内是否有敌人
+        const enemiesInAOE = enemies.filter(e => !e.dead && manhattan(char, e) <= skill.areaRange)
+        if (enemiesInAOE.length > 0) {
+          return [{ row: char.row, col: char.col }]  // 中心=自身，特效由 triggerAOEEffects 展开完整范围
+        }
+        return []
+      }
+      // range>0：找射程内最近敌人为中心
       const nearestInRange = enemies
         .filter(e => !e.dead && manhattan(char, e) <= range)
         .sort((a, b) => manhattan(char, a) - manhattan(char, b))
       if (nearestInRange.length > 0) {
-        const target = nearestInRange[0]
-        return [{ row: target.row, col: target.col }]
+        return [{ row: nearestInRange[0].row, col: nearestInRange[0].col }]
       }
+      return []
     }
 
-    // 直线：沿朝向最近敌人的方向
+    // 直线：4方向之一上有敌人才释放，选择能覆盖敌人的方向
     if (skill.category === '直线') {
-      const nearest = enemies
-        .filter(e => !e.dead)
-        .sort((a, b) => manhattan(char, a) - manhattan(char, b))[0]
-      if (nearest) {
-        // 从自身到敌人方向延伸 lineWidth 格
-        const line: { row: number; col: number }[] = []
-        const dr = Math.sign(nearest.row - char.row)
-        const dc = Math.sign(nearest.col - char.col)
-        const len = skill.lineWidth ?? 3
+      const len = skill.lineWidth ?? 3
+      const dirs = [[-1, 0], [1, 0], [0, -1], [0, 1]]  // 上、下、左、右
+      let bestDir: [number, number] | null = null
+      let bestEnemyCount = 0
+      for (const [dr, dc] of dirs) {
+        // 统计该方向直线上的敌人数
+        let count = 0
         for (let i = 1; i <= len; i++) {
           const r = char.row + dr * i
           const c = char.col + dc * i
-          if (r >= 0 && r < state.mapHeight && c >= 0 && c < state.mapWidth) {
-            line.push({ row: r, col: c })
-          }
+          if (r < 0 || r >= state.mapHeight || c < 0 || c >= state.mapWidth) break
+          if (manhattan(char, { row: r, col: c } as SimChar) > range) break
+          if (enemies.some(e => !e.dead && e.row === r && e.col === c)) count++
         }
-        return line
+        if (count > bestEnemyCount) {
+          bestEnemyCount = count
+          bestDir = [dr, dc]
+        }
       }
+      if (!bestDir) return []  // 4个方向上都没有敌人，不释放
+      const [lineDr, lineDc] = bestDir
+      const line: { row: number; col: number }[] = []
+      for (let i = 1; i <= len; i++) {
+        const r = char.row + lineDr * i
+        const c = char.col + lineDc * i
+        if (r >= 0 && r < state.mapHeight && c >= 0 && c < state.mapWidth) {
+          line.push({ row: r, col: c })
+        }
+      }
+      return line
     }
 
-    // 横扫：同样找方向
+    // 横扫：4方向之一上有敌人才释放，选择能覆盖敌人的方向
     if (skill.category === '横扫') {
-      const nearest = enemies
-        .filter(e => !e.dead)
-        .sort((a, b) => manhattan(char, a) - manhattan(char, b))[0]
-      if (nearest) {
-        const sweepLen = skill.sweepLength ?? 3
-        const sweepWid = skill.sweepWidth ?? 1
-        const cells: { row: number; col: number }[] = []
-        const dr = Math.sign(nearest.row - char.row)
-        const dc = Math.sign(nearest.col - char.col)
+      const sweepLen = skill.sweepLength ?? 3
+      const sweepWid = skill.sweepWidth ?? 1
+      const dirs = [[-1, 0], [1, 0], [0, -1], [0, 1]]
+      let bestDir: [number, number] | null = null
+      let bestEnemyCount = 0
+      for (const [dr, dc] of dirs) {
+        const perpDr = dc
+        const perpDc = dr
+        let count = 0
         for (let i = 1; i <= sweepLen; i++) {
-          cells.push({ row: char.row + dr * i, col: char.col + dc * i })
-          // 宽度方向
-          if (sweepWid > 1) {
-            cells.push({ row: char.row + dr * i + dc, col: char.col + dc * i + dr })
+          for (let w = 0; w < sweepWid; w++) {
+            const r = char.row + dr * i + perpDr * w
+            const c = char.col + dc * i + perpDc * w
+            if (r < 0 || r >= state.mapHeight || c < 0 || c >= state.mapWidth) continue
+            if (manhattan(char, { row: r, col: c } as SimChar) > range) continue
+            if (enemies.some(e => !e.dead && e.row === r && e.col === c)) count++
           }
         }
-        return cells
+        if (count > bestEnemyCount) {
+          bestEnemyCount = count
+          bestDir = [dr, dc]
+        }
       }
+      if (!bestDir) return []
+      const [dr, dc] = bestDir
+      const cells: { row: number; col: number }[] = []
+      const perpDr = dc
+      const perpDc = dr
+      for (let i = 1; i <= sweepLen; i++) {
+        for (let w = 0; w < sweepWid; w++) {
+          cells.push({ row: char.row + dr * i + perpDr * w, col: char.col + dc * i + perpDc * w })
+        }
+      }
+      return cells.filter(c => c.row >= 0 && c.row < state.mapHeight && c.col >= 0 && c.col < state.mapWidth)
     }
 
     // 指定单体：找射程内最近的敌人
@@ -570,7 +645,6 @@ export function getSkillTargetCells(
     if (nearest.length > 0) {
       return [{ row: nearest[0].row, col: nearest[0].col }]
     }
-    // 射程内没敌人 → 返回空（说明技能放不了）
     return []
   }
 
@@ -639,7 +713,7 @@ function applyStatusEffect(
   events.push({ type: 'status', targetId: target.id, statusType, duration: dur })
 }
 
-/** 执行技能效果（返回 true 表示成功释放） */
+/** 执行技能效果（返回目标格子数组，null 表示释放失败） */
 export function castSkillEffect(
   char: SimChar,
   skill: Skill,
@@ -647,7 +721,7 @@ export function castSkillEffect(
   events: SimBattleEvent[],
   targetRow?: number,
   targetCol?: number
-): boolean {
+): { row: number; col: number }[] | null {
   // 决定目标位置
   let targetCells: { row: number; col: number }[]
   if (targetRow !== undefined && targetCol !== undefined) {
@@ -655,7 +729,7 @@ export function castSkillEffect(
   } else {
     targetCells = getSkillTargetCells(char, skill, state)
   }
-  if (targetCells.length === 0) return false
+  if (targetCells.length === 0) return null
 
   // === 扣除 MP ===
   char.mp = Math.max(0, char.mp - skill.mpCost)
@@ -670,7 +744,10 @@ export function castSkillEffect(
 
   // === 自 buff ===
   if (skill.selfHealPct) {
-    char.hp = Math.min(char.maxHp, char.hp + char.maxHp * skill.selfHealPct)
+    const selfHeal = Math.floor(char.maxHp * skill.selfHealPct)
+    const actualSelfHeal = Math.min(char.maxHp - char.hp, selfHeal)
+    char.hp = Math.min(char.maxHp, char.hp + selfHeal)
+    char.totalHeal += actualSelfHeal  // 统计：自疗也算治疗量
   }
   if (skill.selfMpHealPct) {
     char.mp = Math.min(char.maxMp, char.mp + char.maxMp * skill.selfMpHealPct)
@@ -698,8 +775,10 @@ export function castSkillEffect(
           ? char.maxHp * skill.selfHealMaxHpPct
           : skill.power + char.attack * 0.3
         const healAmount = Math.floor(baseHeal)
+        const actualHeal = Math.min(t.maxHp - t.hp, healAmount)
         t.hp = Math.min(t.maxHp, t.hp + healAmount)
-        events.push({ type: 'attack', attackerId: char.id, targetId: t.id, damage: -healAmount })
+        char.totalHeal += actualHeal  // 统计：施法者的治疗量
+        events.push({ type: 'attack', attackerId: char.id, targetId: t.id, damage: -healAmount, skillId: skill.id })
       }
     } else if (skill.type === 'attack' || skill.category === 'aoe' || skill.category === '直线' || skill.category === '横扫') {
       // 攻击：对敌方生效
@@ -710,12 +789,15 @@ export function castSkillEffect(
       for (const t of attackTargets) {
         const dmg = computeSkillDamage(char, t, skill)
         t.hp -= dmg
-        events.push({ type: 'attack', attackerId: char.id, targetId: t.id, damage: dmg })
+        char.totalDamage += dmg  // 统计：施法者造成的伤害
+        events.push({ type: 'attack', attackerId: char.id, targetId: t.id, damage: dmg, skillId: skill.id })
 
         // 吸血
         if (skill.lifesteal) {
           const healed = Math.floor(dmg * skill.lifesteal)
+          const actualHealed = Math.min(char.maxHp - char.hp, healed)
           char.hp = Math.min(char.maxHp, char.hp + healed)
+          char.totalHeal += actualHealed  // 统计：吸血也算治疗量
         }
 
         // 状态施加
@@ -770,7 +852,43 @@ export function castSkillEffect(
     // 留个占位
   }
 
-  return true
+  // === 范围技能清除障碍物 ===
+  // 直线/AOE/横扫技能覆盖范围内的障碍物被摧毁
+  if (skill.category === 'aoe' || skill.category === '直线' || skill.category === '横扫') {
+    const cleared = new Set<string>()
+    const destroyCell = (r: number, c: number) => {
+      if (r < 0 || r >= state.mapHeight || c < 0 || c >= state.mapWidth) return
+      const key = `${r}_${c}`
+      if (cleared.has(key)) return
+      if (state.terrain[r][c] === 'obstacle') {
+        state.terrain[r][c] = 'empty'
+        cleared.add(key)
+        events.push({ type: 'terrain_change', row: r, col: c, terrain: 'empty' })
+      }
+    }
+
+    if (skill.category === 'aoe' && targetCells.length > 0) {
+      // AOE：以每个目标格为中心展开 areaRange
+      const aoeRange = skill.areaRange ?? 1
+      for (const tc of targetCells) {
+        for (let dr = -aoeRange; dr <= aoeRange; dr++) {
+          for (let dc = -aoeRange; dc <= aoeRange; dc++) {
+            const inRange = (skill.rangeType === 'square')
+              ? Math.abs(dr) <= aoeRange && Math.abs(dc) <= aoeRange
+              : Math.abs(dr) + Math.abs(dc) <= aoeRange
+            if (inRange) destroyCell(tc.row + dr, tc.col + dc)
+          }
+        }
+      }
+    } else {
+      // 直线/横扫：targetCells 已包含完整范围格子
+      for (const tc of targetCells) {
+        destroyCell(tc.row, tc.col)
+      }
+    }
+  }
+
+  return targetCells
 }
 
 /** 尝试自动释放技能（返回 true 表示成功释放） */
@@ -783,14 +901,17 @@ export function tryAutoSkill(
   const skill = pickBestSkill(char, state, now)
   if (!skill) return false
 
-  const ok = castSkillEffect(char, skill, state, events)
-  if (ok) {
+  const cells = castSkillEffect(char, skill, state, events)
+  if (cells) {
     // 记录冷却时间戳
     if (!char.skillLastUsedTime) char.skillLastUsedTime = {}
     char.skillLastUsedTime[skill.id] = now
-    events.push({ type: 'skill', casterId: char.id, skillId: skill.id, targetIds: [] })
+    // 记录全局技能释放时间戳（用于技能间间隔）
+    char.lastSkillCastTime = now
+    events.push({ type: 'skill', casterId: char.id, skillId: skill.id, targetIds: [], targetCells: cells })
+    return true
   }
-  return ok
+  return false
 }
 
 // ============================================================
@@ -938,6 +1059,43 @@ function applyStatusModifiers(char: SimChar): { moveSpeed: number; attackSpeed: 
 // 角色行为 tick（核心三段式）
 // ============================================================
 
+/** 执行角色的逐格移动（按 moveSpeed 累积 dt） */
+function executeCharMove(
+  char: SimChar,
+  state: SimBattleState,
+  dtSec: number,
+  effMoveSpeed: number,
+  blockedCells: Set<string>
+): void {
+  if (!char.path || char.path.length === 0) return
+  char.moveAccumulator += effMoveSpeed * dtSec
+
+  // 累积够 ≥ 1 格就走一步
+  while (char.moveAccumulator >= 1 && char.path.length > 0) {
+    const nextStep = char.path[0]
+    const k = key(nextStep.row, nextStep.col)
+
+    // 检查是否被占用（角色实体 + 预定槽）
+    const entityBlocked = blockedCells.has(k)
+    const reserved = state.cellReservations.has(k)
+
+    if (entityBlocked || reserved) {
+      // 被堵了 → 停止移动，等下一个 tick 重算
+      char.stuckCounter++
+      char.moveAccumulator = 0 // 清掉累积，避免一解除就飞 2 格
+      break
+    }
+
+    // 预定 + 移动
+    state.cellReservations.add(k)
+    char.row = nextStep.row
+    char.col = nextStep.col
+    char.path.shift()
+    char.moveAccumulator -= 1
+    char.stuckCounter = 0
+  }
+}
+
 /** 每个 tick 内对单个角色执行的完整行为逻辑 */
 function tickCharacter(
   char: SimChar,
@@ -990,8 +1148,11 @@ function tickCharacter(
 
   if (attackTarget) {
     const interval = 1000 / Math.max(0.1, effAttackSpeed)
-    if (now - char.lastAttackTime >= interval) {
+    // 普攻需同时满足：攻速间隔到了 + 距上次技能释放已过 ATTACK_SKILL_GAP_MS
+    let attacked = false
+    if (now - char.lastAttackTime >= interval && now - char.lastSkillCastTime >= ATTACK_SKILL_GAP_MS) {
       // 执行普攻
+      attacked = true
       char.lastAttackTime = now
       const damage = computeAutoDamage(char, attackTarget)
       attackTarget.hp -= damage
@@ -1004,9 +1165,9 @@ function tickCharacter(
         events.push({ type: 'death', charId: attackTarget.id })
       }
     }
-    // 缠斗类型：攻击后不 return，继续走移动段（边打边走）
-    // 远攻/狙击：攻击后停住
-    if (char.aiType !== 'skirmisher') {
+    // 缠斗类型：攻击后不 return，继续走技能/移动段（边打边走）
+    // 远攻/狙击：只有实际普攻后才停住；若本次未普攻（间隔未到），继续尝试放技能
+    if (attacked && char.aiType !== 'skirmisher') {
       return
     }
   }
@@ -1021,6 +1182,44 @@ function tickCharacter(
   }
 
   // ======== ③ 移动判定 ========
+  // 镇守模式：原地不动，只靠 ①普攻 / ②技能 作战
+  if (char.holdPosition) return
+
+  // 玩家指定了移动目的地 → 朝该点移动（移动中仍可普攻/放技能）
+  if (char.moveTarget) {
+    const goal = char.moveTarget
+    // 到达目的地 → 清除指令，回归自动 AI
+    if (char.row === goal.row && char.col === goal.col) {
+      char.moveTarget = null
+      char.path = []
+      return
+    }
+    const needNewPath =
+      !char.path ||
+      char.path.length === 0 ||
+      char.stuckCounter >= 5 ||
+      (char.path.length > 0 &&
+        (char.path[char.path.length - 1].row !== goal.row || char.path[char.path.length - 1].col !== goal.col))
+
+    if (needNewPath) {
+      const blockedForPath = new Set(blockedCells)
+      blockedForPath.delete(key(goal.row, goal.col))
+      char.path = bfsPath(
+        { row: char.row, col: char.col },
+        goal,
+        state.terrain,
+        blockedForPath,
+        state.mapHeight,
+        state.mapWidth
+      ) ?? []
+      char.stuckCounter = 0
+    }
+    // 执行移动（复用下方的移动执行逻辑）
+    executeCharMove(char, state, dtSec, effMoveSpeed, blockedCells)
+    return
+  }
+
+  // ======== 自动 AI 移动：追击敌人 ========
   // 找目标（优先用已有 target，过期了再重选）
   let target: SimChar | null = null
   if (char.targetCharacterId) {
@@ -1082,39 +1281,7 @@ function tickCharacter(
   }
 
   // 执行移动：按 moveSpeed 累积
-  if (char.path && char.path.length > 0) {
-    char.moveAccumulator += effMoveSpeed * dtSec
-
-    // 累积够 ≥ 1 格就走一步
-    while (char.moveAccumulator >= 1 && char.path.length > 0) {
-      const nextStep = char.path[0]
-      const k = key(nextStep.row, nextStep.col)
-
-      // 检查是否被占用（角色实体 + 预定槽）
-      const entityBlocked = blockedCells.has(k)
-      const reserved = state.cellReservations.has(k)
-
-      if (entityBlocked || reserved) {
-        // 被堵了 → 停止移动，等下一个 tick 重算
-        char.stuckCounter++
-        char.moveAccumulator = 0 // 清掉累积，避免一解除就飞 2 格
-        break
-      }
-
-      // 预定 + 移动
-      state.cellReservations.add(k)
-      const fromRow = char.row
-      const fromCol = char.col
-      char.row = nextStep.row
-      char.col = nextStep.col
-      char.path.shift()
-      char.moveAccumulator -= 1
-      char.stuckCounter = 0
-
-      // 用户明确说移动数据不需要记录，不再 push move 事件
-      // events.push({ type: 'move', ... })
-    }
-  }
+  executeCharMove(char, state, dtSec, effMoveSpeed, blockedCells)
 
   // ======== ④ 原地发呆 ========
   // 没路径、卡住阈值到、没敌人都处理过了，什么都不做
@@ -1191,11 +1358,12 @@ export class BattleManager {
       paused: false,
       speedMultiplier: 1,
       battleStartTime: Date.now(),
+      battleElapsedMs: 0,
       battleEnded: false,
       events: [],
       cellReservations: new Set(),
       destroyedCharacters: [],
-      weatherLastTickTime: Date.now(),
+      weatherLastTickTime: 0,  // 使用 battleElapsedMs 时间轴
     }
   }
 
@@ -1232,13 +1400,16 @@ export class BattleManager {
       job: bc.job,
       faction: bc.faction,
       aiType,
-      skills: (bc as unknown as { skills?: Skill[] }).skills ?? [],
+      skills: bc.skills ? [...bc.skills] : [],
       statuses: bc.statuses || [],
-      lastAttackTime: 0,
+      lastAttackTime: -100000,       // 初始为负，确保战斗开始时首次普攻不被间隔拦
+      lastSkillCastTime: -100000,    // 初始为负，确保首次技能不被技能间隔拦
       path: [],
+      moveTarget: null,
+      holdPosition: false,
       stuckCounter: 0,
       moveAccumulator: 0,
-      lastStatusTickTime: Date.now(),
+      lastStatusTickTime: 0,
       statusAccumulators: {},
       dead: false,
       totalDamage: 0,
@@ -1342,7 +1513,7 @@ export class BattleManager {
     const skill = char.skills.find(s => s.id === skillId)
     if (!skill) return false
 
-    const now = Date.now()
+    const now = this.state.battleElapsedMs
     if (!canCastSkill(char, skill, now)) return false
 
     // 检查技能范围（如果指定了目标格）
@@ -1351,15 +1522,18 @@ export class BattleManager {
       if (manhattan(char, { row: targetRow, col: targetCol }) > range) return false
     }
 
-    const ok = castSkillEffect(char, skill, this.state, this.state.events, targetRow, targetCol)
-    if (ok) {
+    const cells = castSkillEffect(char, skill, this.state, this.state.events, targetRow, targetCol)
+    if (cells) {
       if (!char.skillLastUsedTime) char.skillLastUsedTime = {}
       char.skillLastUsedTime[skillId] = now
+      // 记录全局技能释放时间戳（用于技能间间隔）
+      char.lastSkillCastTime = now
       this.state.events.push({
         type: 'skill',
         casterId: charId,
         skillId,
         targetIds: targetRow !== undefined ? [`${targetRow},${targetCol}`] : [],
+        targetCells: cells,
       })
       // 立即检查战斗结束
       this.checkBattleEnd()
@@ -1376,13 +1550,52 @@ export class BattleManager {
     if (!skill) return -1
     const lastUsed = char.skillLastUsedTime?.[skillId] ?? 0
     const cdMs = (skill.frequency ?? 6) * 1000
-    return Math.max(0, (lastUsed + cdMs) - Date.now())
+    return Math.max(0, (lastUsed + cdMs) - this.state.battleElapsedMs)
   }
 
   /** 角色是否是己方玩家角色（暂停指挥时 UI 用来判断） */
   isPlayerChar(charId: string): boolean {
     const char = this.state.chars.find(c => c.id === charId)
     return !!char?.isPlayer && !char.dead
+  }
+
+  /** 设置玩家角色的手动移动目的地（角色会朝该点移动，途中仍可普攻/放技能） */
+  setMoveTarget(charId: string, row: number, col: number): boolean {
+    const char = this.state.chars.find(c => c.id === charId)
+    if (!char || !char.isPlayer || char.dead) return false
+    char.moveTarget = { row, col }
+    char.holdPosition = false       // 指定移动目标时自动退出镇守
+    char.path = []                  // 作废旧路径，下 tick 重算
+    char.stuckCounter = 0
+    return true
+  }
+
+  /** 切换镇守模式：镇守时角色原地不动，只普攻/放技能 */
+  setHoldPosition(charId: string, hold: boolean): boolean {
+    const char = this.state.chars.find(c => c.id === charId)
+    if (!char || !char.isPlayer || char.dead) return false
+    char.holdPosition = hold
+    if (hold) {
+      char.moveTarget = null
+      char.path = []
+    }
+    return true
+  }
+
+  /** 清除手动移动指令，回归自动 AI（追击敌人） */
+  clearMoveCommand(charId: string): boolean {
+    const char = this.state.chars.find(c => c.id === charId)
+    if (!char || !char.isPlayer || char.dead) return false
+    char.moveTarget = null
+    char.holdPosition = false
+    char.path = []
+    return true
+  }
+
+  /** 查询角色是否处于镇守模式 */
+  isHoldingPosition(charId: string): boolean {
+    const char = this.state.chars.find(c => c.id === charId)
+    return !!char?.holdPosition
   }
 
   // ========== 核心 tick ==========
@@ -1394,11 +1607,16 @@ export class BattleManager {
       return
     }
 
-    const now = Date.now()
-    // 实际 dt = 基础 tick(50ms) × speedMultiplier
-    const dtMs = (now - this.lastTickTime) * this.state.speedMultiplier
-    this.lastTickTime = now
+    const realNow = Date.now()
+    // 实际 dt = 真实帧间隔 × speedMultiplier
+    const dtMs = (realNow - this.lastTickTime) * this.state.speedMultiplier
+    this.lastTickTime = realNow
     this.tickCount++
+
+    // 统一战斗时间轴：累加缩放后的 dt（暂停时上方已 return，不会累加）
+    this.state.battleElapsedMs += dtMs
+    // 所有游戏逻辑（冷却/间隔/天气）统一使用战斗时间轴，避免暂停或加速导致时序错乱
+    const now = this.state.battleElapsedMs
 
     // 清空上一轮的预定槽
     this.state.cellReservations.clear()
@@ -1413,15 +1631,16 @@ export class BattleManager {
     for (const char of this.state.chars) {
       if (char.dead) continue
 
-      // 雪区减速：角色在 snowAreas 里时 moveSpeed × 0.7（减速 30%）
+      // 雪区大幅减速：角色在 snowAreas 里时 moveSpeed × 0.3（减速 70%）
       const origMoveSpeed = char.moveSpeed
       if (this.isInArea(snowAreas, char.row, char.col)) {
-        char.moveSpeed = origMoveSpeed * 0.7
+        char.moveSpeed = origMoveSpeed * 0.3
       }
 
-      // 雾区减射程：角色在 fogAreas 里时 attackRange - 2（最低 1）
+      // 雾区减速 + 减射程：角色在 fogAreas 里时 moveSpeed × 0.5（减速 50%）且 attackRange - 2
       const origAtkRange = char.attackRange
       if (this.isInArea(fogAreas, char.row, char.col)) {
+        char.moveSpeed = char.moveSpeed * 0.5
         char.attackRange = Math.max(1, origAtkRange - 2)
       }
 

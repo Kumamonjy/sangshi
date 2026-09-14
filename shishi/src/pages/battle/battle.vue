@@ -213,26 +213,26 @@
             <!-- 基础光晕（所有特效都渲染） -->
             <view class="effect-base" :style="{ backgroundColor: effect.color }"></view>
             
-            <!-- 以下层在 isMinimal 时全部跳过，仅保留 effect-base 一层 -->
+            <!-- 粒子特效：所有格子都至少有1个粒子（isMinimal 也保留） -->
+            <view 
+              v-for="(particle, idx) in effect.particles" 
+              :key="idx"
+              class="effect-particle"
+              :style="{
+                '--particle-x': particle.x + 'rpx',
+                '--particle-y': particle.y + 'rpx',
+                '--particle-delay': particle.delay + 's',
+                '--particle-color': effect.color
+              }"
+            ></view>
+            
+            <!-- 以下层在 isMinimal 时全部跳过，仅保留 effect-base + 粒子 -->
             <template v-if="!effect.isMinimal">
               <!-- 属性专属核心特效 -->
               <view class="effect-core" :class="`core-${effect.attribute}`"></view>
               
               <!-- 属性专属图标（仅非AOE/陷阵类显示以减少DOM） -->
               <text v-if="effect.category !== 'aoe' && effect.category !== '陷阵' && effect.category !== '轰炸'" class="effect-icon" :class="`icon-${effect.attribute}`">{{ getAttributeIcon(effect.attribute) }}</text>
-              
-              <!-- 粒子特效 -->
-              <view 
-                v-for="(particle, idx) in effect.particles" 
-                :key="idx"
-                class="effect-particle"
-                :style="{
-                  '--particle-x': particle.x + 'rpx',
-                  '--particle-y': particle.y + 'rpx',
-                  '--particle-delay': particle.delay + 's',
-                  '--particle-color': effect.color
-                }"
-              ></view>
               
               <!-- 技能类型光环（AOE 类由 effect-aoe-ring 承担，跳过以减少DOM） -->
               <view v-if="effect.category !== 'aoe'" class="effect-ring" :class="`ring-${effect.skillType}`" :style="{ borderColor: effect.color }"></view>
@@ -541,31 +541,22 @@
         <view class="action-buttons">
           <view 
             class="action-btn move"
-            :class="{ disabled: true }"
             @click="showMoveRange"
           >
             <text>移动</text>
           </view>
           <view
-            class="action-btn attack"
-            :class="{ disabled: true }"
-            @click="showAttackRange"
+            class="action-btn hold"
+            :class="{ active: isHolding }"
+            @click="toggleHold"
           >
-            <text>攻击</text>
+            <text>{{ isHolding ? '镇守中' : '镇守' }}</text>
           </view>
           <view
             class="action-btn skill"
-            :class="{ disabled: true }"
             @click="showSkillPanel"
           >
             <text>技能</text>
-          </view>
-          <view 
-            class="action-btn defend"
-            :class="{ disabled: true }"
-            @click="defend"
-          >
-            <text>防御</text>
           </view>
           <view 
             class="action-btn cancel"
@@ -592,22 +583,6 @@
           </view>
         </view>
         
-        <!-- 攻击确认面板 -->
-        <view 
-          v-if="currentAction === 'attack' && selectedCharacter"
-          class="multi-target-panel"
-        >
-          <text class="multi-target-info">
-            {{ selectedTargets.length > 0 ? `已选目标 1/1` : '点击范围内的目标进行攻击' }}
-          </text>
-          <view 
-            class="action-btn"
-            :class="['confirm-cast', { disabled: selectedTargets.length === 0 }]"
-            @click="confirmAttack"
-          >
-            <text>确认攻击</text>
-          </view>
-        </view>
       </view>
       
       <view v-else-if="selectedCharacter && !selectedCharacter.isPlayer" class="enemy-info">
@@ -1086,7 +1061,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, nextTick, onMounted, onUnmounted } from 'vue'
+import { ref, computed, watch, nextTick } from 'vue'
 import { useGameStore } from '../../stores/gameStore'
 import { HIREABLE_CHARACTERS, INITIAL_CHARACTERS, getEquipmentStats, getAvatarPath, colorizeBattleLogText, STATUS_CONFIG, getSkillTags, ATTRIBUTE_CONFIG, JOB_CONFIG, SKILL_TEMPLATES } from '../../utils/gameData'
 import type { BattleCharacter, Skill } from '../../utils/gameData'
@@ -1271,19 +1246,9 @@ const weatherText = computed(() => {
   }
 })
 
-/** 实时战斗时长（mm:ss） */
-const battleNow = ref(Date.now())
-let battleTimeTimer: ReturnType<typeof setInterval> | null = null
-onMounted(() => {
-  battleTimeTimer = setInterval(() => { battleNow.value = Date.now() }, 1000)
-})
-onUnmounted(() => {
-  if (battleTimeTimer) { clearInterval(battleTimeTimer); battleTimeTimer = null }
-})
+/** 实时战斗时长（mm:ss）—— 使用统一战斗时间轴（随速度倍率缩放，暂停时停止） */
 const formatBattleTime = computed(() => {
-  const map = gameStore.battleMap
-  if (!map || !map.battleStartTime) return '00:00'
-  const elapsed = Math.floor((battleNow.value - map.battleStartTime) / 1000)
+  const elapsed = Math.floor(gameStore.battleElapsedMs / 1000)
   const m = Math.floor(elapsed / 60).toString().padStart(2, '0')
   const s = (elapsed % 60).toString().padStart(2, '0')
   return `${m}:${s}`
@@ -2188,6 +2153,8 @@ function showBuildingStatPanel(building: any) {
 
 function showMoveRange() {
   if (!selectedCharacter.value || selectedCharacter.value.statuses?.some(s => s.type === 'imprison')) return
+  // 进入移动模式时清除镇守，由玩家指定目的地
+  gameStore.setCharacterHoldPosition(selectedCharacter.value.id, false)
   moveRange.value = gameStore.getCharacterMoveRange(selectedCharacter.value)
   currentAction.value = 'move'
   attackRange.value = []
@@ -2725,12 +2692,18 @@ function getSkillAttackTargets(char: BattleCharacter, skill: Skill): (BattleChar
   return targets
 }
 
-function defend() {
-  // @deprecated 实时战斗废弃防御姿态
-  return
+/** 角色是否处于镇守模式 */
+const isHolding = computed(() => {
+  if (!selectedCharacter.value) return false
+  return gameStore.isCharacterHolding(selectedCharacter.value.id)
+})
+
+/** 切换镇守模式：原地不动，只普攻/放技能 */
+function toggleHold() {
   if (!selectedCharacter.value) return
-  // gameStore.defend(selectedCharacter.value.id)
-  cancelSelection()
+  const charId = selectedCharacter.value.id
+  const next = !gameStore.isCharacterHolding(charId)
+  gameStore.setCharacterHoldPosition(charId, next)
 }
 
 function cancelSelection() {
@@ -4649,11 +4622,16 @@ function collectCollectible() {
     }
   }
   
-  &.attack {
-    background: rgba(239, 68, 68, 0.3);
+  &.hold {
+    background: rgba(245, 158, 11, 0.3);
     
     &:active:not(.disabled) {
-      background: rgba(239, 68, 68, 0.5);
+      background: rgba(245, 158, 11, 0.5);
+    }
+    
+    &.active {
+      background: rgba(245, 158, 11, 0.7);
+      box-shadow: 0 0 12rpx rgba(245, 158, 11, 0.8);
     }
   }
   
@@ -4662,14 +4640,6 @@ function collectCollectible() {
     
     &:active:not(.disabled) {
       background: rgba(168, 85, 247, 0.5);
-    }
-  }
-  
-  &.defend {
-    background: rgba(245, 158, 11, 0.3);
-    
-    &:active:not(.disabled) {
-      background: rgba(245, 158, 11, 0.5);
     }
   }
   

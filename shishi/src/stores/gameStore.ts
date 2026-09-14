@@ -1,7 +1,7 @@
-﻿﻿﻿﻿﻿import { defineStore } from 'pinia'
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import type { Player, Character, Item, HomeGridCell, BattleMap, BattleCharacter, BattleTile, TerrainType, WeatherType, SnowArea, FireArea, FogArea, StatusType, Attribute, Skill } from '../utils/gameData'
-import { INITIAL_CHARACTERS, HIREABLE_CHARACTERS, FACTION_CONFIG, JOB_CONFIG, createInitialHomeGrid, createCharacterFromTemplate, EQUIPMENT_TEMPLATES, CONSUMABLE_TEMPLATES, BATTLE_CONFIG, TERRAIN_PROBABILITIES, TERRAIN_CONFIG, getExpRequired, getEquipmentStats, getEquipmentUpgradeCost, openChest, DIFFICULTY_CONFIG, SKILL_TEMPLATES, getAvatarPath, getRandomRarity, CHARACTER_SKILLS, buildSkillsForCharacterId, buildFullSkillsForCharacter, STATUS_CONFIG, NEGATIVE_STATUSES, POSITIVE_STATUSES, RARITY_CONFIG, ATTRIBUTE_CONFIG, calculateCharacterStats, calculateSetBonus, CHEST_CONFIG, createChestItem, isChestItem, getChestConfigByName, processEquipmentEffects, createSoulItem, getCharacterBaseTemplate } from '../utils/gameData'
+import { INITIAL_CHARACTERS, HIREABLE_CHARACTERS, FACTION_CONFIG, JOB_CONFIG, createInitialHomeGrid, createCharacterFromTemplate, EQUIPMENT_TEMPLATES, CONSUMABLE_TEMPLATES, BATTLE_CONFIG, TERRAIN_PROBABILITIES, TERRAIN_CONFIG, getExpRequired, getEquipmentStats, getEquipmentUpgradeCost, openChest, DIFFICULTY_CONFIG, SKILL_TEMPLATES, getAvatarPath, getRandomRarity, CHARACTER_SKILLS, buildSkillsForCharacterId, buildFullSkillsForCharacter, STATUS_CONFIG, NEGATIVE_STATUSES, POSITIVE_STATUSES, RARITY_CONFIG, ATTRIBUTE_CONFIG, calculateCharacterStats, calculateSetBonus, CHEST_CONFIG, createChestItem, isChestItem, getChestConfigByName, processEquipmentEffects, createSoulItem, getCharacterBaseTemplate, getCharacterGrowth, getCharacterStatsAtLevel } from '../utils/gameData'
 import { saveGameToExternalStorage, loadGameFromExternalStorage, getExternalStoragePath } from '../utils/storageUtils'
 import { BattleManager } from '../utils/realTimeBattle'
 import type { SimBattleEvent, SimBattleState } from '../utils/realTimeBattle'
@@ -11,6 +11,7 @@ export const useGameStore = defineStore('game', () => {
   const currentCharacter = ref<Character | null>(null)
   const battleMap = ref<BattleMap | null>(null)
   const isInBattle = ref(false)
+  const battleElapsedMs = ref(0)  // 统一战斗时间轴：累积的缩放后战斗时长（ms）
   const isLoading = ref(false)
   const battleLog = ref<string[]>([])
   const gameSpeed = ref(1)
@@ -216,7 +217,14 @@ function trimSkillEffects() {
     const color = ATTRIBUTE_CONFIG[attribute]?.color || ATTRIBUTE_CONFIG.normal.color
     const effectId = `skill_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
     
-    const particles = generateParticles(attribute, skillType)
+    // 简化：单体技能最多3个粒子，load高时减少
+    const load = effectLoadLevel()
+    const particleCount = load === 2 ? 0 : (load === 1 ? 1 : 3)
+    const particles: { x: number; y: number; delay: number }[] = []
+    for (let i = 0; i < particleCount; i++) {
+      const angle = (i / Math.max(particleCount, 1)) * Math.PI * 2
+      particles.push({ x: Math.cos(angle) * 30, y: Math.sin(angle) * 30, delay: 0 })
+    }
 
     trimSkillEffects()
     skillEffects.value.push({
@@ -285,81 +293,65 @@ function trimSkillEffects() {
     category?: 'aoe' | '轰炸' | '陷阵'
   ) {
     if (!battleMap.value) return
-    
+
     // AOE技能触发前强制清理过期特效
     cleanupExpiredEffects()
-    
+
     const timestamp = Date.now()
     const isLargeAOE = areaRange >= 3
-    const isMediumAOE = areaRange >= 2
     const load = effectLoadLevel()
     const color = ATTRIBUTE_CONFIG[attribute]?.color || ATTRIBUTE_CONFIG.normal.color
-    const isBombing = category === '轰炸'
-    const isXianZhen = category === '陷阵'
+
+    // 生成简单粒子：每个格子1个（中心格2个），load=2 时无粒子
+    const genParticles = (count: number) => {
+      if (load === 2) return []
+      const n = load === 1 ? Math.min(count, 1) : count
+      const ps: { x: number; y: number; delay: number }[] = []
+      for (let i = 0; i < n; i++) {
+        const angle = (i / Math.max(n, 1)) * Math.PI * 2
+        ps.push({ x: Math.cos(angle) * 25, y: Math.sin(angle) * 25, delay: 0 })
+      }
+      return ps
+    }
 
     const batch: typeof skillEffects.value = []
     const addedPositions = new Set<string>()
 
-    const addEffect = (r: number, c: number, opts: { isCenter?: boolean; isMinimal?: boolean; particles?: { x: number; y: number; delay: number }[] }) => {
-      if (r < 0 || r >= battleMap.value!.height || c < 0 || c >= battleMap.value!.width) return
-      const key = `${r}_${c}`
-      if (addedPositions.has(key)) return
-      addedPositions.add(key)
+    // 遍历 AOE 范围内所有格子，每个格子都必须有特效+粒子
+    for (let dr = -areaRange; dr <= areaRange; dr++) {
+      for (let dc = -areaRange; dc <= areaRange; dc++) {
+        const r = centerRow + dr
+        const c = centerCol + dc
+        if (r < 0 || r >= battleMap.value.height || c < 0 || c >= battleMap.value.width) continue
+        const isValid = rangeType === 'diamond'
+          ? Math.abs(dr) + Math.abs(dc) <= areaRange
+          : Math.abs(dr) <= areaRange && Math.abs(dc) <= areaRange
+        if (!isValid) continue
 
-      const effectId = `skill_${timestamp}_${Math.random().toString(36).substr(2, 9)}`
-      const finalParticles = opts.isMinimal ? [] : (opts.particles || [])
+        const key = `${r}_${c}`
+        if (addedPositions.has(key)) continue
+        addedPositions.add(key)
 
-      batch.push({
-        id: effectId,
-        row: r,
-        col: c,
-        color,
-        size: (isBombing || isXianZhen) ? 'small' : 'medium',
-        timestamp,
-        attribute,
-        skillType,
-        particles: finalParticles,
-        category,
-        fromRow: centerRow,
-        fromCol: centerCol,
-        isCenter: !!opts.isCenter,
-        shockwaveScale: isLargeAOE ? 'large' : 'normal',
-        isMinimal: !!opts.isMinimal
-      })
-    }
+        const isCenter = r === centerRow && c === centerCol
+        const effectId = `skill_${timestamp}_${Math.random().toString(36).substr(2, 9)}`
 
-    // 中心格：完整特效
-    addEffect(centerRow, centerCol, {
-      isCenter: true,
-      isMinimal: false,
-      particles: generateParticles(attribute, skillType, true, areaRange)
-    })
-
-    if (isLargeAOE || isMediumAOE) {
-      // �?大范�?AOE：仅渲染中心 + 4 个方向格（共 5 格），其余全部跳�?
-    // 非中心格设为 isMinimal，模板中只渲染一�?effect-base
-      const dirs = [[-1, 0], [1, 0], [0, -1], [0, 1]]
-      for (const [dr, dc] of dirs) {
-        addEffect(centerRow + dr, centerCol + dc, { isMinimal: true })
-      }
-    } else {
-      // 小范�?AOE (areaRange=1)：保持原逻辑，但跳过非中心格粒子
-      for (let dr = -areaRange; dr <= areaRange; dr++) {
-        for (let dc = -areaRange; dc <= areaRange; dc++) {
-          const r = centerRow + dr
-          const c = centerCol + dc
-          if (r < 0 || r >= battleMap.value.height || c < 0 || c >= battleMap.value.width) continue
-          const isValid = rangeType === 'diamond'
-            ? Math.abs(dr) + Math.abs(dc) <= areaRange
-            : Math.abs(dr) <= areaRange && Math.abs(dc) <= areaRange
-          if (!isValid) continue
-          const isCenter = r === centerRow && c === centerCol
-          if (isCenter) continue
-          addEffect(r, c, {
-            isMinimal: false,
-            particles: generateParticles(attribute, skillType, true, areaRange)
-          })
-        }
+        batch.push({
+          id: effectId,
+          row: r,
+          col: c,
+          color,
+          size: isCenter ? 'medium' : 'small',
+          timestamp,
+          attribute,
+          skillType,
+          particles: genParticles(isCenter ? 2 : 1),  // 每个格子至少1个粒子
+          category,
+          fromRow: centerRow,
+          fromCol: centerCol,
+          isCenter,
+          shockwaveScale: isLargeAOE && isCenter ? 'large' : 'normal',
+          isMinimal: !isCenter  // 非中心格：只渲染 base + 粒子，跳过核心/光环/波纹
+        })
       }
     }
 
@@ -384,36 +376,43 @@ function trimSkillEffects() {
     fromCol?: number
   ) {
     if (!battleMap.value) return
-    
+
     // 横扫/直线技能触发前强制清理过期特效
     cleanupExpiredEffects()
-    
+
     const timestamp = Date.now()
+    const load = effectLoadLevel()
     const color = ATTRIBUTE_CONFIG[attribute]?.color || ATTRIBUTE_CONFIG.normal.color
     const batch: typeof skillEffects.value = []
-    
+
+    // 简化粒子：每个格子1个粒子，load=2 时无粒子
+    const genOneParticle = () => {
+      if (load === 2) return []
+      return [{ x: 0, y: 0, delay: 0 }]
+    }
+
     for (let i = 0; i < positions.length; i++) {
       const pos = positions[i]
       const effectId = `skill_${timestamp}_${Math.random().toString(36).substr(2, 9)}`
-      const particles = generateParticles(attribute, skillType)
-      
       batch.push({
         id: effectId,
         row: pos.row,
         col: pos.col,
         color,
-        size: 'medium',
+        size: 'small',
         timestamp,
         attribute,
         skillType,
-        particles,
+        particles: genOneParticle(),
         category,
         direction,
         fromRow,
-        fromCol
+        fromCol,
+        isMinimal: true  // 直线/横扫格子：只渲染 base + 粒子，跳过核心/光环
       })
     }
     if (batch.length > 0) {
+      trimSkillEffects()
       skillEffects.value = [...skillEffects.value, ...batch]
     }
     ensureEffectCleanupTimer()
@@ -2815,13 +2814,6 @@ function removeGatheringPoint(row: number, col: number) {
 
   async function saveGame() {
     if (player.value) {
-      // 保存前重置所有角色的技能冷却（因为战斗状态不需要保存）
-      player.value.characters.forEach(char => {
-        char.skills.forEach(skill => {
-          skill.frequency = 0
-        })
-      })
-      
       player.value.updatedAt = Date.now()
       
       // 创建简化的玩家数据用于保存
@@ -2920,13 +2912,6 @@ function removeGatheringPoint(row: number, col: number) {
 
   async function saveToSlot(slotId: number, name: string): Promise<boolean> {
     if (!player.value || slotId < 1 || slotId > 3) return false
-    
-    // 保存前重置所有角色的技能冷却（因为战斗状态不需要保存）
-    player.value.characters.forEach(char => {
-      char.skills.forEach(skill => {
-        skill.frequency = 0
-      })
-    })
     
     player.value.updatedAt = Date.now()
     
@@ -3217,7 +3202,8 @@ function removeGatheringPoint(row: number, col: number) {
     character.maxMp = Math.ceil(character.baseMaxMp * (1 + equipEffects.mpPercent / 100)) + equipEffects.mp
     character.attack = Math.ceil(character.baseAttack * (1 + equipEffects.attackPercent / 100)) + equipEffects.attack
     character.defense = Math.ceil(character.baseDefense * (1 + equipEffects.defensePercent / 100)) + equipEffects.defense
-    character.moveSpeed = character.baseMoveSpeed + equipEffects.moveSpeed
+    character.moveSpeed = character.baseMoveSpeed * (1 + equipEffects.moveSpeedPercent / 100) + equipEffects.moveSpeed
+    character.attackSpeed = character.baseAttackSpeed * (1 + equipEffects.attackSpeedPercent / 100) + equipEffects.attackSpeed
     character.attackRange = character.baseAttackRange + equipEffects.attackRange
 
     if (character.hp > character.maxHp) character.hp = character.maxHp
@@ -3246,24 +3232,19 @@ function removeGatheringPoint(row: number, col: number) {
       character.exp -= expRequired
       character.level++
       
-      // 新规则：每级提升 1级初始属性的 20%（固定增量）
-      // 从模板拿 1 级初始属性作为基准
+      // 每级提升：生命/法力 +10%，攻击/防御 +15%（以1级初始属性为基准）
       const tpl = getCharacterBaseTemplate(character.id)
       if (tpl) {
-        const growthHp = Math.ceil(tpl.baseMaxHp * 0.2)
-        const growthMp = Math.ceil(tpl.baseMaxMp * 0.2)
-        const growthAtk = Math.ceil(tpl.baseAttack * 0.2)
-        const growthDef = Math.ceil(tpl.baseDefense * 0.2)
+        const growth = getCharacterGrowth(tpl)
+        character.baseMaxHp += growth.hp
+        character.baseMaxMp += growth.mp
+        character.baseAttack += growth.attack
+        character.baseDefense += growth.defense
         
-        character.baseMaxHp += growthHp
-        character.baseMaxMp += growthMp
-        character.baseAttack += growthAtk
-        character.baseDefense += growthDef
+        character.hp += growth.hp
+        character.mp += growth.mp
         
-        character.hp += growthHp
-        character.mp += growthMp
-        
-        battleLog.value.push(`【${character.name}】升级到${character.level}级！生命+${growthHp} 法力+${growthMp} 攻击+${growthAtk} 防御+${growthDef}`)
+        battleLog.value.push(`【${character.name}】升级到${character.level}级！生命+${growth.hp} 法力+${growth.mp} 攻击+${growth.attack} 防御+${growth.defense}`)
       } else {
         battleLog.value.push(`【${character.name}】升级到${character.level}级！`)
       }
@@ -3453,6 +3434,8 @@ function removeGatheringPoint(row: number, col: number) {
 
   /** �?BattleManager 的事件队列转�?gameStore 的飘�?特效 */
   function handleSimBattleEvent(ev: SimBattleEvent, state: SimBattleState) {
+    // 战斗时间前缀：精确到小数点后一位，如 [1.1秒]
+    const t = () => `[${(state.battleElapsedMs / 1000).toFixed(1)}秒] `
     switch (ev.type) {
       case 'attack': {
         const attacker = state.chars.find(c => c.id === ev.attackerId)
@@ -3477,10 +3460,24 @@ function removeGatheringPoint(row: number, col: number) {
           return tpl?.name || c?.characterId || '??'
         }
         if (attacker) {
-          if (isHeal) {
-            battleLog.value.push(`【${getCharName(attacker)}】恢复【${getCharName(target)}】${absVal}点生命值`)
+          const attackerName = getCharName(attacker)
+          const targetName = getCharName(target)
+          // 技能 vs 普攻：技能需带技能名
+          const skillName = ev.skillId
+            ? (SKILL_TEMPLATES[ev.skillId]?.name || ev.skillId)
+            : null
+          if (skillName) {
+            if (isHeal) {
+              battleLog.value.push(`${t()}【${attackerName}】使用【${skillName}】为【${targetName}】恢复${absVal}点生命值`)
+            } else {
+              battleLog.value.push(`${t()}【${attackerName}】使用【${skillName}】对【${targetName}】造成${absVal}点伤害`)
+            }
           } else {
-            battleLog.value.push(`【${getCharName(attacker)}】对【${getCharName(target)}】造成${absVal}点伤害`)
+            if (isHeal) {
+              battleLog.value.push(`${t()}【${attackerName}】恢复【${targetName}】${absVal}点生命值`)
+            } else {
+              battleLog.value.push(`${t()}【${attackerName}】对【${targetName}】造成${absVal}点伤害`)
+            }
           }
         }
         break
@@ -3488,8 +3485,39 @@ function removeGatheringPoint(row: number, col: number) {
       case 'skill': {
         const caster = state.chars.find(c => c.id === ev.casterId)
         const attr = (caster?.job as Attribute) || 'normal'
-        // 简化：技能放了就在施法者位置画个蓄力特�?
-      if (caster) triggerChargeEffect(caster.row, caster.col, attr)
+        // 施法者位置画蓄力特效
+        if (caster) triggerChargeEffect(caster.row, caster.col, attr)
+
+        const skTpl = SKILL_TEMPLATES[ev.skillId]
+        const targetCells = ev.targetCells || []
+        const category = skTpl?.category as any
+        const areaRange = skTpl?.areaRange ?? 0
+        const skillType = (skTpl?.type || 'attack') as any
+
+        // 根据技能分类在目标位置触发对应特效
+        if (caster && targetCells.length > 0) {
+          if (category === 'aoe' || category === '轰炸' || category === '陷阵') {
+            // AOE/轰炸/陷阵：在目标格中心展开范围特效（每个格子都有粒子）
+            for (const tc of targetCells) {
+              triggerAOEEffects(tc.row, tc.col, Math.max(1, areaRange), attr, 'diamond', skillType, category)
+            }
+          } else if (category === '直线' || category === '横扫') {
+            // 直线/横扫：targetCells 已是完整范围格子，批量触发轻量特效
+            triggerAreaEffects(targetCells, attr, skillType, category, undefined, caster.row, caster.col)
+          } else {
+            // 指定目标/治疗/辅助等：目标格单点特效
+            for (const tc of targetCells) {
+              triggerSkillEffect(tc.row, tc.col, attr, 'medium', skillType, category, caster.row, caster.col)
+            }
+          }
+        }
+
+        // 纯辅助技能（无伤害/治疗事件）在此记录释放日志
+        if (caster && skTpl && (skTpl.type === 'support' || skTpl.category === 'summon')) {
+          const casterTpl = findCharacterTemplateInStore(caster.characterId)
+          const casterName = casterTpl?.name || caster.characterId
+          battleLog.value.push(`${t()}【${casterName}】使用了【${skTpl.name}】`)
+        }
         break
       }
       case 'status': {
@@ -3509,7 +3537,7 @@ function removeGatheringPoint(row: number, col: number) {
         triggerMapShake('heavy')
         // 文字日志
         const name = deadTpl?.name || dead.characterId
-        battleLog.value.push(`【${name}】被击败`)
+        battleLog.value.push(`${t()}【${name}】被击败`)
         break
       }
       case 'weather_damage': {
@@ -3528,7 +3556,7 @@ function removeGatheringPoint(row: number, col: number) {
           const weatherSource = curWeather === 'sky_fire' ? '天火' : '山火'
           const parts = [`${weatherSource}对【${victimName}】造成${ev.hpDamage}点伤害`]
           if (ev.mpDamage > 0) parts.push(`损失${ev.mpDamage}点法力`)
-          battleLog.value.push(parts.join('，'))
+          battleLog.value.push(`${t()}${parts.join('，')}`)
         }
         break
       }
@@ -3539,12 +3567,23 @@ function removeGatheringPoint(row: number, col: number) {
         if (healVictim) {
           const healTpl = findCharacterTemplateInStore(healVictim.characterId)
           const healName = healTpl?.name || healVictim.characterId
-          battleLog.value.push(`天气对【${healName}】恢复${ev.hpHeal}点生命值`)
+          battleLog.value.push(`${t()}天气对【${healName}】恢复${ev.hpHeal}点生命值`)
         }
         break
       }
       case 'move': {
         // 用户明确说移动数据不需要记录
+        break
+      }
+      case 'terrain_change': {
+        // 范围技能清除障碍物：同步前端地形
+        if (battleMap.value && battleMap.value.tiles[ev.row]?.[ev.col]) {
+          battleMap.value.tiles[ev.row][ev.col].terrain = ev.terrain
+          // 障碍物被摧毁的视觉反馈：在该格触发一次爆破粒子
+          if (ev.terrain === 'empty') {
+            triggerSkillEffect(ev.row, ev.col, 'earth', 'small', 'attack', 'aoe')
+          }
+        }
         break
       }
     }
@@ -3562,9 +3601,41 @@ function removeGatheringPoint(row: number, col: number) {
       battleManager.stop()
       battleManager = null
     }
+    // 停止特效清理定时器，避免上一局的残留定时器继续运行
+    stopEffectCleanupTimer()
 
     // 重置战斗结果状态，防止上一局的结果影响新战斗
     battleResult.value = null
+    // 重置统一战斗时间轴
+    battleElapsedMs.value = 0
+
+    // ============ 清空上一局残留的所有特效/飘字/投射物状态 ============
+    // 这些状态是 store 级别的全局变量，不会随 battleManager 重建而自动清空，
+    // 若不清空会导致上一局的特效/飘字残留到新一局战斗中
+    skillEffects.value = []
+    floatingTexts.value = []
+    projectiles.value = []
+    deathEffects.value = []
+    statusApplyEffects.value = []
+    summonEffects.value = []
+    hitSparkEffects.value = []
+    hitFlashTargets.value = []
+    defeatRecords.value = []
+    moveTrailEffects.value = []
+    terrainMarks.value = []
+    shakingTargets.value = []
+
+    // 重置所有玩家角色的技能冷却时间戳，确保每场战斗开始时技能均处于可用状态
+    player.value.characters.forEach(char => {
+      ;(char.skills || []).forEach(skill => {
+        ;(skill as any).currentCooldown = 0
+      })
+      // 确保每场战斗开始时角色满血满蓝，不受上一局战斗损耗影响
+      char.hp = char.maxHp
+      char.mp = char.maxMp
+      // 清除角色可能残留的状态效果
+      char.statuses = []
+    })
 
     const config = BATTLE_CONFIG[mode]
     const difficultyConfig = DIFFICULTY_CONFIG[difficulty]
@@ -3773,6 +3844,7 @@ function removeGatheringPoint(row: number, col: number) {
           statuses: [],
           faction: char.faction,
           job: char.job,
+          skills: char.skills ? [...char.skills] : [],
         }
         players.push(newPlayer)
         tiles[pos.row][pos.col].character = newPlayer
@@ -4001,7 +4073,7 @@ function removeGatheringPoint(row: number, col: number) {
     console.log('战场玩家角色:', players);
 
     isInBattle.value = true;
-    battleLog.value = ['战斗开始！'];
+    battleLog.value = ['[0.0秒] 战斗开始！'];
     // 重置阵营指令和集结点状�?
   factionCommand.value = 'attack';
     gatheringPoints.value = [];
@@ -4030,6 +4102,9 @@ function removeGatheringPoint(row: number, col: number) {
     battleSyncTimer = setInterval(() => {
       if (!battleManager || !battleMap.value) return
       const state = battleManager.getState()
+
+      // 同步统一战斗时间轴（随速度倍率缩放，暂停时不增长）
+      battleElapsedMs.value = state.battleElapsedMs
 
       // 天气系统：每 6 秒随机变化一次（暂停时不变化）
       const now = Date.now()
@@ -4112,7 +4187,7 @@ function removeGatheringPoint(row: number, col: number) {
           battleSyncTimer = null
         }
         const winner = battleManager.getWinner()
-        battleLog.value.push(winner === 'player' ? '战斗胜利！' : '战斗失败...')
+        battleLog.value.push(`[${(battleElapsedMs.value / 1000).toFixed(1)}秒] ${winner === 'player' ? '战斗胜利！' : '战斗失败...'}`)
         // 延迟 1 秒结束战斗，让最后一次攻击的动画/特效播放完成
         setTimeout(() => {
           endBattle(winner === 'player')
@@ -4670,7 +4745,7 @@ async function buyShopEquipment(template: any): Promise<boolean> {
 
     }
     console.log('[WEATHER] 天气变化:', weatherNames[newWeather], '时间戳:', Date.now())
-    battleLog.value.push(`天气变为【${weatherNames[newWeather]}】`)
+    battleLog.value.push(`[${(battleElapsedMs.value / 1000).toFixed(1)}秒] 天气变为【${weatherNames[newWeather]}】`)
   }
 
   function generateSnowAreas() {
@@ -4999,13 +5074,12 @@ function createBattleCharacter(
     col: number,
     isPlayer: boolean
   ): BattleCharacter {
-    // 新规则：每级提升 1级初始属性的 20%
-    const levelBonus = level - 1
-    
-    const maxHp = Math.ceil(template.baseMaxHp * (1 + 0.2 * levelBonus))
-    const maxMp = Math.ceil(template.baseMaxMp * (1 + 0.2 * levelBonus))
-    const attack = Math.ceil(template.baseAttack * (1 + 0.2 * levelBonus))
-    const defense = Math.ceil(template.baseDefense * (1 + 0.2 * levelBonus))
+    // 每级提升：生命/法力 +10%，攻击/防御 +15%（以1级初始属性为基准）
+    const stats = getCharacterStatsAtLevel(template, level)
+    const maxHp = stats.maxHp
+    const maxMp = stats.maxMp
+    const attack = stats.attack
+    const defense = stats.defense
     // 其他属性不随等级变
     const moveSpeed = template.moveSpeed !== undefined ? template.moveSpeed : 2
     const attackRange = template.attackRange !== undefined ? template.attackRange : 1
@@ -5032,6 +5106,7 @@ function createBattleCharacter(
       job: template.job,
       level,
       statuses: [],
+      skills: template.skills ? [...template.skills] : [],
       skillLastUsedTime,
       totalDamage: 0,
       totalHeal: 0,
@@ -5378,137 +5453,50 @@ function removeStatusFromCharacter(char: BattleCharacter, status: StatusType) {
   // ========== 状态系统核心函数结�?==========
 
   function moveCharacter(battleCharId: string, row: number, col: number): boolean {
-    if (!battleMap.value) return false
+    if (!battleMap.value || !battleManager) return false
 
     const allChars = [...battleMap.value.players, ...battleMap.value.enemies]
     const char = allChars.find(c => c.id === battleCharId)
-    if (!char || char.hasMoved) return false
+    if (!char || !char.isPlayer) return false
 
-    // 寒冷状态：无法移动
-    if (hasStatus(char, 'cold')) return false
-
+    // 校验目标格可行走且未被占用
     const tile = battleMap.value.tiles[row]?.[col]
     if (!tile || !TERRAIN_CONFIG[tile.terrain]?.passable) return false
+    if (allChars.some(c => c.row === row && c.col === col && c.id !== battleCharId)) return false
+    if (battleMap.value.buildings.some(b => b.row === row && b.col === col)) return false
 
-    const occupied = allChars.find(c => c.row === row && c.col === col && c.id !== battleCharId)
-    if (occupied) return false
-
-    const building = battleMap.value.buildings.find(b => b.row === row && b.col === col)
-    if (building) return false
-
-    const moveRange = getCharacterMoveRange(char)
-    if (!moveRange.some(r => r.row === row && r.col === col)) return false
-
-    // 计算移动距离
-    const distance = Math.abs(row - char.row) + Math.abs(col - char.col)
-    char.movedDistance = (char.movedDistance || 0) + distance
-
-    // 记录旧位置用于轨迹特效和日志
-    const oldRow = char.row
-    const oldCol = char.col
-
-    // 移动角色
-    char.row = row
-    char.col = col
-    char.hasMoved = true
-
-    // 添加移动日志
-    const charTemplate = findCharacterTemplateInStore(char.characterId)
-    const charName = charTemplate?.name || char.characterId
-    battleLog.value.push(`�?${charName}】从(${oldRow},${oldCol})移动�?${row},${col})`)
-
-    // 触发移动轨迹粒子
-    triggerMoveTrail(oldRow, oldCol, row, col, char.isPlayer)
-
-    // 检查并自动使用收集物（AI角色�?
-  autoUseCollectibleAtPosition(char)
-
-    // 触发中毒（操作时触发的状态）
-    triggerStatusOnAction(char)
-
-    // 更新视野
-    calculateVisibility()
-
-    return true
+    // 实时战斗：设置移动目的地，由 BattleManager 逐格寻路移动（途中仍可普攻/放技能）
+    const ok = battleManager.setMoveTarget(battleCharId, row, col)
+    if (ok) {
+      const charTemplate = findCharacterTemplateInStore(char.characterId)
+      const charName = charTemplate?.name || char.characterId
+      battleLog.value.push(`[${(battleElapsedMs.value / 1000).toFixed(1)}秒] 【${charName}】向(${row},${col})移动`)
+    }
+    return ok
   }
 
   function getCharacterMoveRange(char: BattleCharacter): { row: number; col: number }[] {
     if (!battleMap.value) return []
 
-    // 如果角色在雪地中，无法移�?
-  if (isCharacterInSnow(char)) {
-      return []
-    }
-
+    // 实时战斗：移动为连续寻路，不再受回合制格数限制
+    // 返回地图上所有可行走、未被角色/建筑占用的格子
     const range: { row: number; col: number }[] = []
     const allChars = [...battleMap.value.players, ...battleMap.value.enemies]
-    
-    // 使用角色实际的移动范围（已含装备加成），并叠加状态对移动范围的影响（迅捷+1，瘸�?1�?
-  const baseMove = char.moveSpeed !== undefined ? char.moveSpeed : 3
-    let moveDist = Math.max(0, baseMove + getStatusMoveRange(char))
-    
-    // 如果角色在迷雾中，移动力变成1
-    if (isCharacterInFog(char)) {
-      moveDist = Math.min(moveDist, 1)
-    }
-    
-    // 使用 BFS 计算可移动范�?
-  const visited: boolean[][] = Array(battleMap.value.height).fill(null).map(() => Array(battleMap.value.width).fill(false))
-    const queue: { row: number; col: number; distance: number }[] = [
-      { row: char.row, col: char.col, distance: 0 }
-    ]
-    visited[char.row][char.col] = true
-    
-    const directions = [
-      { row: -1, col: 0 },
-      { row: 1, col: 0 },
-      { row: 0, col: -1 },
-      { row: 0, col: 1 }
-    ]
-    
-    while (queue.length > 0) {
-      const current = queue.shift()!
-      
-      if (current.distance > 0) {
-        range.push({ row: current.row, col: current.col })
-      }
-      
-      if (current.distance >= moveDist) {
-        continue
-      }
-      
-      for (const dir of directions) {
-        const newRow = current.row + dir.row
-        const newCol = current.col + dir.col
-        
-        if (newRow < 0 || newRow >= battleMap.value.height || newCol < 0 || newCol >= battleMap.value.width) {
-          continue
-        }
-        
-        if (visited[newRow][newCol]) {
-          continue
-        }
-        
-        const tile = battleMap.value.tiles[newRow]?.[newCol]
-        if (!tile || !TERRAIN_CONFIG[tile.terrain]?.passable) {
-          continue
-        }
-        
-        const occupied = allChars.find(ch => ch.row === newRow && ch.col === newCol && ch.id !== char.id)
-        if (occupied) {
-          continue
-        }
-        
-        const building = battleMap.value.buildings.find(b => b.row === newRow && b.col === newCol)
-        if (building) {
-          continue
-        }
-        
-        visited[newRow][newCol] = true
-        queue.push({ row: newRow, col: newCol, distance: current.distance + 1 })
-      }
-    }
+    const { width, height } = battleMap.value
 
+    for (let r = 0; r < height; r++) {
+      for (let c = 0; c < width; c++) {
+        // 跳过角色自身所在格
+        if (r === char.row && c === char.col) continue
+        const tile = battleMap.value.tiles[r]?.[c]
+        if (!tile || !TERRAIN_CONFIG[tile.terrain]?.passable) continue
+        // 被其他角色占用
+        if (allChars.some(ch => ch.row === r && ch.col === c && ch.id !== char.id)) continue
+        // 被建筑占用
+        if (battleMap.value.buildings.some(b => b.row === r && b.col === c)) continue
+        range.push({ row: r, col: c })
+      }
+    }
     return range
   }
 
@@ -14002,9 +13990,33 @@ async function moveToNearestEnemy(char: BattleCharacter) {
     const skill = simChar.skills.find(s => s.id === skillId)
     if (!skill) return false
     if (simChar.mp < skill.mpCost) return false
-    // 沉默检�?
-  if (simChar.statuses.some(s => s.type === 'silenced')) return false
+    // 沉默检查
+    if (simChar.statuses.some(s => s.type === 'silenced')) return false
     return true
+  }
+
+  /** 设置玩家角色的手动移动目的地 */
+  function setCharacterMoveTarget(charId: string, row: number, col: number): boolean {
+    if (!battleManager) return false
+    return battleManager.setMoveTarget(charId, row, col)
+  }
+
+  /** 切换角色镇守模式 */
+  function setCharacterHoldPosition(charId: string, hold: boolean): boolean {
+    if (!battleManager) return false
+    return battleManager.setHoldPosition(charId, hold)
+  }
+
+  /** 清除角色的手动移动指令（回归自动 AI） */
+  function clearCharacterMoveCommand(charId: string): boolean {
+    if (!battleManager) return false
+    return battleManager.clearMoveCommand(charId)
+  }
+
+  /** 查询角色是否处于镇守模式 */
+  function isCharacterHolding(charId: string): boolean {
+    if (!battleManager) return false
+    return battleManager.isHoldingPosition(charId)
   }
 
   return {
@@ -14012,6 +14024,7 @@ async function moveToNearestEnemy(char: BattleCharacter) {
     currentCharacter,
     battleMap,
     isInBattle,
+    battleElapsedMs,
     isLoading,
     battleLog,
     gameSpeed,
@@ -14087,6 +14100,10 @@ async function moveToNearestEnemy(char: BattleCharacter) {
     castPlayerSkill,
     getSkillCooldownMs,
     isSkillReady,
+    setCharacterMoveTarget,
+    setCharacterHoldPosition,
+    clearCharacterMoveCommand,
+    isCharacterHolding,
     moveCharacter,
     getCharacterMoveRange,
     getAttackableEnemies,

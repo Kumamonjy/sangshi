@@ -1,4 +1,4 @@
-﻿export type Faction = 'human' | 'ghost' | 'beast' | 'immortal' | 'god' | 'demon'
+export type Faction = 'human' | 'ghost' | 'beast' | 'immortal' | 'god' | 'demon'
 export type Job = string
 export type Rarity = 'common' | 'rare' | 'exceptional' | 'treasure' | 'celestial' | 'peerless'
 export type ItemSubtype = 'weapon' | 'armor' | 'helmet' | 'shoes' | 'accessory' | 'book' | 'consumable' | 'chest' | 'soul'
@@ -304,11 +304,13 @@ export interface ItemStats {
   moveSpeed?: number
   attackRange?: number
   attackSpeed?: number
-  // 百分比加成（1-100）
+  // 百分比加成（1-100，如 10 表示 +10%）
   attackPercent?: number
   defensePercent?: number
   hpPercent?: number
   mpPercent?: number
+  moveSpeedPercent?: number
+  attackSpeedPercent?: number
 }
 
 export interface Skill {
@@ -474,6 +476,7 @@ export interface BattleCharacter {
   maxHpReductionHistory?: Record<string, number> // 状态生效前的生命值上限记录，key为状态类型，用于解除状态时恢复
   faction: string // 角色阵营
   job: string // 角色职业
+  skills?: Skill[] // 角色技能列表（实时战斗 AI 释放用）
   aiType?: 'ranged' | 'sniper' | 'skirmisher' // 远攻/狙击/缠斗
   // 实时战斗运行时字段（BattleManager 内部使用）
   lastAttackTime?: number // 上次普攻时间戳(ms)
@@ -694,7 +697,7 @@ export const JOB_CONFIG: Record<string, { name: string; rank: number }> = {
   大妖: { name: '大妖', rank: 3 },
   生肖: { name: '生肖', rank: 4 },
   神兵: { name: '神兵', rank: 2 },
-  流沙: { name: '流沙', rank: 2 },
+  流沙: { name: '流沙', rank: 3 },
   神将: { name: '神将', rank: 3 },
   神裔: { name: '神裔', rank: 4 },
   神兽: { name: '神兽', rank: 5 },
@@ -757,7 +760,7 @@ export function getEquipmentStats(item: Item): ItemStats {
   for (const [key, value] of Object.entries(item.baseStats)) {
     if (value !== undefined) {
       // 百分比属性不受到品质和等级的影响
-      if (['attackPercent', 'defensePercent', 'hpPercent', 'mpPercent'].includes(key)) {
+      if (['attackPercent', 'defensePercent', 'hpPercent', 'mpPercent', 'moveSpeedPercent', 'attackSpeedPercent'].includes(key)) {
         result[key as keyof ItemStats] = value
       } else {
         result[key as keyof ItemStats] = Math.floor(value * (1 + rarityBonus + levelBonus))
@@ -871,6 +874,8 @@ export interface EquipmentEffects {
   mpPercent: number
   attackPercent: number
   defensePercent: number
+  moveSpeedPercent: number
+  attackSpeedPercent: number
   grantedSkills: Skill[]
   setBonuses: { setName: string; count: number; bonus: SetBonus }[]
 }
@@ -881,13 +886,15 @@ export function processEquipmentEffects(equipment: Equipment | null | undefined)
     mp: 0,
     attack: 0,
     defense: 0,
-    moveSpeed: 0.5,
+    moveSpeed: 0,
     attackRange: 0,
-    attackSpeed: 0.33,
+    attackSpeed: 0,
     hpPercent: 0,
     mpPercent: 0,
     attackPercent: 0,
     defensePercent: 0,
+    moveSpeedPercent: 0,
+    attackSpeedPercent: 0,
     grantedSkills: [],
     setBonuses: []
   }
@@ -919,6 +926,8 @@ export function processEquipmentEffects(equipment: Equipment | null | undefined)
     if (stats.mpPercent) result.mpPercent += stats.mpPercent
     if (stats.attackPercent) result.attackPercent += stats.attackPercent
     if (stats.defensePercent) result.defensePercent += stats.defensePercent
+    if (stats.moveSpeedPercent) result.moveSpeedPercent += stats.moveSpeedPercent
+    if (stats.attackSpeedPercent) result.attackSpeedPercent += stats.attackSpeedPercent
 
     if (item.grantedSkillId && SKILL_TEMPLATES[item.grantedSkillId]) {
       result.grantedSkills.push({ ...SKILL_TEMPLATES[item.grantedSkillId] } as Skill)
@@ -1380,7 +1389,7 @@ export const SKILL_TEMPLATES: Record<string, Skill> = {
 // （作为装配技能的权威来源，角色模板和存档都以它为准）
 export const CHARACTER_SKILLS: Record<string, string[]> = {
   xiongxiong: ['po_kong_zhan', 'jue_chu_feng_sheng'],
-  tutu: ['qian_li_bing_feng', 'bing_feng_zhi_men', 'bing_jing_fei_she'],
+  tutu: ['qian_li_bing_feng', 'bing_jing_fei_she'],
   daheixiong: ['ai_de_bao_bao', 'ai_de_fei_wen', 'ai_de_hui_yi'],
   eba: ['fierce_attack'],
   qianfuzhe: ['shadow_assassination', 'die_xue_ci_ji'],
@@ -1477,15 +1486,12 @@ export const CHARACTER_SKILLS: Record<string, string[]> = {
  * 若表中没有该角色，返回空数组（兼容玩家创建的临时/特殊角色）。
  */
 export function buildSkillsForCharacterId(characterId: string): Skill[] {
-  // @deprecated 暂时禁用所有角色技能（实时战斗自动技能 AI 未完善前先移除）
-  // 原逻辑：从 CHARACTER_SKILLS 查表 → SKILL_TEMPLATES 构建 Skill 对象
-  // const skillIds = CHARACTER_SKILLS[characterId]
-  // if (!skillIds || skillIds.length === 0) return []
-  // return skillIds
-  //   .map(id => SKILL_TEMPLATES[id])
-  //   .filter(Boolean)
-  //   .map(template => ({ ...template } as Skill))
-  return []
+  const skillIds = CHARACTER_SKILLS[characterId]
+  if (!skillIds || skillIds.length === 0) return []
+  return skillIds
+    .map(id => SKILL_TEMPLATES[id])
+    .filter(Boolean)
+    .map(template => ({ ...template } as Skill))
 }
 
 /**
@@ -1513,6 +1519,46 @@ export function getCharacterBaseTemplate(characterId: string): Omit<Character, '
   return hireable
 }
 
+// 角色升级成长比例（每级相对于1级初始属性的增幅）
+export const GROWTH_HP_MP_PERCENT = 0.15  // 生命/法力每级 +15%
+export const GROWTH_ATK_DEF_PERCENT = 0.15 // 攻击/防御每级 +15%
+
+/**
+ * 计算角色每级升级的属性成长值（以1级初始属性为基准）
+ * 与 checkAndUpgrade / createBattleCharacter 使用同一套公式，
+ * UI 显示也应调用此函数，避免数值不一致
+ */
+export function getCharacterGrowth(tpl: { baseMaxHp: number; baseMaxMp: number; baseAttack: number; baseDefense: number }): {
+  hp: number
+  mp: number
+  attack: number
+  defense: number
+} {
+  return {
+    hp: Math.ceil(tpl.baseMaxHp * GROWTH_HP_MP_PERCENT),
+    mp: Math.ceil(tpl.baseMaxMp * GROWTH_HP_MP_PERCENT),
+    attack: Math.ceil(tpl.baseAttack * GROWTH_ATK_DEF_PERCENT),
+    defense: Math.ceil(tpl.baseDefense * GROWTH_ATK_DEF_PERCENT),
+  }
+}
+
+/**
+ * 根据等级计算角色最终属性（1级初始属性 × 成长）
+ * createBattleCharacter 与 UI 等级预览共用此公式
+ */
+export function getCharacterStatsAtLevel(
+  tpl: { baseMaxHp: number; baseMaxMp: number; baseAttack: number; baseDefense: number },
+  level: number
+): { maxHp: number; maxMp: number; attack: number; defense: number } {
+  const levelBonus = Math.max(0, level - 1)
+  return {
+    maxHp: Math.ceil(tpl.baseMaxHp * (1 + GROWTH_HP_MP_PERCENT * levelBonus)),
+    maxMp: Math.ceil(tpl.baseMaxMp * (1 + GROWTH_HP_MP_PERCENT * levelBonus)),
+    attack: Math.ceil(tpl.baseAttack * (1 + GROWTH_ATK_DEF_PERCENT * levelBonus)),
+    defense: Math.ceil(tpl.baseDefense * (1 + GROWTH_ATK_DEF_PERCENT * levelBonus)),
+  }
+}
+
 export function getExpRequired(level: number): number {
   if (level < 1) return 0
   return 80 + (level - 1) * 40
@@ -1526,20 +1572,20 @@ export const INITIAL_CHARACTERS: Omit<Character, 'equipment' | 'avatar' | 'isPla
     faction: 'human',
     level: 1,
     exp: 0,
-    baseMaxHp: 200,
-    maxHp: 200,
-    baseMaxMp: 100,
-    maxMp: 100,
-    baseAttack: 50,
-    attack: 50,
+    baseMaxHp: 300,
+    maxHp: 300,
+    baseMaxMp: 120,
+    maxMp: 120,
+    baseAttack: 55,
+    attack: 55,
     baseDefense: 10,
     defense: 10,
     baseMoveSpeed: 0.8333,
     moveSpeed: 0.8333,
     baseAttackRange: 1,
     attackRange: 1,
-    baseAttackSpeed: 0.5,
-    attackSpeed: 0.5,
+    baseAttackSpeed: 0.6,
+    attackSpeed: 0.6,
     skills: buildSkillsForCharacterId('xiongxiong'),
     attribute: 'normal',
   },
@@ -1550,16 +1596,16 @@ export const INITIAL_CHARACTERS: Omit<Character, 'equipment' | 'avatar' | 'isPla
     faction: 'human',
     level: 1,
     exp: 0,
-    baseMaxHp: 220,
-    maxHp: 220,
-    baseMaxMp: 250,
-    maxMp: 250,
+    baseMaxHp: 300,
+    maxHp: 300,
+    baseMaxMp: 300,
+    maxMp: 300,
     baseAttack: 70,
     attack: 70,
     baseDefense: 5,
     defense: 5,
-    baseMoveSpeed: 0.8333,
-    moveSpeed: 0.8333,
+    baseMoveSpeed: 0.9091,
+    moveSpeed: 0.9091,
     baseAttackRange: 3,
     attackRange: 3,
     baseAttackSpeed: 0.5,
@@ -1574,16 +1620,16 @@ export const INITIAL_CHARACTERS: Omit<Character, 'equipment' | 'avatar' | 'isPla
     faction: 'human',
     level: 1,
     exp: 0,
-    baseMaxHp: 250,
-    maxHp: 250,
-    baseMaxMp: 250,
-    maxMp: 250,
-    baseAttack: 50,
-    attack: 50,
+    baseMaxHp: 400,
+    maxHp: 400,
+    baseMaxMp: 300,
+    maxMp: 300,
+    baseAttack: 55,
+    attack: 55,
     baseDefense: 20,
     defense: 20,
-    baseMoveSpeed: 0.8333,
-    moveSpeed: 0.8333,
+    baseMoveSpeed: 0.9091,
+    moveSpeed: 0.9091,
     baseAttackRange: 3,
     attackRange: 3,
     baseAttackSpeed: 0.5,
@@ -1601,12 +1647,12 @@ export const HIREABLE_CHARACTERS: Omit<Character, 'equipment' | 'avatar' | 'isPl
     faction: 'human',
     level: 1,
     exp: 0,
-    baseMaxHp: 225,
-    maxHp: 225,
-    baseMaxMp: 50,
-    maxMp: 50,
-    baseAttack: 55,
-    attack: 55,
+    baseMaxHp: 325,
+    maxHp: 325,
+    baseMaxMp: 100,
+    maxMp: 100,
+    baseAttack: 60,
+    attack: 60,
     baseDefense: 10,
     defense: 10,
     baseMoveSpeed: 0.8333,
@@ -1625,10 +1671,10 @@ export const HIREABLE_CHARACTERS: Omit<Character, 'equipment' | 'avatar' | 'isPl
     faction: 'human',
     level: 1,
     exp: 0,
-    baseMaxHp: 200,
-    maxHp: 200,
-    baseMaxMp: 100,
-    maxMp: 100,
+    baseMaxHp: 280,
+    maxHp: 280,
+    baseMaxMp: 120,
+    maxMp: 120,
     baseAttack: 65,
     attack: 65,
     baseDefense: 10,
@@ -1637,8 +1683,8 @@ export const HIREABLE_CHARACTERS: Omit<Character, 'equipment' | 'avatar' | 'isPl
     moveSpeed: 1,
     baseAttackRange: 1,
     attackRange: 1,
-    baseAttackSpeed: 0.5,
-    attackSpeed: 0.5,
+    baseAttackSpeed: 0.6,
+    attackSpeed: 0.6,
     skills: buildSkillsForCharacterId('qianfuzhe'),
     attribute: 'normal',
   },
@@ -1649,10 +1695,10 @@ export const HIREABLE_CHARACTERS: Omit<Character, 'equipment' | 'avatar' | 'isPl
     faction: 'human',
     level: 1,
     exp: 0,
-    baseMaxHp: 240,
-    maxHp: 240,
-    baseMaxMp: 125,
-    maxMp: 125,
+    baseMaxHp: 360,
+    maxHp: 360,
+    baseMaxMp: 150,
+    maxMp: 150,
     baseAttack: 40,
     attack: 40,
     baseDefense: 15,
@@ -1673,10 +1719,10 @@ export const HIREABLE_CHARACTERS: Omit<Character, 'equipment' | 'avatar' | 'isPl
     faction: 'human',
     level: 1,
     exp: 0,
-    baseMaxHp: 480,
-    maxHp: 480,
-    baseMaxMp: 280,
-    maxMp: 280,
+    baseMaxHp: 560,
+    maxHp: 560,
+    baseMaxMp: 300,
+    maxMp: 300,
     baseAttack: 60,
     attack: 60,
     baseDefense: 35,
@@ -1697,20 +1743,20 @@ export const HIREABLE_CHARACTERS: Omit<Character, 'equipment' | 'avatar' | 'isPl
     faction: 'human',
     level: 1,
     exp: 0,
-    baseMaxHp: 260,
-    maxHp: 260,
+    baseMaxHp: 360,
+    maxHp: 360,
     baseMaxMp: 200,
     maxMp: 200,
     baseAttack: 75,
     attack: 75,
     baseDefense: 15,
     defense: 15,
-    baseMoveSpeed: 1,
-    moveSpeed: 1,
+    baseMoveSpeed: 1.1111,
+    moveSpeed: 1.1111,
     baseAttackRange: 3,
     attackRange: 3,
-    baseAttackSpeed: 0.5,
-    attackSpeed: 0.5,
+    baseAttackSpeed: 0.7,
+    attackSpeed: 0.7,
     skills: buildSkillsForCharacterId('baifeng'),
     attribute: 'wind',
   },
@@ -1937,20 +1983,20 @@ export const HIREABLE_CHARACTERS: Omit<Character, 'equipment' | 'avatar' | 'isPl
     faction: 'human',
     level: 1,
     exp: 0,
-    baseMaxHp: 220,
-    maxHp: 220,
-    baseMaxMp: 100,
-    maxMp: 100,
-    baseAttack: 80,
-    attack: 80,
+    baseMaxHp: 320,
+    maxHp: 320,
+    baseMaxMp: 120,
+    maxMp: 120,
+    baseAttack: 90,
+    attack: 90,
     baseDefense: 5,
     defense: 5,
-    baseMoveSpeed: 0.6667,
-    moveSpeed: 0.6667,
+    baseMoveSpeed: 0.625,
+    moveSpeed: 0.625,
     baseAttackRange: 5,
     attackRange: 5,
-    baseAttackSpeed: 0.5,
-    attackSpeed: 0.5,
+    baseAttackSpeed: 0.3,
+    attackSpeed: 0.3,
     skills: buildSkillsForCharacterId('jujishou'),
     attribute: 'normal',
   },
@@ -1961,20 +2007,20 @@ export const HIREABLE_CHARACTERS: Omit<Character, 'equipment' | 'avatar' | 'isPl
     faction: 'human',
     level: 1,
     exp: 0,
-    baseMaxHp: 250,
-    maxHp: 250,
-    baseMaxMp: 100,
-    maxMp: 100,
-    baseAttack: 70,
-    attack: 70,
+    baseMaxHp: 390,
+    maxHp: 390,
+    baseMaxMp: 120,
+    maxMp: 120,
+    baseAttack: 60,
+    attack: 60,
     baseDefense: 10,
     defense: 10,
-    baseMoveSpeed: 0.8333,
-    moveSpeed: 0.8333,
+    baseMoveSpeed: 0.9091,
+    moveSpeed: 0.9091,
     baseAttackRange: 4,
     attackRange: 4,
-    baseAttackSpeed: 0.5,
-    attackSpeed: 0.5,
+    baseAttackSpeed: 0.6,
+    attackSpeed: 0.6,
     skills: buildSkillsForCharacterId('tezhongbing'),
     attribute: 'normal',
   },
@@ -1985,20 +2031,20 @@ export const HIREABLE_CHARACTERS: Omit<Character, 'equipment' | 'avatar' | 'isPl
     faction: 'human',
     level: 1,
     exp: 0,
-    baseMaxHp: 260,
-    maxHp: 260,
-    baseMaxMp: 120,
-    maxMp: 120,
-    baseAttack: 65,
-    attack: 65,
+    baseMaxHp: 420,
+    maxHp: 420,
+    baseMaxMp: 150,
+    maxMp: 150,
+    baseAttack: 75,
+    attack: 75,
     baseDefense: 15,
     defense: 15,
-    baseMoveSpeed: 0.8333,
-    moveSpeed: 0.8333,
+    baseMoveSpeed: 0.7692,
+    moveSpeed: 0.7692,
     baseAttackRange: 1,
     attackRange: 1,
-    baseAttackSpeed: 0.5,
-    attackSpeed: 0.5,
+    baseAttackSpeed: 0.4,
+    attackSpeed: 0.4,
     skills: buildSkillsForCharacterId('penhuobing'),
     attribute: 'fire',
   },
@@ -2009,10 +2055,10 @@ export const HIREABLE_CHARACTERS: Omit<Character, 'equipment' | 'avatar' | 'isPl
     faction: 'human',
     level: 1,
     exp: 0,
-    baseMaxHp: 200,
-    maxHp: 200,
-    baseMaxMp: 100,
-    maxMp: 100,
+    baseMaxHp: 300,
+    maxHp: 300,
+    baseMaxMp: 150,
+    maxMp: 150,
     baseAttack: 55,
     attack: 55,
     baseDefense: 10,
@@ -2033,20 +2079,20 @@ export const HIREABLE_CHARACTERS: Omit<Character, 'equipment' | 'avatar' | 'isPl
     faction: 'human',
     level: 1,
     exp: 0,
-    baseMaxHp: 350,
-    maxHp: 350,
-    baseMaxMp: 150,
-    maxMp: 150,
-    baseAttack: 90,
-    attack: 90,
+    baseMaxHp: 480,
+    maxHp: 480,
+    baseMaxMp: 240,
+    maxMp: 240,
+    baseAttack: 85,
+    attack: 85,
     baseDefense: 20,
     defense: 20,
     baseMoveSpeed: 0.8333,
     moveSpeed: 0.8333,
     baseAttackRange: 3,
     attackRange: 3,
-    baseAttackSpeed: 0.5,
-    attackSpeed: 0.5,
+    baseAttackSpeed: 0.6,
+    attackSpeed: 0.6,
     skills: buildSkillsForCharacterId('geliya'),
     attribute: 'metal',
   },
@@ -2057,20 +2103,20 @@ export const HIREABLE_CHARACTERS: Omit<Character, 'equipment' | 'avatar' | 'isPl
     faction: 'human',
     level: 1,
     exp: 0,
-    baseMaxHp: 400,
-    maxHp: 400,
-    baseMaxMp: 150,
-    maxMp: 150,
-    baseAttack: 95,
-    attack: 95,
+    baseMaxHp: 540,
+    maxHp: 540,
+    baseMaxMp: 240,
+    maxMp: 240,
+    baseAttack: 100,
+    attack: 100,
     baseDefense: 25,
     defense: 25,
-    baseMoveSpeed: 0.6667,
-    moveSpeed: 0.6667,
+    baseMoveSpeed: 0.5,
+    moveSpeed: 0.5,
     baseAttackRange: 4,
     attackRange: 4,
-    baseAttackSpeed: 0.5,
-    attackSpeed: 0.5,
+    baseAttackSpeed: 0.3,
+    attackSpeed: 0.3,
     skills: buildSkillsForCharacterId('tanke'),
     attribute: 'fire',
   },
@@ -2125,24 +2171,24 @@ export const HIREABLE_CHARACTERS: Omit<Character, 'equipment' | 'avatar' | 'isPl
   {
     id: 'duying',
     name: '毒影',
-    job: '毒将',
-    faction: 'ghost',
+    job: '魔将',
+    faction: 'demon',
     level: 1,
     exp: 0,
-    baseMaxHp: 50,
-    maxHp: 50,
-    baseMaxMp: 15,
-    maxMp: 15,
-    baseAttack: 20,
-    attack: 20,
-    baseDefense: 10,
-    defense: 10,
+    baseMaxHp: 300,
+    maxHp: 300,
+    baseMaxMp: 180,
+    maxMp: 180,
+    baseAttack: 55,
+    attack: 55,
+    baseDefense: 5,
+    defense: 5,
     baseMoveSpeed: 0.8333,
     moveSpeed: 0.8333,
     baseAttackRange: 3,
     attackRange: 3,
-    baseAttackSpeed: 0.5,
-    attackSpeed: 0.5,
+    baseAttackSpeed: 0.6,
+    attackSpeed: 0.6,
     skills: buildSkillsForCharacterId('duying'),
     attribute: 'wood',
   },
@@ -2369,12 +2415,12 @@ export const HIREABLE_CHARACTERS: Omit<Character, 'equipment' | 'avatar' | 'isPl
     faction: 'human',
     level: 1,
     exp: 0,
-    baseMaxHp: 200,
-    maxHp: 200,
-    baseMaxMp: 100,
-    maxMp: 100,
-    baseAttack: 50,
-    attack: 50,
+    baseMaxHp: 280,
+    maxHp: 280,
+    baseMaxMp: 120,
+    maxMp: 120,
+    baseAttack: 55,
+    attack: 55,
     baseDefense: 5,
     defense: 5,
     baseMoveSpeed: 0.8333,
@@ -2393,20 +2439,20 @@ export const HIREABLE_CHARACTERS: Omit<Character, 'equipment' | 'avatar' | 'isPl
     faction: 'human',
     level: 1,
     exp: 0,
-    baseMaxHp: 320,
-    maxHp: 320,
-    baseMaxMp: 180,
-    maxMp: 180,
+    baseMaxHp: 420,
+    maxHp: 420,
+    baseMaxMp: 200,
+    maxMp: 200,
     baseAttack: 90,
     attack: 90,
     baseDefense: 20,
     defense: 20,
-    baseMoveSpeed: 1,
-    moveSpeed: 1,
+    baseMoveSpeed: 1.25,
+    moveSpeed: 1.25,
     baseAttackRange: 4,
     attackRange: 4,
-    baseAttackSpeed: 0.5,
-    attackSpeed: 0.5,
+    baseAttackSpeed: 0.6,
+    attackSpeed: 0.6,
     skills: buildSkillsForCharacterId('nvyao'),
     attribute: 'fire',
   },
@@ -2994,16 +3040,16 @@ export const HIREABLE_CHARACTERS: Omit<Character, 'equipment' | 'avatar' | 'isPl
     faction: 'human',
     level: 1,
     exp: 0,
-    baseMaxHp: 240,
-    maxHp: 240,
-    baseMaxMp: 160,
-    maxMp: 160,
+    baseMaxHp: 360,
+    maxHp: 360,
+    baseMaxMp: 180,
+    maxMp: 180,
     baseAttack: 70,
     attack: 70,
-    baseDefense: 15,
-    defense: 15,
-    baseMoveSpeed: 0.8333,
-    moveSpeed: 0.8333,
+    baseDefense: 10,
+    defense: 10,
+    baseMoveSpeed: 0.9091,
+    moveSpeed: 0.9091,
     baseAttackRange: 3,
     attackRange: 3,
     baseAttackSpeed: 0.5,

@@ -110,23 +110,23 @@
             </view>
 
             <view class="growth-section">
-              <view class="stats-title">升级成长（每级 +20% 初始）</view>
+              <view class="stats-title">升级成长（生命/法力/攻击/防御 +15%）</view>
               <view class="growth-grid">
                 <view class="stat-item">
                   <text class="stat-label">生命+</text>
-                  <text class="stat-value">{{ Math.ceil(char.baseMaxHp * 0.2) }}</text>
+                  <text class="stat-value">{{ getCharacterGrowth(char).hp }}</text>
                 </view>
                 <view class="stat-item">
                   <text class="stat-label">法力+</text>
-                  <text class="stat-value">{{ Math.ceil(char.baseMaxMp * 0.2) }}</text>
+                  <text class="stat-value">{{ getCharacterGrowth(char).mp }}</text>
                 </view>
                 <view class="stat-item">
                   <text class="stat-label">攻击+</text>
-                  <text class="stat-value">{{ Math.ceil(char.baseAttack * 0.2) }}</text>
+                  <text class="stat-value">{{ getCharacterGrowth(char).attack }}</text>
                 </view>
                 <view class="stat-item">
                   <text class="stat-label">防御+</text>
-                  <text class="stat-value">{{ Math.ceil(char.baseDefense * 0.2) }}</text>
+                  <text class="stat-value">{{ getCharacterGrowth(char).defense }}</text>
                 </view>
               </view>
             </view>
@@ -278,6 +278,7 @@ import {
   getAvatarPath,
   getSkillTags,
   getRankColor,
+  getCharacterGrowth,
   type Faction,
   type Character,
 } from '../../utils/gameData'

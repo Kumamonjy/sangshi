@@ -1,0 +1,12 @@
+# 备份/临时文件
+*.broken
+.trae-html-share-packages/
+_serve_nocache.py
+server.py
+
+# 系统文件
+.DS_Store
+Thumbs.db
+
+# Node
+node_modules/

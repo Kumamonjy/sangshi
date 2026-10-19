@@ -1,0 +1,62 @@
+{
+    "name" : "养成战棋",
+    "appid" : "__UNI__E434E90",
+    "description" : "回合制战棋游戏",
+    "versionName" : "1.2.0",
+    "versionCode" : "120",
+    "transformPx" : false,
+    "h5" : {
+        "title" : "养成战棋",
+        "icon" : "static/icon.png"
+    },
+    "mp-weixin" : {
+        "appid" : "",
+        "setting" : {
+            "urlCheck" : false
+        },
+        "usingComponents" : true
+    },
+    "app-plus" : {
+        "icon" : "static/icon.png",
+        "distribute" : {
+            "icons" : {
+                "android" : {
+                    "hdpi" : "static/icon.png",
+                    "xhdpi" : "static/icon.png",
+                    "xxhdpi" : "static/icon.png",
+                    "xxxhdpi" : "static/icon.png"
+                },
+                "ios" : {
+                    "appstore" : "static/icon.png",
+                    "ipad" : {
+                        "app" : "static/icon.png",
+                        "notification" : "static/icon.png",
+                        "proapp" : "static/icon.png"
+                    },
+                    "iphone" : {
+                        "app" : "static/icon.png",
+                        "notification" : "static/icon.png",
+                        "spotlight" : "static/icon.png",
+                        "settings" : "static/icon.png"
+                    }
+                }
+            },
+            "ios" : {
+                "bundleId" : "com.example.battlegame",
+                "dSYMs" : false
+            },
+            "android" : {
+                "package" : "com.example.battlegame",
+                "permissions" : [
+                    "<uses-permission android:name=\"android.permission.WRITE_EXTERNAL_STORAGE\"/>",
+                    "<uses-permission android:name=\"android.permission.READ_EXTERNAL_STORAGE\"/>",
+                    "<uses-permission android:name=\"android.permission.MANAGE_EXTERNAL_STORAGE\"/>"
+                ]
+            }
+        }
+    },
+    "uniStatistics" : {
+        "enable" : false
+    },
+    "vueVersion" : "3"
+}

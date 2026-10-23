@@ -1,0 +1,505 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>塔防战记</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body {
+    width: 100%; height: 100%;
+    background: #0f3460;
+    overflow: hidden;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    display: flex; align-items: flex-start; justify-content: center;
+    user-select: none;
+  }
+  #gameContainer {
+    position: relative;
+    width: 100%;
+    max-width: 450px;
+    height: 100vh;
+    height: 100dvh;
+    background: #0f3460;
+    box-shadow: 0 0 40px rgba(0,0,0,0.6);
+    overflow: hidden;
+  }
+  canvas { display: block; width: 100%; height: auto; }
+
+  /* 顶部HUD */
+  #hud {
+    position: absolute; top: 0; left: 0; right: 0;
+    padding: 8px 10px;
+    display: flex; justify-content: space-between; align-items: center;
+    background: linear-gradient(180deg, rgba(0,0,0,0.7) 0%, rgba(0,0,0,0) 100%);
+    z-index: 10; pointer-events: none;
+    font-size: 13px; color: #fff; font-weight: bold;
+    gap: 4px;
+  }
+  .hud-item {
+    background: rgba(0,0,0,0.5);
+    padding: 5px 10px; border-radius: 20px;
+    display: flex; align-items: center; gap: 4px;
+    border: 1px solid rgba(255,255,255,0.2);
+    white-space: nowrap;
+  }
+  .icon { font-size: 14px; }
+  .gold { color: #ffd700; }
+  .life { color: #ff6b6b; }
+  .wave { color: #4ecdc4; }
+  .honor { color: #fbbf24; }
+  .pause-btn {
+    pointer-events: auto;
+    background: rgba(0,0,0,0.5);
+    border: 1px solid rgba(255,255,255,0.2);
+    color: #fff;
+    width: 32px; height: 32px;
+    border-radius: 50%;
+    font-size: 15px;
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+  }
+  .pause-btn:active { transform: scale(0.9); }
+
+  /* 底部建造栏标签页 */
+  .build-tabs {
+    position: absolute; bottom: 82px; left: 0; right: 0;
+    display: flex; z-index: 10;
+    background: rgba(15,52,96,0.95);
+    border-top: 2px solid rgba(255,255,255,0.15);
+  }
+  .build-tab {
+    flex: 1; padding: 7px 0;
+    background: transparent; border: none;
+    color: rgba(255,255,255,0.6); font-size: 14px;
+    cursor: pointer; transition: all 0.2s;
+  }
+  .build-tab.active {
+    color: #fff;
+    background: rgba(255,255,255,0.12);
+    border-bottom: 2px solid #4ecdc4;
+  }
+  /* 底部建造栏（可横向滚动） */
+  #buildBar {
+    position: absolute; bottom: 0; left: 0; right: 0;
+    background: linear-gradient(0deg, rgba(15,52,96,0.97) 0%, rgba(15,52,96,0.7) 100%);
+    padding: 6px 4px;
+    display: flex;
+    overflow-x: auto;
+    z-index: 10;
+    border-top: 2px solid rgba(255,255,255,0.15);
+    scrollbar-width: none;
+  }
+  #buildBar::-webkit-scrollbar { display: none; }
+  .build-btn {
+    flex: 0 0 auto;
+    width: 60px;
+    margin: 0 2px;
+    background: rgba(255,255,255,0.1);
+    border: 2px solid rgba(255,255,255,0.2);
+    border-radius: 10px;
+    padding: 6px 2px;
+    cursor: pointer;
+    transition: all 0.15s;
+    text-align: center;
+    color: #fff;
+  }
+  .build-btn:active { transform: scale(0.95); }
+  .build-btn.selected {
+    background: rgba(78,205,196,0.3);
+    border-color: #4ecdc4;
+    box-shadow: 0 0 12px rgba(78,205,196,0.5);
+  }
+  .build-btn.disabled { opacity: 0.4; }
+  .build-btn .tower-icon { display: block; margin: 0 auto; width: 36px; height: 36px; }
+  .build-btn .tower-name { font-size: 10px; margin-top: 1px; }
+  .build-btn .tower-cost { font-size: 10px; color: #ffd700; font-weight: bold; }
+
+  /* 通用遮罩 */
+  .overlay {
+    position: absolute; inset: 0;
+    background: rgba(10,15,30,0.95);
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: flex-start;
+    z-index: 100; color: #fff; text-align: center;
+    padding: 24px 16px;
+    overflow-y: auto;
+  }
+  .overlay h1 {
+    font-size: 36px; margin-bottom: 4px;
+    background: linear-gradient(90deg, #ffd700, #ff6b6b);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  .overlay h2 { font-size: 24px; margin-bottom: 16px; }
+  .overlay .subtitle { font-size: 13px; color: #94a3b8; margin-bottom: 20px; }
+
+  .menu-btn {
+    width: 80%; max-width: 280px;
+    padding: 13px 20px;
+    margin: 5px 0;
+    border: none; border-radius: 12px;
+    font-size: 16px; font-weight: bold;
+    cursor: pointer; color: #fff;
+    transition: transform 0.15s, opacity 0.15s;
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+  }
+  .menu-btn:active { transform: scale(0.96); }
+  .menu-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+  .btn-primary { background: linear-gradient(135deg, #4ecdc4, #44a08d); }
+  .btn-success { background: linear-gradient(135deg, #22c55e, #16a34a); }
+  .btn-warning { background: linear-gradient(135deg, #f59e0b, #d97706); }
+  .btn-danger { background: linear-gradient(135deg, #ef4444, #dc2626); }
+  .btn-secondary { background: linear-gradient(135deg, #64748b, #475569); }
+
+  .menu-info { margin-top: 16px; font-size: 12px; color: #94a3b8; line-height: 1.6; }
+
+  /* 关卡选择 */
+  .level-list {
+    width: 100%; max-width: 380px;
+    display: flex; flex-direction: column; gap: 10px;
+    max-height: 55vh; overflow-y: auto;
+    padding: 0 4px;
+  }
+  .level-card {
+    background: rgba(255,255,255,0.08);
+    border: 1px solid rgba(255,255,255,0.15);
+    border-radius: 14px;
+    padding: 14px;
+    text-align: left;
+  }
+  .level-card.locked { opacity: 0.45; }
+  .level-title { font-size: 16px; font-weight: bold; color: #fff; margin-bottom: 4px; }
+  .level-desc { font-size: 11px; color: #94a3b8; margin-bottom: 8px; }
+  .level-stats {
+    display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 10px;
+  }
+  .level-stats span {
+    font-size: 10px; color: #cbd5e1;
+    background: rgba(0,0,0,0.25);
+    padding: 3px 8px; border-radius: 6px;
+  }
+  .level-start-btn { width: 100%; padding: 9px; font-size: 13px; }
+
+  /* 百科标签 */
+  .codex-tabs {
+    display: flex; gap: 6px; margin-bottom: 14px;
+    width: 100%; max-width: 380px;
+  }
+  .tab-btn {
+    flex: 1;
+    padding: 8px 6px;
+    border: 2px solid rgba(255,255,255,0.2);
+    background: rgba(255,255,255,0.08);
+    color: #fff; border-radius: 8px;
+    font-size: 13px; font-weight: bold;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .tab-btn.active {
+    background: linear-gradient(135deg, #4ecdc4, #44a08d);
+    border-color: #4ecdc4;
+  }
+  .tab-btn:active { transform: scale(0.96); }
+
+  /* 百科条目 */
+  .codex-list {
+    width: 100%; max-width: 380px;
+    display: flex; flex-direction: column; gap: 8px;
+    margin-bottom: 14px;
+    max-height: 52vh; overflow-y: auto;
+  }
+  .codex-item {
+    background: rgba(255,255,255,0.08);
+    border: 1px solid rgba(255,255,255,0.15);
+    border-radius: 12px;
+    padding: 10px 12px;
+    display: flex; gap: 12px; align-items: flex-start;
+  }
+  .codex-icon {
+    width: 56px; height: 56px;
+    display: flex; align-items: center; justify-content: center;
+    background: rgba(255,255,255,0.1);
+    border-radius: 10px;
+    flex-shrink: 0;
+    overflow: hidden;
+  }
+  .codex-icon canvas { display: block; }
+  .codex-info { flex: 1; text-align: left; }
+  .codex-name { font-size: 14px; font-weight: bold; color: #ffd700; }
+  .codex-desc { font-size: 11px; color: #94a3b8; margin-top: 2px; line-height: 1.4; }
+  .codex-stats {
+    font-size: 11px; color: #cbd5e1; margin-top: 4px;
+    display: flex; flex-wrap: wrap; gap: 4px 10px;
+  }
+  .codex-stats span { white-space: nowrap; }
+
+  /* 升级商店 */
+  .shop-header {
+    width: 100%; max-width: 380px;
+    display: flex; justify-content: space-between; align-items: center;
+    margin-bottom: 14px;
+  }
+  .shop-currency {
+    background: rgba(251,191,36,0.2);
+    border: 1px solid #fbbf24;
+    padding: 6px 14px; border-radius: 20px;
+    color: #fbbf24; font-weight: bold;
+  }
+  .upgrade-list {
+    width: 100%; max-width: 380px;
+    display: flex; flex-direction: column; gap: 5px;
+    margin-bottom: 14px;
+    max-height: 62vh; overflow-y: auto;
+  }
+  .upgrade-item {
+    background: rgba(255,255,255,0.08);
+    border: 1px solid rgba(255,255,255,0.15);
+    border-radius: 12px;
+    padding: 10px 12px;
+    display: flex; align-items: center; gap: 10px;
+  }
+  .upgrade-icon {
+    font-size: 26px;
+    width: 40px; height: 40px;
+    display: flex; align-items: center; justify-content: center;
+    background: rgba(255,255,255,0.1);
+    border-radius: 10px;
+    flex-shrink: 0;
+  }
+  .upgrade-info { flex: 1; text-align: left; }
+  .upgrade-name { font-size: 14px; font-weight: bold; }
+  .upgrade-desc { font-size: 10px; color: #94a3b8; margin-top: 1px; }
+  .upgrade-level { font-size: 10px; color: #fbbf24; margin-top: 1px; }
+  .upgrade-btn {
+    background: linear-gradient(135deg, #f59e0b, #d97706);
+    border: none; color: #fff;
+    padding: 7px 10px; border-radius: 8px;
+    font-size: 11px; font-weight: bold;
+    cursor: pointer; white-space: nowrap;
+  }
+  .upgrade-btn:active { transform: scale(0.95); }
+  .upgrade-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+  .upgrade-btn.maxed { background: linear-gradient(135deg, #64748b, #475569); }
+
+  /* 紧凑单位升级行 */
+  .unit-upgrade-row {
+    display: flex; align-items: center; gap: 8px;
+    background: rgba(255,255,255,0.06);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 10px;
+    padding: 6px 8px;
+  }
+  .unit-upgrade-name {
+    font-size: 11px; font-weight: bold; color: #e2e8f0;
+    min-width: 52px; text-align: center; flex-shrink: 0;
+    line-height: 1.2;
+  }
+  .unit-upgrade-name span { font-size: 10px; color: #94a3b8; }
+  .unit-upgrade-fields {
+    display: flex; gap: 6px; flex-wrap: wrap; flex: 1; justify-content: flex-end;
+  }
+  .compact-upgrade {
+    display: flex; align-items: center; gap: 4px;
+    background: rgba(0,0,0,0.25);
+    border-radius: 8px;
+    padding: 4px 6px;
+  }
+  .cu-icon { font-size: 13px; }
+  .cu-lvl { font-size: 10px; color: #fbbf24; font-weight: bold; }
+  .cu-inc {
+    font-size: 10px; color: #4ade80; font-weight: bold;
+    background: rgba(34,197,94,0.15);
+    padding: 1px 5px; border-radius: 4px;
+    min-width: 22px; text-align: center;
+  }
+  .cu-btn {
+    padding: 3px 6px; font-size: 10px; border-radius: 6px;
+  }
+
+  /* 波次提示 */
+  #waveNotice {
+    position: absolute; top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 32px; font-weight: bold; color: #fff;
+    text-shadow: 0 0 20px #ff6b6b, 0 2px 4px rgba(0,0,0,0.8);
+    opacity: 0; pointer-events: none;
+    z-index: 50; transition: opacity 0.3s;
+  }
+
+  /* 单位信息面板 */
+  #infoPanel {
+    position: absolute; bottom: 120px; left: 50%;
+    transform: translateX(-50%);
+    background: rgba(15,52,96,0.96);
+    border: 2px solid #4ecdc4;
+    border-radius: 12px;
+    padding: 10px 14px;
+    z-index: 20;
+    display: none;
+    min-width: 260px;
+    max-width: 90%;
+    color: #fff;
+  }
+  #infoPanel .unit-info { font-size: 12px; margin-bottom: 8px; line-height: 1.5; }
+  #infoPanel .unit-info b { color: #ffd700; }
+  #infoPanel button {
+    width: 100%; padding: 7px; margin-top: 4px;
+    border: none; border-radius: 6px;
+    font-size: 12px; font-weight: bold; cursor: pointer;
+    color: #fff;
+  }
+  .btn-move { background: linear-gradient(135deg, #4ecdc4, #44a08d); }
+  .btn-sell { background: linear-gradient(135deg, #667eea, #764ba2); }
+  .btn-close { background: rgba(255,255,255,0.2); }
+
+  /* 移动提示 */
+  .move-hint {
+    position: absolute; top: 50px; left: 50%;
+    transform: translateX(-50%);
+    background: rgba(78,205,196,0.9);
+    color: #fff; padding: 6px 14px;
+    border-radius: 16px; font-size: 12px; font-weight: bold;
+    z-index: 30; display: none;
+  }
+
+  .pause-menu h2 { margin-top: 30px; }
+
+  .toast {
+    position: absolute; top: 56px; left: 50%;
+    transform: translateX(-50%);
+    background: rgba(0,0,0,0.8);
+    color: #fff; padding: 7px 14px;
+    border-radius: 18px; font-size: 12px;
+    z-index: 200; opacity: 0;
+    transition: opacity 0.3s;
+    pointer-events: none;
+    white-space: nowrap;
+  }
+  .toast.show { opacity: 1; }
+</style>
+</head>
+<body>
+<div id="gameContainer">
+  <canvas id="gameCanvas"></canvas>
+
+  <div id="hud" style="display:none;">
+    <div class="hud-item"><span class="icon gold">💰</span><span id="goldText">200</span></div>
+    <div class="hud-item"><span class="icon wave">🌊</span><span id="waveText">1/10</span></div>
+    <div class="hud-item"><span class="icon life">🏰</span><span id="lifeText">1000</span></div>
+    <button class="pause-btn" id="speedBtn" onclick="Game.toggleSpeed()">1x</button>
+    <button class="pause-btn" onclick="Game.pause()">⏸</button>
+  </div>
+
+  <div id="waveNotice"></div>
+  <div id="toast" class="toast"></div>
+  <div class="move-hint" id="moveHint">点击相邻空格移动 (💰10)</div>
+
+  <div id="buildTabs" style="display:none;" class="build-tabs">
+    <button class="build-tab active" data-tab="building">🏗️ 建筑</button>
+    <button class="build-tab" data-tab="character">🎖️ 角色</button>
+    <button class="build-tab" data-tab="hero">🦸 英雄</button>
+  </div>
+  <div id="buildBar" style="display:none;"></div>
+
+  <div id="infoPanel">
+    <div class="unit-info" id="unitInfo"></div>
+    <button class="btn-move" id="moveBtn" style="display:none;">移动 (💰10)</button>
+    <button class="btn-sell" id="sellBtn">出售</button>
+    <button class="btn-close" id="closeBtn">关闭</button>
+  </div>
+
+  <!-- 主菜单 -->
+  <div id="mainMenu" class="overlay">
+    <h1>塔防战记</h1>
+    <p class="subtitle">守护基地 · 击退怪物 · 永久成长</p>
+    <button class="menu-btn btn-primary" onclick="Game.openLevelSelect()">⚔️ 开始游戏</button>
+    <button class="menu-btn btn-success" id="continueBtn" onclick="Game.continueGame()">📂 继续游戏</button>
+    <button class="menu-btn btn-warning" onclick="Game.openShop()">⬆️ 升级商店</button>
+    <button class="menu-btn btn-secondary" onclick="Game.openCodex()">📖 游戏百科</button>
+    <button class="menu-btn btn-secondary" onclick="Game.showHelp()">❓ 游戏说明</button>
+    <div class="menu-info">
+      <span class="honor">⭐ 功勋点：<span id="menuHonor">0</span></span><br>
+      最高波次：<span id="menuBestWave">0</span>
+    </div>
+  </div>
+
+  <!-- 升级商店 -->
+  <div id="shopScreen" class="overlay" style="display:none;">
+    <div class="shop-header">
+      <h2 style="margin:0;">⬆️ 升级商店</h2>
+      <div class="shop-currency">⭐ <span id="shopHonor">0</span></div>
+    </div>
+    <div class="upgrade-list" id="upgradeList"></div>
+    <button class="menu-btn btn-secondary" onclick="Game.closeShop()">← 返回主菜单</button>
+  </div>
+
+  <!-- 说明 -->
+  <div id="helpScreen" class="overlay" style="display:none;">
+    <h2>❓ 游戏说明</h2>
+    <p style="font-size:13px; line-height:1.7; color:#cbd5e1; max-width:360px; margin-bottom:16px;">
+      怪物从地图上方涌入，直接向最下方的基地进攻。<br><br>
+      🏰 基地固定1000HP，被怪物摧毁则失败<br>
+      💰 消耗金币放置建筑和角色<br><br>
+      <b style="color:#fbbf24;">建筑（不可移动）：</b><br>
+      • 🧱 栅栏 — 阻挡怪物，有生命值<br>
+      • 🗼 前哨站 — 可建在任意位置，攻击3格内敌人<br>
+      • ❄️ 冰冻塔 — 攻击目标格，使格内怪物减速50%持续6秒<br>
+      • 🏥 医院 — 治疗周围3格内的角色<br><br>
+      <b style="color:#fbbf24;">角色（可移动）：</b><br>
+      • 🔫 手枪手 — 均衡型<br>
+      • 💥 突击手 — 近战高射速<br>
+      • 🎖️ 步枪手 — 中远程精准<br>
+      • 🔥 机枪手 — 高射速持续输出<br>
+      • 🎯 狙击手 — 超远程高伤<br>
+      • 💣 掷弹兵 — 范围爆破伤害<br>
+      • 💢 霰弹枪手 — 散射3发高爆发<br>
+      • 🏹 弩手 — 直线穿透所有敌人<br><br>
+      选中角色后可消耗💰10移动到相邻空格。<br>
+      ⭐ 完成波次获得功勋点，永久强化属性。
+    </p>
+    <button class="menu-btn btn-secondary" onclick="Game.closeHelp()">← 返回</button>
+  </div>
+
+  <!-- 游戏百科 -->
+  <div id="codexScreen" class="overlay" style="display:none;">
+    <h2>📖 游戏百科</h2>
+    <div class="codex-tabs" id="codexTabs">
+      <button class="tab-btn active" data-tab="building">🏗️ 建筑</button>
+      <button class="tab-btn" data-tab="character">👤 角色</button>
+      <button class="tab-btn" data-tab="hero">🦸 英雄</button>
+      <button class="tab-btn" data-tab="monster">👾 怪物</button>
+    </div>
+    <div class="codex-list" id="codexList"></div>
+    <button class="menu-btn btn-secondary" onclick="Game.closeCodex()">← 返回主菜单</button>
+  </div>
+
+  <!-- 暂停菜单 -->
+  <div id="pauseScreen" class="overlay pause-menu" style="display:none;">
+    <h2>⏸ 游戏暂停</h2>
+    <button class="menu-btn btn-primary" onclick="Game.resume()">▶️ 继续游戏</button>
+    <button class="menu-btn btn-success" onclick="Game.saveGame()">💾 保存游戏</button>
+    <button class="menu-btn btn-danger" onclick="Game.quitToMenu()">🏠 返回主菜单</button>
+  </div>
+
+  <!-- 结束界面 -->
+  <div id="endScreen" class="overlay" style="display:none;">
+    <h2 id="endTitle">游戏结束</h2>
+    <p id="endMsg"></p>
+    <button class="menu-btn btn-primary" onclick="Game.startNewGame(Game.levelId)">🔄 再玩一次</button>
+    <button class="menu-btn btn-secondary" onclick="Game.quitToMenu()">🏠 返回主菜单</button>
+  </div>
+
+  <!-- 关卡选择 -->
+  <div id="levelSelectScreen" class="overlay" style="display:none;">
+    <h2>选择关卡</h2>
+    <p class="subtitle" style="margin-bottom:10px;">通关前一关即可解锁下一关</p>
+    <div id="levelList" class="level-list"></div>
+    <button class="menu-btn btn-secondary" onclick="Game.showMainMenu()" style="margin-top:14px;">← 返回主菜单</button>
+  </div>
+</div>
+
+<script src="game.js?v=20261024e"></script>
+</body>
+</html>

@@ -284,6 +284,12 @@ function drawWeapon(ctx, x, y, s, type, flash) {
     ctx.fillRect(x, y - s*0.07, s*0.42, s*0.08);
     ctx.fillRect(x, y + s*0.01, s*0.42, s*0.08);
     ctx.fillRect(x + s*0.38, y - s*0.09, s*0.06, s*0.2);
+  } else if (type === 'medic') {
+    // 医疗杖：杖身 + 顶部红十字
+    ctx.fillRect(x + s*0.1, y - s*0.02, s*0.3, s*0.06);
+    ctx.fillStyle = flash ? '#fff' : '#dc2626';
+    ctx.fillRect(x + s*0.38, y - s*0.12, s*0.06, s*0.22);
+    ctx.fillRect(x + s*0.3, y - s*0.04, s*0.22, s*0.06);
   } else if (type === 'crossbow') {
     // 弩：横向弓臂 + 弩身 + 弦
     ctx.fillRect(x - s*0.1, y - s*0.02, s*0.4, s*0.05); // 弩身
@@ -315,6 +321,61 @@ function drawWeapon(ctx, x, y, s, type, flash) {
     ctx.lineTo(x + s*0.68, y);
     ctx.lineTo(x + s*0.6, y + s*0.04);
     ctx.closePath();
+    ctx.fill();
+  } else if (type === 'axe') {
+    // 战斧：长柄 + 双面斧刃
+    ctx.fillStyle = flash ? '#fff' : '#78350f';
+    ctx.fillRect(x + s*0.08, y - s*0.025, s*0.42, s*0.05); // 斧柄
+    // 斧刃（双面）
+    ctx.fillStyle = flash ? '#fff' : '#9ca3af';
+    ctx.strokeStyle = flash ? '#fff' : '#4b5563';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(x + s*0.42, y - s*0.025);
+    ctx.lineTo(x + s*0.58, y - s*0.2);
+    ctx.lineTo(x + s*0.52, y);
+    ctx.lineTo(x + s*0.58, y + s*0.2);
+    ctx.lineTo(x + s*0.42, y + s*0.025);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+    // 斧刃高光
+    ctx.fillStyle = flash ? '#fff' : '#d1d5db';
+    ctx.beginPath();
+    ctx.moveTo(x + s*0.46, y - s*0.02);
+    ctx.lineTo(x + s*0.56, y - s*0.16);
+    ctx.lineTo(x + s*0.5, y);
+    ctx.closePath();
+    ctx.fill();
+  } else if (type === 'engineer') {
+    // 扳手：长柄 + 开口扳手头部
+    ctx.fillStyle = flash ? '#fff' : '#374151';
+    ctx.strokeStyle = flash ? '#fff' : '#111827';
+    ctx.lineWidth = 1;
+    // 扳手柄
+    ctx.fillRect(x + s*0.05, y - s*0.03, s*0.35, s*0.06);
+    // 扳手头（开口）
+    ctx.fillStyle = flash ? '#fff' : '#9ca3af';
+    ctx.beginPath();
+    ctx.arc(x + s*0.42, y, s*0.12, 0, Math.PI*2);
+    ctx.fill();
+    ctx.stroke();
+    // 开口槽
+    ctx.fillStyle = flash ? '#fff' : '#111827';
+    ctx.fillRect(x + s*0.42, y - s*0.06, s*0.04, s*0.12);
+  } else if (type === 'firemage') {
+    // 法杖：深色杖身 + 顶部火球
+    ctx.fillStyle = flash ? '#fff' : '#78350f';
+    ctx.fillRect(x + s*0.1, y - s*0.02, s*0.32, s*0.05);
+    // 顶部火球（发光）
+    const fx = x + s*0.44, fy = y;
+    const fg = ctx.createRadialGradient(fx, fy, 0, fx, fy, s*0.12);
+    fg.addColorStop(0, flash ? '#fff' : '#fef08a');
+    fg.addColorStop(0.5, flash ? '#fff' : '#f97316');
+    fg.addColorStop(1, 'rgba(239,68,68,0)');
+    ctx.fillStyle = fg;
+    ctx.beginPath();
+    ctx.arc(fx, fy, s*0.12, 0, Math.PI*2);
     ctx.fill();
   }
 }
@@ -365,6 +426,17 @@ function drawHeadgear(ctx, x, y, s, type, flash) {
     ctx.ellipse(x, y - s*0.4, s*0.26, s*0.11, 0, 0, Math.PI*2);
     ctx.fill();
     ctx.fillRect(x - s*0.26, y - s*0.4, s*0.52, s*0.05);
+  } else if (type === 'medic') {
+    // 白色医疗帽 + 红十字
+    ctx.fillStyle = flash ? '#fff' : '#f1f5f9';
+    ctx.beginPath();
+    ctx.arc(x, y - s*0.38, s*0.26, Math.PI, 0);
+    ctx.fill();
+    ctx.fillRect(x - s*0.26, y - s*0.4, s*0.52, s*0.05);
+    // 红十字标记
+    ctx.fillStyle = flash ? '#fff' : '#dc2626';
+    ctx.fillRect(x - s*0.04, y - s*0.46, s*0.08, s*0.14);
+    ctx.fillRect(x - s*0.09, y - s*0.41, s*0.18, s*0.05);
   } else if (type === 'crossbow') {
     // 猎人兜帽
     ctx.beginPath();
@@ -377,6 +449,61 @@ function drawHeadgear(ctx, x, y, s, type, flash) {
     ctx.lineTo(x + s*0.32, y - s*0.7);
     ctx.lineTo(x + s*0.12, y - s*0.42);
     ctx.closePath();
+    ctx.fill();
+  } else if (type === 'axe') {
+    // 角盔（战士头盔 + 双角）
+    ctx.beginPath();
+    ctx.arc(x, y - s*0.38, s*0.28, Math.PI, 0);
+    ctx.fill();
+    ctx.fillRect(x - s*0.28, y - s*0.4, s*0.56, s*0.05);
+    // 双角
+    ctx.fillStyle = flash ? '#fff' : '#fef3c7';
+    ctx.beginPath();
+    ctx.moveTo(x - s*0.22, y - s*0.42);
+    ctx.lineTo(x - s*0.36, y - s*0.62);
+    ctx.lineTo(x - s*0.16, y - s*0.5);
+    ctx.closePath();
+    ctx.fill();
+    ctx.beginPath();
+    ctx.moveTo(x + s*0.22, y - s*0.42);
+    ctx.lineTo(x + s*0.36, y - s*0.62);
+    ctx.lineTo(x + s*0.16, y - s*0.5);
+    ctx.closePath();
+    ctx.fill();
+  } else if (type === 'engineer') {
+    // 安全帽：黄色圆顶 + 帽檐
+    ctx.fillStyle = flash ? '#fff' : '#eab308';
+    ctx.beginPath();
+    ctx.arc(x, y - s*0.38, s*0.26, Math.PI, 0);
+    ctx.fill();
+    // 帽檐
+    ctx.fillRect(x - s*0.3, y - s*0.4, s*0.6, s*0.06);
+    // 顶部条纹
+    ctx.fillStyle = flash ? '#fff' : '#ca8a04';
+    ctx.fillRect(x - s*0.15, y - s*0.45, s*0.3, s*0.03);
+  } else if (type === 'firemage') {
+    // 法师尖帽：橙色尖顶 + 帽檐
+    ctx.fillStyle = flash ? '#fff' : '#f97316';
+    ctx.strokeStyle = flash ? '#fff' : '#c2410c';
+    ctx.lineWidth = 1;
+    // 帽檐
+    ctx.fillRect(x - s*0.32, y - s*0.42, s*0.64, s*0.06);
+    // 尖顶（三角形）
+    ctx.beginPath();
+    ctx.moveTo(x - s*0.22, y - s*0.42);
+    ctx.lineTo(x, y - s*0.85);
+    ctx.lineTo(x + s*0.22, y - s*0.42);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+    // 帽尖火球装饰
+    const hx = x, hy = y - s*0.85;
+    const hg = ctx.createRadialGradient(hx, hy, 0, hx, hy, s*0.08);
+    hg.addColorStop(0, flash ? '#fff' : '#fef08a');
+    hg.addColorStop(1, 'rgba(239,68,68,0)');
+    ctx.fillStyle = hg;
+    ctx.beginPath();
+    ctx.arc(hx, hy, s*0.08, 0, Math.PI*2);
     ctx.fill();
   }
 }
@@ -433,6 +560,50 @@ function drawFlameTower(ctx, x, y, s, flash) {
   ctx.restore();
 }
 
+// 闪电塔：紫色塔身 + 顶部闪电符文
+function drawLightningTower(ctx, x, y, s, flash) {
+  ctx.save();
+  // 阴影
+  ctx.fillStyle = 'rgba(0,0,0,0.3)';
+  ctx.beginPath();
+  ctx.ellipse(x, y + s*0.6, s*0.55, s*0.16, 0, 0, Math.PI*2);
+  ctx.fill();
+  const base = flash ? '#fff' : '#7c3aed';
+  const baseDark = flash ? '#fff' : '#4c1d95';
+  // 塔身（梯形）
+  ctx.fillStyle = base;
+  ctx.beginPath();
+  ctx.moveTo(x - s*0.4, y + s*0.5);
+  ctx.lineTo(x - s*0.28, y - s*0.25);
+  ctx.lineTo(x + s*0.28, y - s*0.25);
+  ctx.lineTo(x + s*0.4, y + s*0.5);
+  ctx.closePath();
+  ctx.fill();
+  ctx.fillStyle = baseDark;
+  ctx.fillRect(x - s*0.4, y + s*0.35, s*0.8, s*0.15);
+  // 顶部金属环
+  ctx.fillStyle = flash ? '#fff' : '#312e81';
+  ctx.fillRect(x - s*0.28, y - s*0.38, s*0.56, s*0.15);
+  // 闪电符号（发光）
+  const bolt = flash ? '#fff' : '#fde047';
+  const boltGlow = flash ? '#fff' : '#a855f7';
+  ctx.shadowColor = boltGlow;
+  ctx.shadowBlur = 10;
+  ctx.fillStyle = bolt;
+  ctx.beginPath();
+  ctx.moveTo(x + s*0.05, y - s*0.8);
+  ctx.lineTo(x - s*0.14, y - s*0.4);
+  ctx.lineTo(x - s*0.01, y - s*0.4);
+  ctx.lineTo(x - s*0.1, y - s*0.12);
+  ctx.lineTo(x + s*0.14, y - s*0.5);
+  ctx.lineTo(x + s*0.01, y - s*0.5);
+  ctx.lineTo(x + s*0.1, y - s*0.8);
+  ctx.closePath();
+  ctx.fill();
+  ctx.shadowBlur = 0;
+  ctx.restore();
+}
+
 function drawUnitVector(ctx, type, x, y, size, flash) {
   const cfg = UNIT_TYPES[type];
   if (cfg.isBuilding) {
@@ -441,6 +612,7 @@ function drawUnitVector(ctx, type, x, y, size, flash) {
     else if (type === 'outpost') drawOutpost(ctx, x, y, size, flash);
     else if (type === 'freeze') drawFreezeTower(ctx, x, y, size, flash);
     else if (type === 'flame') drawFlameTower(ctx, x, y, size, flash);
+    else if (type === 'lightning') drawLightningTower(ctx, x, y, size, flash);
   } else {
     // 英雄按职业（baseClass）绘制外观
     const drawType = cfg.hero ? (cfg.baseClass || type) : type;
@@ -481,29 +653,36 @@ function drawStar(ctx, cx, cy, outerR, innerR, points) {
 const UNIT_TYPES = {
   fence:    { name:'栅栏',   icon:'🧱', cost:25,  hp:300, atk:0,  range:0, fireRate:0, isBuilding:true,  canAttack:false, color:'#8b7355', desc:'木质防御工事，无法攻击，但生命值高，可阻挡怪物前进。' },
   outpost:  { name:'前哨站', icon:'🗼', cost:100, hp:300, atk:20, range:3, fireRate:0.5, isBuilding:true, canAttack:true, color:'#6b7280', desc:'特殊防御塔，可建造在地图任意位置，攻击3格范围内的敌人，并为周围3格提供建造区域。' },
-  hospital: { name:'医院',   icon:'🏥', cost:200, hp:300, atk:0,  range:3, fireRate:1, heal:10, isBuilding:true, canAttack:false, color:'#22c55e', desc:'医疗建筑，每秒治疗周围3格范围内的友方角色10点生命值。' },
-  freeze:   { name:'冰冻塔', icon:'❄️', cost:180, hp:300, atk:8,  range:5, fireRate:0.25, isBuilding:true, canAttack:true, color:'#38bdf8', freeze:{slowFactor:0.5,duration:6}, desc:'冰冻防御塔，攻击目标格，使格内所有怪物陷入冰冻状态（减速50%，持续6秒），并造成少量伤害。' },
+  hospital: { name:'医院',   icon:'🏥', cost:250, hp:300, atk:0,  range:2, fireRate:1, heal:10, isBuilding:true, canAttack:false, color:'#22c55e', desc:'医疗建筑，每秒治疗周围2格范围内2个血量最低的友方角色10点生命值，周围3格内可放置单位。' },
+  freeze:   { name:'冰冻塔', icon:'❄️', cost:180, hp:300, atk:15, range:5, fireRate:0.25, isBuilding:true, canAttack:true, color:'#38bdf8', freeze:{slowFactor:0.5,duration:6}, desc:'冰冻防御塔，攻击目标格，使格内所有怪物陷入冰冻状态（减速50%，持续6秒），并造成伤害。' },
   flame:    { name:'火焰塔', icon:'🔥', cost:200, hp:300, atk:70, range:2, fireRate:0, isBuilding:true, canAttack:true, color:'#f97316', flame:true, desc:'火焰防御塔，自动旋转朝向敌人最多的方向，持续喷射火焰，对2格内直线上所有敌人造成持续伤害，伤害高但射程短。' },
+  lightning:{ name:'闪电塔', icon:'⚡', cost:250, hp:300, atk:60, range:5, fireRate:0.5, isBuilding:true, canAttack:true, color:'#a855f7', chain:{jumps:5, range:1, falloff:[1,0.8,0.6,0.4,0.2]}, desc:'闪电防御塔，发射闪电链攻击目标，并在1格内相邻怪物间传导，最多传导5次，伤害依次衰减为100%/80%/60%/40%/20%。' },
   pistol:   { name:'手枪手', icon:'🔫', cost:40,  hp:100, atk:15, range:4,  fireRate:1.0, isBuilding:false, canAttack:true, color:'#3b82f6', desc:'基础远程单位，性价比高，适合前期防守。' },
   assault:  { name:'突击手', icon:'💥', cost:80,  hp:120, atk:15, range:5,  fireRate:2.0, isBuilding:false, canAttack:true, color:'#f97316', desc:'高射速突击单位，持续输出能力强，生命较厚。' },
   rifle:    { name:'步枪手', icon:'🎖️', cost:120, hp:150, atk:30, range:6,  fireRate:1.2, isBuilding:false, canAttack:true, color:'#10b981', desc:'中远程精准射手，单发伤害高，射程远。' },
-  mg:       { name:'机枪手', icon:'🔥', cost:150, hp:150, atk:25, range:6,  fireRate:1.6, isBuilding:false, canAttack:true, color:'#a855f7', desc:'重火力单位，高伤害与高射速兼备，压制力强。' },
-  sniper:   { name:'狙击手', icon:'🎯', cost:230, hp:100, atk:120,range:10, fireRate:0.3, isBuilding:false, canAttack:true, color:'#ef4444', desc:'超远程高伤单位，可覆盖全图，但射速极慢。' },
-  grenadier:{ name:'掷弹兵', icon:'💣', cost:300, hp:150, atk:100,range:3, fireRate:0.15, isBuilding:false, canAttack:true, aoe:true, color:'#f97316', desc:'强力爆破兵种，投掷榴弹对目标格及上下左右格造成范围伤害，射速慢但威力巨大。' },
-  shotgun:  { name:'霰弹枪手', icon:'💢', cost:260, hp:150, atk:100,range:4, fireRate:0.4, isBuilding:false, canAttack:true, spread:true, color:'#f59e0b', desc:'近距离高伤兵种，每次射击发射三颗弹丸，同时打击目标格及左右相邻格，低射速高爆发。' },
-  crossbow: { name:'弩手',   icon:'🏹', cost:130, hp:120, atk:50, range:4, fireRate:0.6, isBuilding:false, canAttack:true, pierce:true, color:'#14b8a6', desc:'远程穿透兵种，箭矢可穿透一条直线上的所有敌人，仅能攻击上下左右四个方向，射程4格。' },
-  macarthur:{ name:'麦克阿瑟', icon:'🎖️', cost:400, hp:150, atk:150, range:4, fireRate:0.15, isBuilding:false, canAttack:true, aoe:true, color:'#dc2626', hero:true, baseClass:'grenadier', desc:'英雄·掷弹兵，每场战斗只能部署一个。可放置在地图任意位置，投掷高爆榴弹对目标格及上下左右格造成巨额范围伤害。' },
-  yanshuangying:{ name:'燕双鹰', icon:'🔫', cost:180, hp:150, atk:20, range:4, fireRate:2.0, isBuilding:false, canAttack:true, color:'#facc15', hero:true, baseClass:'pistol', desc:'英雄·手枪兵，每场战斗只能部署一个。可放置在地图任意位置，以极快射速持续射击，生命比普通手枪手更厚。' }
+  mg:       { name:'机枪手', icon:'🔥', cost:170, hp:150, atk:35, range:6,  fireRate:1.6, isBuilding:false, canAttack:true, color:'#a855f7', desc:'重火力单位，高伤害与高射速兼备，压制力强。' },
+  sniper:   { name:'狙击手', icon:'🎯', cost:240, hp:100, atk:120,range:10, fireRate:0.3, isBuilding:false, canAttack:true, color:'#ef4444', desc:'超远程高伤单位，可覆盖全图，但射速极慢。' },
+  grenadier:{ name:'掷弹兵', icon:'💣', cost:250, hp:150, atk:100,range:3, fireRate:0.15, isBuilding:false, canAttack:true, aoe:true, color:'#f97316', desc:'强力爆破兵种，投掷榴弹对目标格及上下左右格造成范围伤害，射速慢但威力巨大。' },
+  shotgun:  { name:'霰弹枪手', icon:'💢', cost:220, hp:150, atk:100,range:4, fireRate:0.4, isBuilding:false, canAttack:true, spread:true, color:'#f59e0b', desc:'近距离高伤兵种，每次射击发射5颗扇形弹丸，越近命中越多伤害越高，远距离弹丸分散伤害降低。' },
+  crossbow: { name:'神射手', icon:'🏹', cost:150, hp:120, atk:45, range:4, fireRate:0.6, isBuilding:false, canAttack:true, pierce:true, color:'#14b8a6', desc:'远程穿透兵种，锁定射程内最近的敌人并射出穿透箭矢，箭矢沿直线飞行贯穿路径上的所有敌人，射程4格。' },
+  medic:    { name:'军医',   icon:'🩹', cost:140, hp:160, atk:15, range:4, fireRate:0.7, isBuilding:false, canAttack:true, heal:10, color:'#06b6d4', desc:'战场医疗兵种，既能射击敌人，又能治疗自己和周围一格（上下左右）的友方角色，攻速0.7次/秒，每次治疗10点生命值。' },
+  axe:      { name:'刀斧手', icon:'🪓', cost:130, hp:300, atk:50, range:1, fireRate:0.8, isBuilding:false, canAttack:true, fan:true, color:'#b45309', desc:'近战扇形攻击兵种，生命值高，每次挥砍自动选择周围8格中敌人最多的连续3格造成伤害，攻速0.8次/秒。' },
+  engineer: { name:'工程师', icon:'🔧', cost:130, hp:120, atk:10, range:1, fireRate:0.8, isBuilding:false, canAttack:true, repair:10, color:'#65a30d', desc:'战场支援兵种，既能近战攻击，又能持续修复相邻1格内血量最低的建筑物，修复速度10点/秒。' },
+  firemage: { name:'火法师', icon:'🔥', cost:200, hp:100, atk:50, range:6, fireRate:0.3, isBuilding:false, canAttack:true, burn:{groundDur:5, debuffDur:3, dps:25}, color:'#f97316', desc:'远程法系兵种，锁定最近敌人并点燃其所在格子，燃烧地面持续5秒，经过的敌人或放置的单位会进入燃烧状态（3秒内每秒掉25血）。' },
+  macarthur:{ name:'麦克阿瑟', icon:'🎖️', cost:350, hp:150, atk:150, range:4, fireRate:0.15, isBuilding:false, canAttack:true, aoe:true, color:'#dc2626', hero:true, baseClass:'grenadier', desc:'英雄·掷弹兵，每场战斗只能部署一个。可放置在地图任意位置，投掷高爆榴弹对目标格及上下左右格造成巨额范围伤害。' },
+  yanshuangying:{ name:'燕双鹰', icon:'🔫', cost:200, hp:160, atk:25, range:4, fireRate:2.0, isBuilding:false, canAttack:true, color:'#facc15', hero:true, baseClass:'pistol', desc:'英雄·手枪兵，每场战斗只能部署一个。可放置在地图任意位置，以极快射速持续射击，生命比普通手枪手更厚。' },
+  huasheng: { name:'华生',   icon:'🩹', cost:190, hp:200, atk:20, range:4, fireRate:0.7, isBuilding:false, canAttack:true, heal:14, color:'#14b8a6', hero:true, baseClass:'medic', desc:'英雄·军医，每场战斗只能部署一个。可放置在地图任意位置，既能射击敌人，又能治疗自己和周围一格（上下左右）的友方角色，治疗量约10/秒。' }
 };
 
 // ============== 怪物配置 ==============
 const MONSTER_TYPES = {
-  normal: { name:'普通丧尸', icon:'👹', hp:80,  atk:50,  speed:1.0, gold:15, color:'#ef4444', size:16, desc:'最常见的敌人，各项属性均衡，会直线向基地推进。' },
-  fast:   { name:'迅猛丧尸', icon:'⚡', hp:40,  atk:35,  speed:2.2, gold:20, color:'#f59e0b', size:14, desc:'移动速度极快的敌人，生命值较低但能迅速突破防线，击杀奖励较高。' },
-  tank:   { name:'肥胖丧尸', icon:'🛡️', hp:300, atk:50, speed:0.5, gold:50, color:'#6366f1', size:22, desc:'重甲怪物，生命值和攻击力都很高，但移动缓慢。' },
-  bat:    { name:'蝙蝠怪', icon:'🦇', hp:50, atk:40, speed:2.0, gold:18, color:'#a78bfa', size:15, flying:true, desc:'初级飞行怪物，生命值不高但速度快，无视地面建筑和角色阻挡，直接飞向基地攻击。' },
-  acid:   { name:'吐酸丧尸', icon:'🧟', hp:80, atk:45, speed:0.8, gold:25, color:'#84cc16', size:17, ranged:true, rangedRange:3, fireRate:0.5, desc:'远程攻击怪物，能从3格外喷射酸液攻击玩家单位，生命值不高但威胁大，需优先击杀。' },
-  boss:   { name:'丧尸王', icon:'👑', hp:1400,atk:100, speed:0.4, gold:200,color:'#dc2626', size:28, desc:'最终首领，拥有惊人的生命值和攻击力，需要全力应对。' }
+  normal: { name:'普通丧尸', icon:'👹', category:'zombie', hp:100, atk:50,  speed:1.0, gold:15, color:'#ef4444', size:16, desc:'最常见的敌人，各项属性均衡，会直线向基地推进。' },
+  fast:   { name:'丧尸犬', icon:'🐺', category:'zombie', hp:50,  atk:35,  speed:2.2, gold:20, color:'#f59e0b', size:14, desc:'四足丧尸犬，移动速度极快，生命值较低但能迅速突破防线，击杀奖励较高。' },
+  tank:   { name:'肥胖丧尸', icon:'🛡️', category:'zombie', hp:300, atk:50, speed:0.5, gold:50, color:'#6366f1', size:22, desc:'重甲怪物，生命值和攻击力都很高，但移动缓慢。' },
+  bat:    { name:'蝙蝠怪', icon:'🦇', category:'beast', hp:50, atk:40, speed:2.0, gold:15, color:'#a78bfa', size:15, flying:true, desc:'初级飞行怪物，生命值不高但速度快，无视地面建筑和角色阻挡，直接飞向基地攻击。' },
+  acid:   { name:'吐酸丧尸', icon:'🧟', category:'zombie', hp:80, atk:45, speed:0.8, gold:25, color:'#84cc16', size:17, ranged:true, rangedRange:3, fireRate:0.5, desc:'远程攻击怪物，能从3格外喷射酸液攻击玩家单位，生命值不高但威胁大，需优先击杀。' },
+  boss:   { name:'丧尸王', icon:'👑', category:'zombie', hp:1400,atk:100, speed:0.4, gold:200,color:'#dc2626', size:28, desc:'最终首领，拥有惊人的生命值和攻击力，需要全力应对。' },
+  gas:    { name:'毒气丧尸', icon:'☠️', category:'zombie', hp:120, atk:40, speed:0.6, gold:30, color:'#65a30d', size:17, desc:'死亡时释放毒气，在自身及周围一格（共5格）产生持续5秒的毒气，对处于毒气中的角色和非丧尸类怪物造成每秒25点伤害，对建筑和丧尸无效。' }
 };
 
 // ============== 波次配置 ==============
@@ -514,31 +693,31 @@ const LEVELS = [
     waves: [
       [{ type:'normal', count:6, interval:1.2, delay:0 }],
       [{ type:'normal', count:8, interval:1.0, delay:0 },{ type:'fast', count:4, interval:0.6, delay:4 }],
-      [{ type:'normal', count:10, interval:0.8, delay:0 },{ type:'fast', count:6, interval:0.5, delay:3 },{ type:'tank', count:2, interval:2.0, delay:6 }],
-      [{ type:'tank', count:4, interval:1.5, delay:0 },{ type:'fast', count:10, interval:0.4, delay:3 },{ type:'normal', count:8, interval:0.6, delay:6 }],
-      [{ type:'boss', count:1, interval:0, delay:0 },{ type:'tank', count:4, interval:1.5, delay:3 },{ type:'fast', count:12, interval:0.35, delay:5 },{ type:'normal', count:10, interval:0.5, delay:8 }]
+      [{ type:'normal', count:8, interval:0.9, delay:0 },{ type:'fast', count:6, interval:0.5, delay:3 },{ type:'tank', count:2, interval:2.0, delay:6 },{ type:'gas', count:2, interval:1.5, delay:4 }],
+      [{ type:'normal', count:6, interval:0.8, delay:0 },{ type:'fast', count:8, interval:0.45, delay:3 },{ type:'tank', count:2, interval:2.0, delay:5 },{ type:'bat', count:4, interval:0.8, delay:6 },{ type:'gas', count:3, interval:1.3, delay:5 }],
+      [{ type:'boss', count:1, interval:0, delay:0 },{ type:'tank', count:3, interval:1.8, delay:3 },{ type:'fast', count:10, interval:0.4, delay:5 },{ type:'normal', count:8, interval:0.5, delay:7 },{ type:'bat', count:6, interval:0.7, delay:6 },{ type:'acid', count:3, interval:1.5, delay:8 },{ type:'gas', count:3, interval:1.4, delay:9 }]
     ],
     hpMul: 1.0, atkMul: 1.0, speedMul: 1.0, startGoldMul: 1.0
   },
   {
     id: 2, name: '基地防御2', desc: '中等难度 · 怪物更多',
     waves: [
-      [{ type:'normal', count:9, interval:1.2, delay:0 }],
-      [{ type:'normal', count:12, interval:1.0, delay:0 },{ type:'fast', count:6, interval:0.6, delay:4 },{ type:'bat', count:4, interval:0.8, delay:6 }],
-      [{ type:'normal', count:15, interval:0.8, delay:0 },{ type:'fast', count:9, interval:0.5, delay:3 },{ type:'tank', count:3, interval:2.0, delay:6 },{ type:'acid', count:3, interval:1.5, delay:5 }],
-      [{ type:'tank', count:6, interval:1.5, delay:0 },{ type:'fast', count:15, interval:0.4, delay:3 },{ type:'bat', count:8, interval:0.6, delay:5 },{ type:'acid', count:5, interval:1.2, delay:4 },{ type:'normal', count:12, interval:0.6, delay:6 }],
-      [{ type:'boss', count:1, interval:0, delay:0 },{ type:'tank', count:6, interval:1.5, delay:3 },{ type:'bat', count:10, interval:0.5, delay:4 },{ type:'acid', count:6, interval:1.0, delay:5 },{ type:'fast', count:18, interval:0.35, delay:5 },{ type:'normal', count:15, interval:0.5, delay:8 }]
+      [{ type:'normal', count:8, interval:1.1, delay:0 },{ type:'fast', count:4, interval:0.6, delay:3 },{ type:'bat', count:4, interval:0.8, delay:5 }],
+      [{ type:'normal', count:10, interval:0.9, delay:0 },{ type:'fast', count:8, interval:0.5, delay:3 },{ type:'tank', count:3, interval:1.8, delay:6 },{ type:'acid', count:3, interval:1.5, delay:5 },{ type:'gas', count:2, interval:1.4, delay:7 }],
+      [{ type:'normal', count:12, interval:0.8, delay:0 },{ type:'fast', count:10, interval:0.45, delay:3 },{ type:'tank', count:4, interval:1.6, delay:5 },{ type:'bat', count:6, interval:0.7, delay:6 },{ type:'acid', count:4, interval:1.3, delay:5 }],
+      [{ type:'tank', count:6, interval:1.5, delay:0 },{ type:'fast', count:14, interval:0.4, delay:3 },{ type:'bat', count:8, interval:0.6, delay:4 },{ type:'acid', count:6, interval:1.1, delay:4 },{ type:'normal', count:10, interval:0.6, delay:6 },{ type:'gas', count:4, interval:1.2, delay:5 }],
+      [{ type:'boss', count:1, interval:0, delay:0 },{ type:'tank', count:5, interval:1.5, delay:3 },{ type:'bat', count:10, interval:0.5, delay:4 },{ type:'acid', count:7, interval:1.0, delay:5 },{ type:'fast', count:16, interval:0.35, delay:5 },{ type:'normal', count:12, interval:0.5, delay:7 },{ type:'gas', count:5, interval:1.1, delay:6 }]
     ],
     hpMul: 1.0, atkMul: 1.0, speedMul: 1.0, startGoldMul: 1.0
   },
   {
     id: 3, name: '基地防御3', desc: '高难度 · 海量怪物',
     waves: [
-      [{ type:'normal', count:12, interval:1.2, delay:0 },{ type:'bat', count:6, interval:0.7, delay:3 },{ type:'acid', count:3, interval:1.5, delay:5 }],
-      [{ type:'normal', count:16, interval:1.0, delay:0 },{ type:'fast', count:8, interval:0.6, delay:4 },{ type:'bat', count:8, interval:0.6, delay:6 },{ type:'acid', count:5, interval:1.2, delay:5 }],
-      [{ type:'normal', count:20, interval:0.8, delay:0 },{ type:'fast', count:12, interval:0.5, delay:3 },{ type:'tank', count:4, interval:2.0, delay:6 },{ type:'bat', count:10, interval:0.5, delay:8 },{ type:'acid', count:6, interval:1.0, delay:5 }],
-      [{ type:'tank', count:8, interval:1.5, delay:0 },{ type:'fast', count:20, interval:0.4, delay:3 },{ type:'bat', count:14, interval:0.45, delay:5 },{ type:'acid', count:10, interval:0.9, delay:4 },{ type:'normal', count:16, interval:0.6, delay:6 }],
-      [{ type:'boss', count:1, interval:0, delay:0 },{ type:'tank', count:8, interval:1.5, delay:3 },{ type:'bat', count:16, interval:0.4, delay:4 },{ type:'acid', count:12, interval:0.8, delay:4 },{ type:'fast', count:24, interval:0.35, delay:5 },{ type:'normal', count:20, interval:0.5, delay:8 }]
+      [{ type:'normal', count:10, interval:1.0, delay:0 },{ type:'fast', count:6, interval:0.5, delay:3 },{ type:'bat', count:6, interval:0.7, delay:4 },{ type:'acid', count:4, interval:1.4, delay:5 },{ type:'gas', count:3, interval:1.3, delay:6 }],
+      [{ type:'normal', count:14, interval:0.9, delay:0 },{ type:'fast', count:10, interval:0.45, delay:3 },{ type:'tank', count:2, interval:2.0, delay:6 },{ type:'bat', count:8, interval:0.6, delay:5 },{ type:'acid', count:6, interval:1.2, delay:5 }],
+      [{ type:'normal', count:16, interval:0.8, delay:0 },{ type:'fast', count:14, interval:0.4, delay:3 },{ type:'tank', count:5, interval:1.5, delay:5 },{ type:'bat', count:10, interval:0.5, delay:6 },{ type:'acid', count:8, interval:1.0, delay:5 },{ type:'gas', count:5, interval:1.0, delay:6 }],
+      [{ type:'tank', count:8, interval:1.4, delay:0 },{ type:'fast', count:20, interval:0.38, delay:3 },{ type:'bat', count:14, interval:0.45, delay:4 },{ type:'acid', count:10, interval:0.9, delay:4 },{ type:'normal', count:14, interval:0.55, delay:6 },{ type:'gas', count:6, interval:0.9, delay:5 }],
+      [{ type:'boss', count:1, interval:0, delay:0 },{ type:'tank', count:7, interval:1.4, delay:3 },{ type:'bat', count:16, interval:0.4, delay:4 },{ type:'acid', count:12, interval:0.8, delay:4 },{ type:'fast', count:22, interval:0.33, delay:5 },{ type:'normal', count:16, interval:0.5, delay:7 },{ type:'gas', count:8, interval:0.8, delay:6 }]
     ],
     hpMul: 1.0, atkMul: 1.0, speedMul: 1.0, startGoldMul: 1.0
   }
@@ -571,11 +750,18 @@ const GRENADIER_UPGRADE_FIELDS = [
   { key:'rate', name:'攻击速度', icon:'⚡', desc:'攻速 +0.03/级', add:0.03, baseCost:10, costMul:1.3, max:10 }
 ];
 
-// 霰弹枪手：攻击+10/级，攻速+0.04/级（高攻低射速，三发散射）
+// 霰弹枪手：攻击+10/级，攻速+0.04/级（高攻低射速，5发扇形）
 const SHOTGUN_UPGRADE_FIELDS = [
   { key:'hp',   name:'生命值',   icon:'❤️', desc:'生命值 +40/级',  add:40,   baseCost:8,  costMul:1.3, max:10 },
   { key:'atk',  name:'攻击力',   icon:'⚔️', desc:'攻击力 +10/级',  add:10,   baseCost:10, costMul:1.3, max:10 },
   { key:'rate', name:'攻击速度', icon:'⚡', desc:'攻速 +0.04/级', add:0.04, baseCost:10, costMul:1.3, max:10 }
+];
+
+// 刀斧手：生命+50/级，攻击+8/级，攻速+0.05/级（近战高血，攻速慢）
+const AXE_UPGRADE_FIELDS = [
+  { key:'hp',   name:'生命值',   icon:'❤️', desc:'生命值 +50/级',  add:50,   baseCost:8,  costMul:1.3, max:10 },
+  { key:'atk',  name:'攻击力',   icon:'⚔️', desc:'攻击力 +8/级',   add:8,    baseCost:10, costMul:1.3, max:10 },
+  { key:'rate', name:'攻击速度', icon:'⚡', desc:'攻速 +0.05/级', add:0.05, baseCost:10, costMul:1.3, max:10 }
 ];
 
 // 每个单位可升级的属性
@@ -585,9 +771,13 @@ const UNIT_UPGRADE_FIELDS = {
   hospital: [{ key:'hp', name:'生命值', icon:'❤️', desc:'生命值 +40/级', add:40, baseCost:8, costMul:1.3, max:10 },
              { key:'rate', name:'治疗速度', icon:'⚡', desc:'攻速 +0.1/级', add:0.1, baseCost:10, costMul:1.3, max:10 }],
   freeze:   [{ key:'hp', name:'生命值', icon:'❤️', desc:'生命值 +40/级', add:40, baseCost:8, costMul:1.3, max:10 },
+             { key:'atk', name:'冰冻伤害', icon:'❄️', desc:'攻击力 +5/级', add:5, baseCost:10, costMul:1.3, max:10 },
              { key:'rate', name:'冰冻频率', icon:'⚡', desc:'攻速 +0.05/级', add:0.05, baseCost:10, costMul:1.3, max:10 }],
   flame:    [{ key:'hp', name:'生命值', icon:'❤️', desc:'生命值 +40/级', add:40, baseCost:8, costMul:1.3, max:10 },
              { key:'atk', name:'灼烧强度', icon:'🔥', desc:'攻击力 +8/级', add:8, baseCost:10, costMul:1.3, max:10 }],
+  lightning:[{ key:'hp', name:'生命值', icon:'❤️', desc:'生命值 +40/级', add:40, baseCost:8, costMul:1.3, max:10 },
+             { key:'atk', name:'闪电伤害', icon:'⚡', desc:'攻击力 +8/级', add:8, baseCost:10, costMul:1.3, max:10 },
+             { key:'rate', name:'闪电频率', icon:'⚡', desc:'攻速 +0.05/级', add:0.05, baseCost:10, costMul:1.3, max:10 }],
   pistol:   CHAR_UPGRADE_FIELDS,
   assault:  CHAR_UPGRADE_FIELDS,
   rifle:    CHAR_UPGRADE_FIELDS,
@@ -596,6 +786,10 @@ const UNIT_UPGRADE_FIELDS = {
   grenadier:GRENADIER_UPGRADE_FIELDS,
   shotgun:  SHOTGUN_UPGRADE_FIELDS,
   crossbow: CHAR_UPGRADE_FIELDS,
+  medic:    CHAR_UPGRADE_FIELDS,
+  axe:      AXE_UPGRADE_FIELDS,
+  engineer: CHAR_UPGRADE_FIELDS,
+  firemage: CHAR_UPGRADE_FIELDS,
   // 英雄升级字段：每级提升高于普通角色
   macarthur: [
     { key:'hp',   name:'生命值',   icon:'❤️', desc:'生命值 +60/级',  add:60,  baseCost:12, costMul:1.4, max:10 },
@@ -606,6 +800,12 @@ const UNIT_UPGRADE_FIELDS = {
     { key:'hp',   name:'生命值',   icon:'❤️', desc:'生命值 +60/级',  add:60,  baseCost:12, costMul:1.4, max:10 },
     { key:'atk',  name:'攻击力',   icon:'⚔️', desc:'攻击力 +6/级',  add:6,   baseCost:12, costMul:1.4, max:10 },
     { key:'rate', name:'攻击速度', icon:'⚡', desc:'攻速 +0.2/级',  add:0.2, baseCost:12, costMul:1.4, max:10 }
+  ],
+  // 华生（军医英雄）：攻速升级同时提升治疗量
+  huasheng: [
+    { key:'hp',   name:'生命值',   icon:'❤️', desc:'生命值 +60/级',  add:60,  baseCost:12, costMul:1.4, max:10 },
+    { key:'atk',  name:'攻击力',   icon:'⚔️', desc:'攻击力 +5/级',  add:5,   baseCost:12, costMul:1.4, max:10 },
+    { key:'rate', name:'攻速/治疗', icon:'⚡', desc:'攻速 +0.1/级（同步提升治疗量）', add:0.1, baseCost:12, costMul:1.4, max:10 }
   ]
 };
 
@@ -687,6 +887,9 @@ class Unit {
     this.fireRate = cfg.fireRate + mul.rateAdd;
     this.fireTimer = 0;
     this.heal = cfg.heal || 0;
+    this.repair = cfg.repair || 0;
+    this.burnTimer = 0;
+    this.burnDps = 0;
     this.angle = 0;
     this.hitFlash = 0;
     this.alive = true;
@@ -703,7 +906,13 @@ class Unit {
 
   update(dt) {
     if (this.hitFlash > 0) this.hitFlash -= dt;
-    if (!this.canAttack && this.type !== 'hospital') return;
+    // 燃烧伤害（所有单位都可能被燃烧）
+    if (this.burnTimer > 0) {
+      this.burnTimer -= dt;
+      this.takeDamage(this.burnDps * dt);
+      if (!this.alive) return;
+    }
+    if (!this.canAttack && !this.cfg.heal) return;
 
     // 火焰塔：自动旋转 + 持续灼烧
     if (this.cfg.flame) {
@@ -711,85 +920,289 @@ class Unit {
       return;
     }
 
-    if (this.type === 'hospital') {
-      // 医院治疗周围角色
+    // 闪电塔：发射闪电链，在相邻怪物间传导
+    if (this.cfg.chain) {
       this.fireTimer -= dt;
       if (this.fireTimer <= 0) {
-        this.fireTimer = 1 / this.fireRate;
-        for (const u of Game.units) {
-          if (u === this || !u.alive) continue;
-          if (u.isBuilding) continue; // 只治疗角色
-          const dc = Math.abs(u.col - this.col);
-          const dr = Math.abs(u.row - this.row);
-          if (dc + dr <= this.range) { // 曼哈顿距离
-            u.hp = Math.min(u.maxHp, u.hp + this.heal);
-            Game.effects.push(new HealEffect(u.x, u.y));
-          }
+        const target = this.findTarget();
+        if (target) {
+          this.fireTimer = 1 / this.fireRate;
+          this.angle = Math.atan2(target.y - this.y, target.x - this.x);
+          this.performLightning(target);
         }
       }
       return;
     }
 
-    // 战斗角色攻击怪物
     this.fireTimer -= dt;
-    const target = this.findTarget();
-    const atkClass = this.cfg.baseClass || this.type; // 英雄继承职业的攻击逻辑
-    if (target) {
-      const dx = target.x - this.x;
-      const dy = target.y - this.y;
-      this.angle = Math.atan2(dy, dx);
+
+    // 医院（heal 且不可攻击）：只治疗不攻击，每次最多治疗2个血量最低的角色
+    if (this.cfg.heal && !this.cfg.canAttack) {
       if (this.fireTimer <= 0) {
-        if (atkClass === 'shotgun') {
-          // 霰弹枪手：射出三颗弹丸，打击目标格及左右相邻格
-          const tc = pxToCell(target.x, target.y);
-          if (tc) {
-            for (const dc of [-1, 0, 1]) {
-              Game.projectiles.push(new Projectile(this.x, this.y, target, this, { col: tc.col + dc, row: tc.row }));
-            }
-          }
-        } else if (atkClass === 'crossbow') {
-          // 弩手：发射穿透箭矢，沿四个直线方向之一穿透所有敌人
-          const tc = pxToCell(target.x, target.y);
-          if (tc) {
-            // 确定射击方向（上下左右）
-            let dir = { x: 0, y: 0 };
-            if (tc.col > this.col) dir = { x: 1, y: 0 };
-            else if (tc.col < this.col) dir = { x: -1, y: 0 };
-            else if (tc.row > this.row) dir = { x: 0, y: 1 };
-            else if (tc.row < this.row) dir = { x: 0, y: -1 };
-            Game.projectiles.push(new Projectile(this.x, this.y, target, this, null, dir));
-            this.angle = Math.atan2(dir.y, dir.x);
-          }
-        } else if (atkClass === 'freeze') {
-          // 冰冻塔：追踪目标，命中后施加冰冻减速
-          Game.projectiles.push(new Projectile(this.x, this.y, target, this));
-        } else {
-          Game.projectiles.push(new Projectile(this.x, this.y, target, this));
-        }
         this.fireTimer = 1 / this.fireRate;
+        this.performHeal(this.range, false, 2);
       }
+      return;
+    }
+
+    // 刀斧手：扇形近战，自动选择敌人最多的连续3格
+    if (this.cfg.fan) {
+      if (this.fireTimer <= 0) {
+        if (this.performFanAttack()) {
+          this.fireTimer = 1 / this.fireRate;
+        } else {
+          // 周围无敌人，短暂重试（0.3秒后再检查），不浪费完整冷却
+          this.fireTimer = 0.3;
+        }
+      }
+      return;
+    }
+
+    // 工程师：持续修复相邻1格内血量最低的非满血建筑 + 近战攻击
+    if (this.cfg.repair) {
+      this.performRepair(dt);
+      const target = this.findTarget();
+      if (target) {
+        this.angle = Math.atan2(target.y - this.y, target.x - this.x);
+        if (this.fireTimer <= 0) {
+          this.fireTimer = 1 / this.fireRate;
+          const atkClass = this.cfg.baseClass || this.type;
+          this.performAttack(atkClass, target);
+        }
+      }
+      if (this.fireTimer > 0) this.fireTimer -= dt;
+      return;
+    }
+
+    // 火法师：锁定最近敌人，点燃其所在格子
+    if (this.cfg.burn) {
+      const target = this.findTarget();
+      if (target) {
+        this.angle = Math.atan2(target.y - this.y, target.x - this.x);
+        if (this.fireTimer <= 0) {
+          this.fireTimer = 1 / this.fireRate;
+          this.performFireball(target);
+        }
+      }
+      if (this.fireTimer > 0) this.fireTimer -= dt;
+      return;
+    }
+
+    // 战斗角色 / 军医：寻找目标并瞄准
+    const target = this.findTarget();
+    const atkClass = this.cfg.baseClass || this.type;
+    if (target) {
+      this.angle = Math.atan2(target.y - this.y, target.x - this.x);
+    }
+
+    const tick = this.fireTimer <= 0;
+
+    // 军医：每次 tick 同时治疗 + 攻击，每次最多治疗1个血量最低的角色
+    if (this.cfg.heal) {
+      if (tick) {
+        this.fireTimer = 1 / this.fireRate;
+        this.performHeal(1, true, 1); // 治疗自己+1个相邻格血量最低的角色
+        if (target) this.performAttack(atkClass, target);
+      }
+      return;
+    }
+
+    // 普通战斗角色：有目标且冷却就绪时攻击
+    if (tick && target) {
+      this.fireTimer = 1 / this.fireRate;
+      this.performAttack(atkClass, target);
     }
   }
 
+  // 治疗范围内友方角色（range=曼哈顿距离，includeSelf=是否治疗自己，maxTargets=最多治疗几个友方角色）
+  performHeal(range, includeSelf, maxTargets) {
+    if (includeSelf) {
+      this.hp = Math.min(this.maxHp, this.hp + this.heal);
+      Game.effects.push(new HealEffect(this.x, this.y));
+    }
+    // 收集范围内需要治疗的非满血友方角色
+    const candidates = [];
+    for (const u of Game.units) {
+      if (u === this || !u.alive) continue;
+      if (u.isBuilding) continue;
+      if (u.hp >= u.maxHp) continue;
+      const dc = Math.abs(u.col - this.col);
+      const dr = Math.abs(u.row - this.row);
+      if (dc + dr <= range) candidates.push(u);
+    }
+    // 按当前生命值升序（血量最低优先）
+    candidates.sort((a, b) => a.hp - b.hp);
+    const limit = maxTargets || Infinity;
+    for (let i = 0; i < Math.min(candidates.length, limit); i++) {
+      const u = candidates[i];
+      u.hp = Math.min(u.maxHp, u.hp + this.heal);
+      Game.effects.push(new HealEffect(u.x, u.y));
+    }
+  }
+
+  // 修复相邻1格内血量最低的非满血建筑（持续，repair点/秒）
+  performRepair(dt) {
+    let target = null, bestHp = Infinity;
+    for (const u of Game.units) {
+      if (u === this || !u.alive) continue;
+      if (!u.isBuilding) continue;
+      if (u.hp >= u.maxHp) continue;
+      const dc = Math.abs(u.col - this.col);
+      const dr = Math.abs(u.row - this.row);
+      if (dc + dr <= 1 && u.hp < bestHp) { bestHp = u.hp; target = u; }
+    }
+    if (target) {
+      target.hp = Math.min(target.maxHp, target.hp + this.repair * dt);
+      Game.effects.push(new RepairEffect(target.x, target.y));
+    }
+  }
+
+  // 火法师：火球攻击 - 直接伤害 + 在目标格留下燃烧地面
+  performFireball(target) {
+    // 直接伤害
+    target.takeDamage(this.atk);
+    // 目标格燃烧
+    const tc = pxToCell(target.x, target.y);
+    if (tc) {
+      const burn = this.cfg.burn;
+      // 叠加或刷新该格的燃烧地面
+      const existing = Game.burningCells.find(b => b.col === tc.col && b.row === tc.row);
+      if (existing) {
+        existing.remaining = Math.max(existing.remaining, burn.groundDur);
+        existing.dps = Math.max(existing.dps, burn.dps);
+        existing.debuffDur = Math.max(existing.debuffDur, burn.debuffDur);
+      } else {
+        Game.burningCells.push({
+          col: tc.col, row: tc.row,
+          remaining: burn.groundDur, maxTime: burn.groundDur,
+          dps: burn.dps, debuffDur: burn.debuffDur
+        });
+      }
+      const cc = cellCenter(tc.col, tc.row);
+      Game.effects.push(new FlameZoneEffect(cc.x, cc.y, burn.groundDur));
+    }
+    // 火球飞行特效
+    Game.effects.push(new FireballProjectile(this.x, this.y, target.x, target.y));
+  }
+
+  // 执行一次攻击（发射投射物）
+  performAttack(atkClass, target) {
+    // 枪口火光（在单位朝向方向前方）
+    const mx = this.x + Math.cos(this.angle) * 14;
+    const my = this.y + Math.sin(this.angle) * 14;
+    Game.effects.push(new MuzzleFlash(mx, my, this.angle, this.cfg.color));
+
+    if (atkClass === 'shotgun') {
+      // 霰弹枪：发射5颗扇形弹丸，朝向目标方向扩散
+      const baseAngle = this.angle;
+      const pelletCount = 5;
+      const spread = 0.55; // 扇形总角度（弧度，约31度）
+      for (let i = 0; i < pelletCount; i++) {
+        const t = (i / (pelletCount - 1) - 0.5) * 2; // -1 ~ 1
+        const a = baseAngle + t * spread;
+        const dir = { x: Math.cos(a), y: Math.sin(a) };
+        Game.projectiles.push(new Projectile(this.x, this.y, target, this, null, dir, true));
+      }
+    } else if (atkClass === 'crossbow') {
+      // 朝目标方向射出穿透箭（任意方向，不再限制上下左右）
+      const dx = target.x - this.x;
+      const dy = target.y - this.y;
+      const d = Math.hypot(dx, dy) || 1;
+      const dir = { x: dx / d, y: dy / d };
+      Game.projectiles.push(new Projectile(this.x, this.y, target, this, null, dir));
+      this.angle = Math.atan2(dir.y, dir.x);
+    } else {
+      Game.projectiles.push(new Projectile(this.x, this.y, target, this));
+    }
+  }
+
+  // 闪电塔：发射闪电链，从主目标开始在相邻1格内的怪物间传导
+  performLightning(target) {
+    const chain = this.cfg.chain;
+    const falloff = chain.falloff;
+    const path = [{ x: this.x, y: this.y }];
+    const hit = new Set();
+    let current = target;
+    for (let i = 0; i < falloff.length && current; i++) {
+      const dmg = this.atk * falloff[i];
+      current.takeDamage(dmg);
+      hit.add(current);
+      path.push({ x: current.x, y: current.y });
+      // 寻找下一个未命中过的、曼哈顿距离 <= chain.range 的最近怪物
+      let next = null, bestDist = Infinity;
+      const cc = pxToCell(current.x, current.y);
+      if (cc) {
+        for (const m of Game.monsters) {
+          if (!m.alive || hit.has(m)) continue;
+          const mc = pxToCell(m.x, m.y);
+          if (!mc) continue;
+          const md = Math.abs(mc.col - cc.col) + Math.abs(mc.row - cc.row);
+          if (md <= chain.range && md < bestDist) {
+            bestDist = md;
+            next = m;
+          }
+        }
+      }
+      current = next;
+    }
+    Game.effects.push(new LightningEffect(path, this.cfg.color));
+  }
+
+  // 刀斧手：扇形近战，自动选择周围8格中敌人最多的连续3格
+  performFanAttack() {
+    // 8个相邻格偏移（顺时针：N, NE, E, SE, S, SW, W, NW）
+    const neighbors = [[0,-1],[1,-1],[1,0],[1,1],[0,1],[-1,1],[-1,0],[-1,-1]];
+    // 每格对应的角度（用于特效朝向）
+    const angles = [-Math.PI/2, -Math.PI/4, 0, Math.PI/4, Math.PI/2, 3*Math.PI/4, Math.PI, -3*Math.PI/4];
+    // 统计每个相邻格的怪物
+    const cellMonsters = Array.from({length:8}, () => []);
+    for (const m of Game.monsters) {
+      if (!m.alive) continue;
+      const mc = pxToCell(m.x, m.y);
+      if (!mc) continue;
+      for (let i = 0; i < 8; i++) {
+        const [dc, dr] = neighbors[i];
+        if (mc.col === this.col + dc && mc.row === this.row + dr) {
+          cellMonsters[i].push(m);
+          break;
+        }
+      }
+    }
+    // 寻找怪物最多的连续3格扇形
+    let bestSector = 0, bestCount = 0;
+    for (let i = 0; i < 8; i++) {
+      const count = cellMonsters[i].length + cellMonsters[(i+1)%8].length + cellMonsters[(i+2)%8].length;
+      if (count > bestCount) { bestCount = count; bestSector = i; }
+    }
+    if (bestCount === 0) return false; // 周围无敌人则不攻击
+    // 对最佳扇形3格内所有怪物造成伤害
+    const hitSet = new Set();
+    for (const idx of [bestSector, (bestSector+1)%8, (bestSector+2)%8]) {
+      for (const m of cellMonsters[idx]) hitSet.add(m);
+    }
+    for (const m of hitSet) m.takeDamage(this.atk);
+    // 扇形斩击特效（朝中间格方向）
+    const midIdx = (bestSector + 1) % 8;
+    Game.effects.push(new SlashEffect(this.x, this.y, angles[midIdx], this.cfg.color));
+    return true;
+  }
+
   findTarget() {
-    let best = null, bestDist = Infinity;
     const maxRange = this.range * CONFIG.cellW;
+    // 集火优先：若集火目标存活且在射程内，则优先攻击
+    const ft = Game.focusTarget;
+    if (ft && ft.alive) {
+      const d = dist(ft, this);
+      if (d <= maxRange) return ft;
+    }
+    // 原逻辑：寻找射程内距离最近的敌人
+    let best = null, bestDist = Infinity;
     for (const m of Game.monsters) {
       if (!m.alive) continue;
       const d = dist(m, this);
-      if (d <= maxRange) {
-        // 弩手：仅能攻击上下左右四个直线方向（同行或同列）
-        if (this.cfg.pierce) {
-          const mc = pxToCell(m.x, m.y);
-          if (!mc) continue;
-          const aligned = (mc.col === this.col) || (mc.row === this.row);
-          if (!aligned) continue;
-        }
-        // 距离自身最近的优先
-        if (d < bestDist) {
-          bestDist = d;
-          best = m;
-        }
+      if (d <= maxRange && d < bestDist) {
+        bestDist = d;
+        best = m;
       }
     }
     return best;
@@ -847,6 +1260,16 @@ class Unit {
     if (cfg.flame && this.flameActive) this.drawFlameBeam(ctx);
     // 统一矢量图标（与建造栏同源，保证图标一致）
     drawUnitVector(ctx, this.type, this.x, this.y, size, this.hitFlash > 0);
+    // 燃烧状态：橙色火焰光晕 + 闪烁
+    if (this.burnTimer > 0) {
+      const flick = 0.6 + Math.sin(performance.now() / 80) * 0.4;
+      ctx.globalAlpha = 0.5 * flick;
+      ctx.fillStyle = '#f97316';
+      ctx.beginPath();
+      ctx.arc(this.x, this.y, size * 0.8, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.globalAlpha = 1;
+    }
     // 血条
     if (this.hp < this.maxHp) {
       drawHealthBar(ctx, this.x, this.y, size, this.hp, this.maxHp);
@@ -901,6 +1324,7 @@ class Monster {
     const m = mul || { hp:1, atk:1, speed:1 };
     this.type = type;
     this.cfg = cfg;
+    this.category = cfg.category || 'zombie';
     this.maxHp = Math.round(cfg.hp * m.hp);
     this.hp = this.maxHp;
     this.atk = Math.round(cfg.atk * m.atk);
@@ -922,11 +1346,19 @@ class Monster {
     this.angle = 0;
     this.slowTimer = 0;
     this.slowFactor = 1;
+    this.burnTimer = 0;
+    this.burnDps = 0;
   }
 
   update(dt) {
     if (!this.alive) return;
     if (this.hitFlash > 0) this.hitFlash -= dt;
+    // 燃烧伤害
+    if (this.burnTimer > 0) {
+      this.burnTimer -= dt;
+      this.takeDamage(this.burnDps * dt);
+      if (!this.alive) return;
+    }
     if (this.slowTimer > 0) {
       this.slowTimer -= dt;
       this.speed = this.baseSpeed * this.slowFactor;
@@ -1089,6 +1521,29 @@ class Monster {
       this.alive = false;
       Game.gold += this.gold;
       Game.updateHUD();
+      Game.updateBuildBar();
+      // 毒气丧尸死亡：在自身及上下左右4格释放毒气
+      if (this.type === 'gas') {
+        const cc = pxToCell(this.x, this.y);
+        if (cc) {
+          const cells = [
+            { col: cc.col, row: cc.row },
+            { col: cc.col, row: cc.row - 1 },
+            { col: cc.col, row: cc.row + 1 },
+            { col: cc.col - 1, row: cc.row },
+            { col: cc.col + 1, row: cc.row }
+          ];
+          for (const c of cells) {
+            if (c.col < 0 || c.col >= CONFIG.cols || c.row < 0 || c.row >= CONFIG.rows) continue;
+            const existing = Game.poisonCells.find(p => p.col === c.col && p.row === c.row);
+            if (existing) {
+              existing.remaining = Math.max(existing.remaining, 5);
+            } else {
+              Game.poisonCells.push({ col: c.col, row: c.row, remaining: 5, maxTime: 5, dps: 25 });
+            }
+          }
+        }
+      }
     }
   }
 
@@ -1108,6 +1563,7 @@ class Monster {
     else if (this.type === 'tank') this.drawTank(ctx, size);
     else if (this.type === 'bat') this.drawBat(ctx, size);
     else if (this.type === 'acid') this.drawAcid(ctx, size);
+    else if (this.type === 'gas') this.drawGas(ctx, size);
     else if (this.type === 'boss') this.drawBoss(ctx, size);
 
     ctx.restore();
@@ -1119,410 +1575,817 @@ class Monster {
       ctx.arc(this.x, this.y, size+4, 0, Math.PI*2);
       ctx.fill();
     }
+    // 燃烧状态：橙色火焰光晕 + 闪烁
+    if (this.burnTimer > 0) {
+      const flick = 0.6 + Math.sin(performance.now() / 80) * 0.4;
+      ctx.globalAlpha = 0.5 * flick;
+      ctx.fillStyle = '#f97316';
+      ctx.beginPath();
+      ctx.arc(this.x, this.y, size + 4, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.globalAlpha = 1;
+    }
     // 血条
     if (this.hp < this.maxHp) {
       drawHealthBar(ctx, this.x, this.y, size, this.hp, this.maxHp);
     }
   }
 
+  // ========== 丧尸系统一辅助 ==========
+  // 绘制丧尸通用的腐肉皮肤色块
+  _zombieSkin(ctx, s, flash, baseColor, rotColor) {
+    const grad = ctx.createRadialGradient(-s*0.15, -s*0.15, s*0.1, 0, 0, s*0.7);
+    grad.addColorStop(0, flash ? '#fff' : baseColor);
+    grad.addColorStop(1, flash ? '#fff' : rotColor);
+    return grad;
+  }
+
   drawNormal(ctx, s) {
     const flash = this.hitFlash > 0;
+    const skin = flash ? '#fff' : '#8a9a5b';
+    const skinDark = flash ? '#fff' : '#5f6e3a';
     // 阴影
     ctx.fillStyle = 'rgba(0,0,0,0.3)';
     ctx.beginPath();
-    ctx.ellipse(0, s*0.7, s*0.6, s*0.2, 0, 0, Math.PI*2);
+    ctx.ellipse(0, s*0.72, s*0.55, s*0.18, 0, 0, Math.PI*2);
     ctx.fill();
-    // 身体（圆胖）
-    const grad = ctx.createRadialGradient(-s*0.2, -s*0.2, s*0.1, 0, 0, s);
-    grad.addColorStop(0, flash ? '#fff' : '#fca5a5');
-    grad.addColorStop(1, flash ? '#fff' : '#dc2626');
-    ctx.fillStyle = grad;
+    // 褴褛衣衫（深褐色）
+    ctx.fillStyle = flash ? '#fff' : '#5c4033';
     ctx.beginPath();
-    ctx.arc(0, 0, s, 0, Math.PI*2);
+    ctx.moveTo(-s*0.5, s*0.1);
+    ctx.lineTo(-s*0.42, s*0.6);
+    ctx.lineTo(s*0.42, s*0.6);
+    ctx.lineTo(s*0.5, s*0.1);
+    ctx.closePath();
     ctx.fill();
-    ctx.strokeStyle = '#7f1d1d';
-    ctx.lineWidth = 2;
-    ctx.stroke();
-    // 角
+    // 衣衫破洞
+    ctx.fillStyle = skin;
+    ctx.beginPath();
+    ctx.arc(-s*0.15, s*0.35, s*0.08, 0, Math.PI*2);
+    ctx.arc(s*0.2, s*0.4, s*0.06, 0, Math.PI*2);
+    ctx.fill();
+    // 胸腔撕裂伤口（暴露肋骨+黑血）
+    ctx.fillStyle = flash ? '#fff' : '#4a1a1a';
+    ctx.beginPath();
+    ctx.ellipse(0, s*0.22, s*0.2, s*0.13, 0, 0, Math.PI*2);
+    ctx.fill();
+    // 肋骨
+    ctx.strokeStyle = flash ? '#fff' : '#d4c5a0';
+    ctx.lineWidth = 1.2;
+    for (let i = 0; i < 3; i++) {
+      ctx.beginPath();
+      ctx.moveTo(-s*0.14, s*0.16 + i*s*0.06);
+      ctx.lineTo(s*0.14, s*0.16 + i*s*0.06);
+      ctx.stroke();
+    }
+    // 血迹滴落
     ctx.fillStyle = flash ? '#fff' : '#7f1d1d';
     ctx.beginPath();
-    ctx.moveTo(-s*0.5, -s*0.7);
-    ctx.lineTo(-s*0.7, -s*1.1);
-    ctx.lineTo(-s*0.3, -s*0.8);
-    ctx.closePath();
+    ctx.arc(-s*0.18, s*0.38, s*0.025, 0, Math.PI*2);
+    ctx.arc(s*0.16, s*0.42, s*0.02, 0, Math.PI*2);
     ctx.fill();
+    // 脖子
+    ctx.fillStyle = skinDark;
+    ctx.fillRect(-s*0.12, -s*0.15, s*0.24, s*0.2);
+    // 头（腐烂绿灰）
+    ctx.fillStyle = this._zombieSkin(ctx, s, flash, '#9caa6b', '#6b7a44');
     ctx.beginPath();
-    ctx.moveTo(s*0.5, -s*0.7);
-    ctx.lineTo(s*0.7, -s*1.1);
-    ctx.lineTo(s*0.3, -s*0.8);
-    ctx.closePath();
+    ctx.arc(0, -s*0.4, s*0.32, 0, Math.PI*2);
     ctx.fill();
-    // 眼睛（邪恶红眼）
-    ctx.fillStyle = '#fff';
+    ctx.strokeStyle = '#4a5d30';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+    // 头侧腐烂伤口
+    ctx.fillStyle = '#7c2d12';
     ctx.beginPath();
-    ctx.arc(-s*0.3, -s*0.1, s*0.22, 0, Math.PI*2);
-    ctx.arc(s*0.3, -s*0.1, s*0.22, 0, Math.PI*2);
+    ctx.ellipse(s*0.22, -s*0.35, s*0.1, s*0.06, 0.5, 0, Math.PI*2);
     ctx.fill();
-    ctx.fillStyle = '#dc2626';
+    // 眼睛（空洞白眼）
+    ctx.fillStyle = '#e8e0d0';
     ctx.beginPath();
-    ctx.arc(-s*0.3, -s*0.05, s*0.12, 0, Math.PI*2);
-    ctx.arc(s*0.3, -s*0.05, s*0.12, 0, Math.PI*2);
+    ctx.arc(-s*0.13, -s*0.42, s*0.09, 0, Math.PI*2);
+    ctx.arc(s*0.13, -s*0.42, s*0.09, 0, Math.PI*2);
     ctx.fill();
-    // 嘴+尖牙
+    ctx.fillStyle = '#374151';
+    ctx.beginPath();
+    ctx.arc(-s*0.13, -s*0.42, s*0.035, 0, Math.PI*2);
+    ctx.arc(s*0.13, -s*0.42, s*0.035, 0, Math.PI*2);
+    ctx.fill();
+    // 嘴（张开，缺牙）
     ctx.fillStyle = '#1f2937';
     ctx.beginPath();
-    ctx.ellipse(0, s*0.35, s*0.25, s*0.15, 0, 0, Math.PI*2);
+    ctx.ellipse(0, -s*0.22, s*0.14, s*0.09, 0, 0, Math.PI*2);
     ctx.fill();
-    ctx.fillStyle = '#fff';
+    ctx.fillStyle = '#e8e0d0';
     ctx.beginPath();
-    ctx.moveTo(-s*0.15, s*0.28);
-    ctx.lineTo(-s*0.08, s*0.45);
-    ctx.lineTo(-s*0.02, s*0.28);
+    ctx.arc(-s*0.06, -s*0.16, s*0.025, 0, Math.PI*2);
+    ctx.arc(s*0.07, -s*0.15, s*0.025, 0, Math.PI*2);
     ctx.fill();
+    // 手臂（前伸，丧尸经典姿势）
+    ctx.fillStyle = skinDark;
     ctx.beginPath();
-    ctx.moveTo(s*0.02, s*0.28);
-    ctx.lineTo(s*0.08, s*0.45);
-    ctx.lineTo(s*0.15, s*0.28);
+    ctx.ellipse(-s*0.52, -s*0.05, s*0.13, s*0.32, 0.4, 0, Math.PI*2);
+    ctx.ellipse(s*0.52, -s*0.05, s*0.13, s*0.32, -0.4, 0, Math.PI*2);
+    ctx.fill();
+    // 手骨（白骨）
+    ctx.fillStyle = '#e8e0d0';
+    ctx.beginPath();
+    ctx.arc(-s*0.62, -s*0.32, s*0.1, 0, Math.PI*2);
+    ctx.arc(s*0.62, -s*0.32, s*0.1, 0, Math.PI*2);
     ctx.fill();
   }
 
   drawFast(ctx, s) {
     const flash = this.hitFlash > 0;
+    const t = Date.now() / 100;
+    const skin = flash ? '#fff' : '#8a9a5b';
+    const skinDark = flash ? '#fff' : '#5f6e3a';
     // 阴影
     ctx.fillStyle = 'rgba(0,0,0,0.3)';
     ctx.beginPath();
-    ctx.ellipse(0, s*0.7, s*0.6, s*0.2, 0, 0, Math.PI*2);
+    ctx.ellipse(0, s*0.72, s*0.55, s*0.17, 0, 0, Math.PI*2);
     ctx.fill();
-    // 速度线
-    ctx.strokeStyle = flash ? '#fff' : 'rgba(251,191,36,0.5)';
+    // 速度线（上方，向下冲）
+    ctx.strokeStyle = flash ? '#fff' : 'rgba(180,200,120,0.5)';
     ctx.lineWidth = 2;
     for (let i = 0; i < 3; i++) {
       ctx.beginPath();
-      ctx.moveTo(-s*1.1, -s*0.3 + i*s*0.3);
-      ctx.lineTo(-s*0.6, -s*0.3 + i*s*0.3);
+      ctx.moveTo(-s*0.35 + i*s*0.35, -s*0.7);
+      ctx.lineTo(-s*0.35 + i*s*0.35, -s*0.4);
       ctx.stroke();
     }
-    // 身体（流线型，前尖后圆）
-    const grad = ctx.createLinearGradient(-s, 0, s, 0);
-    grad.addColorStop(0, flash ? '#fff' : '#fde68a');
-    grad.addColorStop(1, flash ? '#fff' : '#f59e0b');
-    ctx.fillStyle = grad;
+    // 身体（瘦长犬身，竖向，腐烂灰绿）
+    ctx.fillStyle = this._zombieSkin(ctx, s, flash, '#9caa6b', '#5f6e3a');
     ctx.beginPath();
-    ctx.moveTo(s*0.9, 0);
-    ctx.quadraticCurveTo(s*0.4, -s*0.8, -s*0.3, -s*0.7);
-    ctx.quadraticCurveTo(-s, -s*0.5, -s*0.9, 0);
-    ctx.quadraticCurveTo(-s, s*0.5, -s*0.3, s*0.7);
-    ctx.quadraticCurveTo(s*0.4, s*0.8, s*0.9, 0);
+    ctx.ellipse(0, s*0.05, s*0.28, s*0.42, 0, 0, Math.PI*2);
     ctx.fill();
-    ctx.strokeStyle = '#b45309';
-    ctx.lineWidth = 2;
+    ctx.strokeStyle = '#4a5d30';
+    ctx.lineWidth = 1.5;
     ctx.stroke();
-    // 眼睛（一只大眼，朝前方）
-    ctx.fillStyle = '#fff';
+    // 肋骨（暴露）
+    ctx.strokeStyle = skinDark;
+    ctx.lineWidth = 1.2;
+    for (let i = 0; i < 3; i++) {
+      ctx.beginPath();
+      ctx.moveTo(-s*0.22, -s*0.1 + i*s*0.12);
+      ctx.lineTo(s*0.22, -s*0.1 + i*s*0.12);
+      ctx.stroke();
+    }
+    // 脊柱（背部）
+    ctx.strokeStyle = skinDark;
+    ctx.lineWidth = 1.5;
     ctx.beginPath();
-    ctx.arc(s*0.2, -s*0.15, s*0.25, 0, Math.PI*2);
-    ctx.fill();
-    ctx.fillStyle = '#1e293b';
-    ctx.beginPath();
-    ctx.arc(s*0.3, -s*0.15, s*0.12, 0, Math.PI*2);
-    ctx.fill();
-    ctx.fillStyle = '#fff';
-    ctx.beginPath();
-    ctx.arc(s*0.33, -s*0.2, s*0.05, 0, Math.PI*2);
-    ctx.fill();
-    // 嘴
-    ctx.strokeStyle = '#7c2d12';
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.arc(s*0.5, s*0.15, s*0.15, 0, Math.PI);
+    ctx.moveTo(0, -s*0.3);
+    ctx.lineTo(0, s*0.35);
     ctx.stroke();
+    // 四条腿（奔跑姿态，左右交替）
+    const legPhase = Math.sin(t) * s*0.08;
+    ctx.fillStyle = skin;
+    // 前左腿
+    ctx.beginPath();
+    ctx.ellipse(-s*0.2, s*0.38 + legPhase, s*0.07, s*0.18, 0.2, 0, Math.PI*2);
+    ctx.fill();
+    // 前右腿
+    ctx.beginPath();
+    ctx.ellipse(s*0.2, s*0.38 - legPhase, s*0.07, s*0.18, -0.2, 0, Math.PI*2);
+    ctx.fill();
+    // 后左腿
+    ctx.beginPath();
+    ctx.ellipse(-s*0.2, -s*0.28 - legPhase, s*0.07, s*0.16, -0.2, 0, Math.PI*2);
+    ctx.fill();
+    // 后右腿
+    ctx.beginPath();
+    ctx.ellipse(s*0.2, -s*0.28 + legPhase, s*0.07, s*0.16, 0.2, 0, Math.PI*2);
+    ctx.fill();
+    // 爪子（前爪）
+    ctx.fillStyle = '#3a3a2a';
+    for (const lx of [-s*0.2, s*0.2]) {
+      for (let i = 0; i < 3; i++) {
+        ctx.beginPath();
+        ctx.moveTo(lx - s*0.05 + i*s*0.05, s*0.55);
+        ctx.lineTo(lx - s*0.04 + i*s*0.05, s*0.62);
+        ctx.lineTo(lx - s*0.03 + i*s*0.05, s*0.55);
+        ctx.closePath();
+        ctx.fill();
+      }
+    }
+    // 尾巴（向上翘起，腐烂）
+    ctx.strokeStyle = skinDark;
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(0, -s*0.38);
+    ctx.quadraticCurveTo(s*0.15, -s*0.55, s*0.05, -s*0.7);
+    ctx.stroke();
+    // 头部（犬头，朝下，长嘴）
+    ctx.fillStyle = this._zombieSkin(ctx, s, flash, '#9caa6b', '#5f6e3a');
+    ctx.beginPath();
+    ctx.ellipse(0, s*0.5, s*0.26, s*0.24, 0, 0, Math.PI*2);
+    ctx.fill();
+    ctx.strokeStyle = '#4a5d30';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+    // 长嘴（口鼻部）
+    ctx.fillStyle = skinDark;
+    ctx.beginPath();
+    ctx.ellipse(0, s*0.68, s*0.12, s*0.1, 0, 0, Math.PI*2);
+    ctx.fill();
+    // 鼻子
+    ctx.fillStyle = '#1a1a1a';
+    ctx.beginPath();
+    ctx.arc(0, s*0.74, s*0.04, 0, Math.PI*2);
+    ctx.fill();
+    // 尖耳（竖立）
+    ctx.fillStyle = skinDark;
+    ctx.beginPath();
+    ctx.moveTo(-s*0.2, s*0.38);
+    ctx.lineTo(-s*0.28, s*0.18);
+    ctx.lineTo(-s*0.08, s*0.35);
+    ctx.closePath();
+    ctx.fill();
+    ctx.beginPath();
+    ctx.moveTo(s*0.2, s*0.38);
+    ctx.lineTo(s*0.28, s*0.18);
+    ctx.lineTo(s*0.08, s*0.35);
+    ctx.closePath();
+    ctx.fill();
+    // 眼睛（发光红，狂暴）
+    ctx.fillStyle = '#ef4444';
+    ctx.shadowColor = '#ef4444';
+    ctx.shadowBlur = 6;
+    ctx.beginPath();
+    ctx.arc(-s*0.1, s*0.46, s*0.055, 0, Math.PI*2);
+    ctx.arc(s*0.1, s*0.46, s*0.055, 0, Math.PI*2);
+    ctx.fill();
+    ctx.shadowBlur = 0;
+    // 嘴（犬嘴张开，尖牙）
+    ctx.fillStyle = '#1f2937';
+    ctx.beginPath();
+    ctx.ellipse(0, s*0.64, s*0.09, s*0.06, 0, 0, Math.PI*2);
+    ctx.fill();
+    ctx.fillStyle = '#e8e0d0';
+    // 上排尖牙
+    for (let i = -1; i <= 1; i++) {
+      ctx.beginPath();
+      ctx.moveTo(i*s*0.04 - s*0.02, s*0.58);
+      ctx.lineTo(i*s*0.04, s*0.66);
+      ctx.lineTo(i*s*0.04 + s*0.02, s*0.58);
+      ctx.fill();
+    }
   }
 
   drawTank(ctx, s) {
     const flash = this.hitFlash > 0;
+    const skin = flash ? '#fff' : '#8a7a8a';
     // 阴影
-    ctx.fillStyle = 'rgba(0,0,0,0.3)';
+    ctx.fillStyle = 'rgba(0,0,0,0.35)';
     ctx.beginPath();
-    ctx.ellipse(0, s*0.7, s*0.7, s*0.2, 0, 0, Math.PI*2);
+    ctx.ellipse(0, s*0.78, s*0.75, s*0.22, 0, 0, Math.PI*2);
     ctx.fill();
-    // 身体（方形重甲）
-    const grad = ctx.createLinearGradient(0, -s, 0, s);
-    grad.addColorStop(0, flash ? '#fff' : '#a5b4fc');
-    grad.addColorStop(0.5, flash ? '#fff' : '#6366f1');
-    grad.addColorStop(1, flash ? '#fff' : '#4338ca');
-    ctx.fillStyle = grad;
+    // 肥大肚腩（灰紫色腐肉）
+    ctx.fillStyle = this._zombieSkin(ctx, s, flash, '#9a8a9a', '#6a5a6a');
     ctx.beginPath();
-    ctx.roundRect(-s*0.85, -s*0.75, s*1.7, s*1.5, 6);
+    ctx.ellipse(0, s*0.15, s*0.72, s*0.62, 0, 0, Math.PI*2);
     ctx.fill();
-    ctx.strokeStyle = '#312e81';
-    ctx.lineWidth = 2.5;
+    ctx.strokeStyle = '#4a3a4a';
+    ctx.lineWidth = 2;
     ctx.stroke();
-    // 装甲板纹路
-    ctx.strokeStyle = flash ? '#ddd' : '#4338ca';
+    // 脂肪褶皱
+    ctx.strokeStyle = flash ? '#ddd' : '#5a4a5a';
     ctx.lineWidth = 1.5;
-    ctx.beginPath();
-    ctx.moveTo(-s*0.85, 0);
-    ctx.lineTo(s*0.85, 0);
-    ctx.moveTo(0, -s*0.75);
-    ctx.lineTo(0, s*0.75);
-    ctx.stroke();
-    // 铆钉
-    ctx.fillStyle = flash ? '#fff' : '#1e1b4b';
-    const rivets = [[-0.7,-0.6],[0.7,-0.6],[-0.7,0.6],[0.7,0.6],[0,-0.6],[0,0.6]];
-    for (const [rx,ry] of rivets) {
+    for (let i = -1; i <= 1; i++) {
       ctx.beginPath();
-      ctx.arc(rx*s, ry*s, 2, 0, Math.PI*2);
-      ctx.fill();
+      ctx.ellipse(0, s*0.1 + i*s*0.2, s*0.55 - Math.abs(i)*s*0.1, s*0.1, 0, 0, Math.PI);
+      ctx.stroke();
     }
-    // 眼睛（愤怒的小眼）
-    ctx.fillStyle = '#fef08a';
+    // 肚破洞（暴露内脏）
+    ctx.fillStyle = '#7c2d12';
     ctx.beginPath();
-    ctx.arc(-s*0.3, -s*0.25, s*0.18, 0, Math.PI*2);
-    ctx.arc(s*0.3, -s*0.25, s*0.18, 0, Math.PI*2);
+    ctx.ellipse(-s*0.15, s*0.3, s*0.2, s*0.14, 0.3, 0, Math.PI*2);
     ctx.fill();
-    ctx.fillStyle = '#1f2937';
+    // 肠子（盘绕悬挂）
+    ctx.strokeStyle = flash ? '#fff' : '#991b1b';
+    ctx.lineWidth = 2;
     ctx.beginPath();
-    ctx.arc(-s*0.3, -s*0.25, s*0.09, 0, Math.PI*2);
-    ctx.arc(s*0.3, -s*0.25, s*0.09, 0, Math.PI*2);
-    ctx.fill();
-    // 眉毛（愤怒）
-    ctx.strokeStyle = '#312e81';
-    ctx.lineWidth = 2.5;
-    ctx.beginPath();
-    ctx.moveTo(-s*0.5, -s*0.45);
-    ctx.lineTo(-s*0.15, -s*0.35);
-    ctx.moveTo(s*0.15, -s*0.35);
-    ctx.lineTo(s*0.5, -s*0.45);
+    ctx.moveTo(-s*0.2, s*0.35);
+    ctx.quadraticCurveTo(-s*0.3, s*0.5, -s*0.15, s*0.55);
+    ctx.quadraticCurveTo(-s*0.05, s*0.62, -s*0.12, s*0.72);
+    ctx.quadraticCurveTo(-s*0.2, s*0.8, -s*0.1, s*0.85);
     ctx.stroke();
-    // 嘴（咆哮）
+    ctx.beginPath();
+    ctx.moveTo(-s*0.08, s*0.32);
+    ctx.quadraticCurveTo(0, s*0.5, -s*0.05, s*0.6);
+    ctx.stroke();
+    // 内脏血迹
+    ctx.fillStyle = flash ? '#fff' : '#7f1d1d';
+    ctx.beginPath();
+    ctx.arc(-s*0.12, s*0.72, s*0.025, 0, Math.PI*2);
+    ctx.fill();
+    // 脖子粗短
+    ctx.fillStyle = flash ? '#fff' : '#7a6a7a';
+    ctx.fillRect(-s*0.18, -s*0.2, s*0.36, s*0.2);
+    // 头（小，陷入脂肪）
+    ctx.fillStyle = this._zombieSkin(ctx, s, flash, '#8a7a8a', '#6a5a6a');
+    ctx.beginPath();
+    ctx.arc(0, -s*0.42, s*0.26, 0, Math.PI*2);
+    ctx.fill();
+    ctx.strokeStyle = '#4a3a4a';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+    // 双下巴
+    ctx.fillStyle = flash ? '#fff' : '#7a6a7a';
+    ctx.beginPath();
+    ctx.ellipse(0, -s*0.22, s*0.28, s*0.12, 0, 0, Math.PI*2);
+    ctx.fill();
+    // 眼睛（眯成缝，愤怒）
     ctx.fillStyle = '#1f2937';
-    ctx.fillRect(-s*0.3, s*0.2, s*0.6, s*0.15);
-    ctx.fillStyle = '#fff';
-    for (let i = 0; i < 4; i++) {
-      ctx.fillRect(-s*0.25 + i*s*0.15, s*0.2, s*0.08, s*0.15);
-    }
+    ctx.beginPath();
+    ctx.ellipse(-s*0.1, -s*0.45, s*0.1, s*0.04, 0, 0, Math.PI*2);
+    ctx.ellipse(s*0.1, -s*0.45, s*0.1, s*0.04, 0, 0, Math.PI*2);
+    ctx.fill();
+    ctx.fillStyle = '#fca5a5';
+    ctx.beginPath();
+    ctx.arc(-s*0.1, -s*0.45, s*0.025, 0, Math.PI*2);
+    ctx.arc(s*0.1, -s*0.45, s*0.025, 0, Math.PI*2);
+    ctx.fill();
+    // 嘴（流口水）
+    ctx.fillStyle = '#1f2937';
+    ctx.beginPath();
+    ctx.ellipse(0, -s*0.3, s*0.16, s*0.08, 0, 0, Math.PI*2);
+    ctx.fill();
+    ctx.fillStyle = '#a5f3fc';
+    ctx.beginPath();
+    ctx.ellipse(0, -s*0.22, s*0.04, s*0.08, 0, 0, Math.PI*2);
+    ctx.fill();
+    // 短粗手臂
+    ctx.fillStyle = flash ? '#fff' : '#7a6a7a';
+    ctx.beginPath();
+    ctx.ellipse(-s*0.6, s*0.05, s*0.18, s*0.3, 0.4, 0, Math.PI*2);
+    ctx.ellipse(s*0.6, s*0.05, s*0.18, s*0.3, -0.4, 0, Math.PI*2);
+    ctx.fill();
   }
 
   drawBat(ctx, s) {
     const flash = this.hitFlash > 0;
-    const t = Date.now() / 120; // 翅膀扇动
-    const wing = Math.sin(t) * 0.5 + 0.5; // 0~1
+    const t = Date.now() / 120;
+    const wing = Math.sin(t) * 0.5 + 0.5;
     // 阴影
     ctx.fillStyle = 'rgba(0,0,0,0.3)';
     ctx.beginPath();
     ctx.ellipse(0, s*0.55, s*0.7, s*0.18, 0, 0, Math.PI*2);
     ctx.fill();
-    // 翅膀
-    ctx.fillStyle = flash ? '#fff' : '#7c3aed';
-    ctx.beginPath();
-    // 左翅
-    ctx.moveTo(0, -s*0.1);
-    ctx.quadraticCurveTo(-s*0.5, -s*0.6 - wing*s*0.4, -s*0.9, -s*0.2);
-    ctx.quadraticCurveTo(-s*0.6, 0, -s*0.3, s*0.1);
-    ctx.closePath();
-    ctx.fill();
-    // 右翅
-    ctx.beginPath();
-    ctx.moveTo(0, -s*0.1);
-    ctx.quadraticCurveTo(s*0.5, -s*0.6 - wing*s*0.4, s*0.9, -s*0.2);
-    ctx.quadraticCurveTo(s*0.6, 0, s*0.3, s*0.1);
-    ctx.closePath();
-    ctx.fill();
-    // 身体
+    // 翅膀（破烂的，有洞）
     ctx.fillStyle = flash ? '#fff' : '#5b21b6';
     ctx.beginPath();
-    ctx.ellipse(0, 0, s*0.28, s*0.38, 0, 0, Math.PI*2);
+    ctx.moveTo(0, -s*0.1);
+    ctx.quadraticCurveTo(-s*0.5, -s*0.6 - wing*s*0.4, -s*0.95, -s*0.2);
+    ctx.quadraticCurveTo(-s*0.7, s*0.05, -s*0.45, s*0.1);
+    ctx.quadraticCurveTo(-s*0.55, -s*0.05, -s*0.3, -s*0.05);
+    ctx.closePath();
     ctx.fill();
-    // 耳朵
+    ctx.beginPath();
+    ctx.moveTo(0, -s*0.1);
+    ctx.quadraticCurveTo(s*0.5, -s*0.6 - wing*s*0.4, s*0.95, -s*0.2);
+    ctx.quadraticCurveTo(s*0.7, s*0.05, s*0.45, s*0.1);
+    ctx.quadraticCurveTo(s*0.55, -s*0.05, s*0.3, -s*0.05);
+    ctx.closePath();
+    ctx.fill();
+    // 翅膀破洞
+    ctx.fillStyle = 'rgba(0,0,0,0.4)';
+    ctx.beginPath();
+    ctx.arc(-s*0.5, -s*0.2, s*0.06, 0, Math.PI*2);
+    ctx.arc(s*0.55, -s*0.15, s*0.05, 0, Math.PI*2);
+    ctx.fill();
+    // 身体
     ctx.fillStyle = flash ? '#fff' : '#4c1d95';
     ctx.beginPath();
-    ctx.moveTo(-s*0.15, -s*0.3);
+    ctx.ellipse(0, 0, s*0.26, s*0.36, 0, 0, Math.PI*2);
+    ctx.fill();
+    // 耳朵（尖长）
+    ctx.fillStyle = flash ? '#fff' : '#3b0764';
+    ctx.beginPath();
+    ctx.moveTo(-s*0.13, -s*0.28);
     ctx.lineTo(-s*0.22, -s*0.55);
-    ctx.lineTo(-s*0.05, -s*0.35);
+    ctx.lineTo(-s*0.04, -s*0.32);
     ctx.closePath();
     ctx.fill();
     ctx.beginPath();
-    ctx.moveTo(s*0.15, -s*0.3);
+    ctx.moveTo(s*0.13, -s*0.28);
     ctx.lineTo(s*0.22, -s*0.55);
-    ctx.lineTo(s*0.05, -s*0.35);
+    ctx.lineTo(s*0.04, -s*0.32);
     ctx.closePath();
     ctx.fill();
-    // 眼睛
-    ctx.fillStyle = '#fde047';
+    // 眼睛（血红发光）
+    ctx.fillStyle = '#ef4444';
+    ctx.shadowColor = '#ef4444';
+    ctx.shadowBlur = 6;
     ctx.beginPath();
-    ctx.arc(-s*0.1, -s*0.08, s*0.06, 0, Math.PI*2);
-    ctx.arc(s*0.1, -s*0.08, s*0.06, 0, Math.PI*2);
+    ctx.arc(-s*0.1, -s*0.06, s*0.06, 0, Math.PI*2);
+    ctx.arc(s*0.1, -s*0.06, s*0.06, 0, Math.PI*2);
     ctx.fill();
-    ctx.fillStyle = '#000';
+    ctx.shadowBlur = 0;
+    // 獠牙
+    ctx.fillStyle = '#e8e0d0';
     ctx.beginPath();
-    ctx.arc(-s*0.1, -s*0.08, s*0.025, 0, Math.PI*2);
-    ctx.arc(s*0.1, -s*0.08, s*0.025, 0, Math.PI*2);
+    ctx.moveTo(-s*0.06, s*0.05);
+    ctx.lineTo(-s*0.04, s*0.18);
+    ctx.lineTo(-s*0.02, s*0.05);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.moveTo(s*0.02, s*0.05);
+    ctx.lineTo(s*0.04, s*0.18);
+    ctx.lineTo(s*0.06, s*0.05);
     ctx.fill();
   }
 
   drawAcid(ctx, s) {
     const flash = this.hitFlash > 0;
-    const t = Date.now() / 200;
-    // 阴影
+    const t = Date.now() / 180;
+    const skin = flash ? '#fff' : '#c2c878';
+    const skinDark = flash ? '#fff' : '#8a8f45';
+    // 阴影（佝偻，靠前）
     ctx.fillStyle = 'rgba(0,0,0,0.3)';
     ctx.beginPath();
-    ctx.ellipse(0, s*0.55, s*0.6, s*0.16, 0, 0, Math.PI*2);
+    ctx.ellipse(s*0.05, s*0.62, s*0.58, s*0.18, 0, 0, Math.PI*2);
     ctx.fill();
-    // 身体（绿色臃肿）
-    ctx.fillStyle = flash ? '#fff' : '#65a30d';
+    // 身体（病弱黄绿，佝偻前倾）
+    ctx.fillStyle = this._zombieSkin(ctx, s, flash, '#c8cf70', '#8a8f45');
     ctx.beginPath();
-    ctx.ellipse(0, s*0.1, s*0.55, s*0.55, 0, 0, Math.PI*2);
+    ctx.moveTo(-s*0.4, s*0.5);
+    ctx.quadraticCurveTo(-s*0.5, s*0.0, -s*0.28, -s*0.2);
+    ctx.quadraticCurveTo(-s*0.15, -s*0.35, s*0.05, -s*0.3);
+    ctx.quadraticCurveTo(s*0.3, -s*0.25, s*0.35, s*0.1);
+    ctx.quadraticCurveTo(s*0.4, s*0.45, s*0.15, s*0.58);
+    ctx.quadraticCurveTo(-s*0.1, s*0.62, -s*0.4, s*0.5);
     ctx.fill();
-    // 腹部亮绿
-    ctx.fillStyle = flash ? '#fff' : '#84cc16';
+    ctx.strokeStyle = '#5a6028';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+    // 酸烧伤疤（深褐色焦痕）
+    ctx.fillStyle = flash ? '#fff' : '#5c3317';
     ctx.beginPath();
-    ctx.ellipse(0, s*0.15, s*0.4, s*0.35, 0, 0, Math.PI*2);
+    ctx.ellipse(-s*0.18, s*0.05, s*0.12, s*0.07, -0.4, 0, Math.PI*2);
+    ctx.ellipse(s*0.15, s*0.3, s*0.1, s*0.06, 0.3, 0, Math.PI*2);
     ctx.fill();
-    // 头
-    ctx.fillStyle = flash ? '#fff' : '#4d7c0f';
+    // 酸液囊（腹部鼓起的透明酸袋，区别于毒气的圆身体）
+    ctx.fillStyle = flash ? '#fff' : 'rgba(190,242,100,0.65)';
     ctx.beginPath();
-    ctx.arc(0, -s*0.35, s*0.32, 0, Math.PI*2);
+    ctx.ellipse(s*0.02, s*0.28, s*0.3, s*0.22, 0.1, 0, Math.PI*2);
     ctx.fill();
-    // 嘴（张大，含酸液）
+    ctx.strokeStyle = 'rgba(101,163,13,0.8)';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+    // 酸液气泡（在酸囊内翻滚）
+    ctx.fillStyle = 'rgba(163,230,53,0.95)';
+    for (let i = 0; i < 4; i++) {
+      const bx = s*0.02 + Math.sin(t*1.3 + i*1.7) * s*0.18;
+      const by = s*0.28 - ((t*10 + i*7) % (s*0.2));
+      ctx.beginPath();
+      ctx.arc(bx, by, s*0.04 + Math.sin(t+i)*s*0.015, 0, Math.PI*2);
+      ctx.fill();
+    }
+    // 头（前倾，嘴朝下张）
+    ctx.fillStyle = this._zombieSkin(ctx, s, flash, '#c8cf70', '#8a8f45');
+    ctx.beginPath();
+    ctx.ellipse(s*0.08, -s*0.42, s*0.26, s*0.28, 0.15, 0, Math.PI*2);
+    ctx.fill();
+    ctx.strokeStyle = '#5a6028';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+    // 眼睛（翻白眼，只露眼白+针尖瞳）
+    ctx.fillStyle = '#f5f0e0';
+    ctx.beginPath();
+    ctx.ellipse(-s*0.05, -s*0.5, s*0.08, s*0.06, -0.2, 0, Math.PI*2);
+    ctx.ellipse(s*0.2, -s*0.47, s*0.08, s*0.06, 0.2, 0, Math.PI*2);
+    ctx.fill();
+    ctx.fillStyle = '#1a1a1a';
+    ctx.beginPath();
+    ctx.arc(-s*0.05, -s*0.5, s*0.02, 0, Math.PI*2);
+    ctx.arc(s*0.2, -s*0.47, s*0.02, 0, Math.PI*2);
+    ctx.fill();
+    // 嘴（大张朝下，正在呕吐酸液）
     ctx.fillStyle = '#1a2e05';
     ctx.beginPath();
-    ctx.ellipse(0, -s*0.2, s*0.22, s*0.14, 0, 0, Math.PI*2);
+    ctx.ellipse(s*0.12, -s*0.2, s*0.18, s*0.16, 0.2, 0, Math.PI*2);
     ctx.fill();
-    // 酸液（闪烁）
-    ctx.fillStyle = `rgba(190,242,100,${0.6 + Math.sin(t)*0.4})`;
+    // 酸液柱（从嘴喷出向下流）
+    const acidAlpha = 0.75 + Math.sin(t*2)*0.2;
+    ctx.fillStyle = `rgba(163,230,53,${acidAlpha})`;
     ctx.beginPath();
-    ctx.ellipse(0, -s*0.18, s*0.16, s*0.09, 0, 0, Math.PI*2);
+    ctx.moveTo(s*0.02, -s*0.08);
+    ctx.quadraticCurveTo(s*0.18, s*0.1, s*0.12, s*0.42);
+    ctx.quadraticCurveTo(s*0.06, s*0.1, s*0.22, -s*0.08);
+    ctx.closePath();
     ctx.fill();
-    // 眼睛（红色发光）
-    ctx.fillStyle = '#ef4444';
+    // 酸液飞溅滴
+    ctx.fillStyle = 'rgba(190,242,100,0.9)';
+    for (let i = 0; i < 3; i++) {
+      const dx = s*0.12 + Math.sin(t*1.5 + i*2)*s*0.08;
+      const dy = s*0.45 + ((t*8 + i*10) % (s*0.2));
+      ctx.beginPath();
+      ctx.arc(dx, dy, s*0.035, 0, Math.PI*2);
+      ctx.fill();
+    }
+    // 手臂（下垂，指尖滴酸）
+    ctx.fillStyle = skinDark;
     ctx.beginPath();
-    ctx.arc(-s*0.12, -s*0.4, s*0.07, 0, Math.PI*2);
-    ctx.arc(s*0.12, -s*0.4, s*0.07, 0, Math.PI*2);
+    ctx.ellipse(-s*0.42, s*0.18, s*0.1, s*0.34, 0.35, 0, Math.PI*2);
+    ctx.ellipse(s*0.42, s*0.18, s*0.1, s*0.34, -0.35, 0, Math.PI*2);
     ctx.fill();
-    ctx.fillStyle = '#fff';
+    // 指尖酸液
+    ctx.fillStyle = 'rgba(163,230,53,0.85)';
     ctx.beginPath();
-    ctx.arc(-s*0.12, -s*0.4, s*0.03, 0, Math.PI*2);
-    ctx.arc(s*0.12, -s*0.4, s*0.03, 0, Math.PI*2);
+    ctx.arc(-s*0.52, s*0.48, s*0.04, 0, Math.PI*2);
+    ctx.arc(s*0.52, s*0.48, s*0.04, 0, Math.PI*2);
     ctx.fill();
-    // 手臂（下垂）
-    ctx.fillStyle = flash ? '#fff' : '#4d7c0f';
+  }
+
+  drawGas(ctx, s) {
+    const flash = this.hitFlash > 0;
+    const t = Date.now() / 220;
+    const skin = flash ? '#fff' : '#6b5a7a';
+    const skinDark = flash ? '#fff' : '#3e2f4d';
+    // 阴影（大圆身体）
+    ctx.fillStyle = 'rgba(0,0,0,0.32)';
     ctx.beginPath();
-    ctx.ellipse(-s*0.5, s*0.1, s*0.16, s*0.3, 0.3, 0, Math.PI*2);
-    ctx.ellipse(s*0.5, s*0.1, s*0.16, s*0.3, -0.3, 0, Math.PI*2);
+    ctx.ellipse(0, s*0.62, s*0.72, s*0.2, 0, 0, Math.PI*2);
+    ctx.fill();
+    // 身体（极度圆鼓肿胀，像充饱毒气的气球）
+    ctx.fillStyle = this._zombieSkin(ctx, s, flash, '#7a6a8a', '#3e2f4d');
+    ctx.beginPath();
+    ctx.ellipse(0, s*0.05, s*0.68, s*0.66, 0, 0, Math.PI*2);
+    ctx.fill();
+    ctx.strokeStyle = '#2a1a3a';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    // 皮下绿色毒血管（发光，区别于毒气格的普通绿）
+    ctx.strokeStyle = flash ? '#fff' : '#84cc16';
+    ctx.lineWidth = 1.5;
+    ctx.shadowColor = '#84cc16';
+    ctx.shadowBlur = 4;
+    const veins = [
+      [-0.3,-0.3,-0.5,0.0,-0.4,0.3],
+      [0.3,-0.25,0.5,0.05,0.42,0.35],
+      [0.0,-0.5,0.0,-0.2,0.05,0.1],
+      [-0.15,0.4,-0.1,0.55,0.1,0.5]
+    ];
+    for (const v of veins) {
+      ctx.beginPath();
+      ctx.moveTo(v[0]*s, v[1]*s);
+      ctx.quadraticCurveTo(v[2]*s, v[3]*s, v[4]*s, v[5]*s);
+      ctx.stroke();
+    }
+    ctx.shadowBlur = 0;
+    // 身体排气阀（金属环，毒气从这里漏出）
+    ctx.fillStyle = flash ? '#fff' : '#6b7280';
+    ctx.beginPath();
+    ctx.arc(-s*0.3, s*0.35, s*0.1, 0, Math.PI*2);
+    ctx.arc(s*0.32, s*0.4, s*0.1, 0, Math.PI*2);
+    ctx.fill();
+    ctx.strokeStyle = '#374151';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+    // 阀门中心（毒气泄漏孔）
+    ctx.fillStyle = '#1a2e05';
+    ctx.beginPath();
+    ctx.arc(-s*0.3, s*0.35, s*0.05, 0, Math.PI*2);
+    ctx.arc(s*0.32, s*0.4, s*0.05, 0, Math.PI*2);
+    ctx.fill();
+    // 毒气从阀门冒出（上升的绿色气泡）
+    ctx.fillStyle = 'rgba(132,204,22,0.7)';
+    for (let i = 0; i < 5; i++) {
+      const baseX = i < 3 ? -s*0.3 : s*0.32;
+      const bx = baseX + Math.sin(t + i)*s*0.08;
+      const by = s*0.35 - ((t*9 + i*12) % (s*0.55));
+      ctx.beginPath();
+      ctx.arc(bx, by, s*0.05 + Math.sin(t*1.5+i)*s*0.02, 0, Math.PI*2);
+      ctx.fill();
+    }
+    // 头部（肿胀，被防毒面具盖住下半脸）
+    ctx.fillStyle = this._zombieSkin(ctx, s, flash, '#7a6a8a', '#3e2f4d');
+    ctx.beginPath();
+    ctx.arc(0, -s*0.45, s*0.32, 0, Math.PI*2);
+    ctx.fill();
+    ctx.strokeStyle = '#2a1a3a';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+    // 眼睛（凸出眼眶，毒气黄绿发光，布满血丝）
+    ctx.fillStyle = `rgba(190,242,100,${0.85 + Math.sin(t*2)*0.15})`;
+    ctx.shadowColor = '#bef264';
+    ctx.shadowBlur = 8;
+    ctx.beginPath();
+    ctx.arc(-s*0.13, -s*0.52, s*0.1, 0, Math.PI*2);
+    ctx.arc(s*0.13, -s*0.52, s*0.1, 0, Math.PI*2);
+    ctx.fill();
+    ctx.shadowBlur = 0;
+    ctx.strokeStyle = '#dc2626';
+    ctx.lineWidth = 1;
+    for (const ex of [-s*0.13, s*0.13]) {
+      ctx.beginPath();
+      ctx.moveTo(ex - s*0.08, -s*0.58);
+      ctx.lineTo(ex - s*0.02, -s*0.52);
+      ctx.moveTo(ex + s*0.08, -s*0.58);
+      ctx.lineTo(ex + s*0.02, -s*0.52);
+      ctx.stroke();
+    }
+    ctx.fillStyle = '#1a2e05';
+    ctx.beginPath();
+    ctx.arc(-s*0.13, -s*0.52, s*0.04, 0, Math.PI*2);
+    ctx.arc(s*0.13, -s*0.52, s*0.04, 0, Math.PI*2);
+    ctx.fill();
+    // 防毒面具（覆盖口鼻，带滤毒罐）
+    ctx.fillStyle = flash ? '#fff' : '#4b5563';
+    ctx.beginPath();
+    ctx.ellipse(0, -s*0.3, s*0.26, s*0.18, 0, 0, Math.PI*2);
+    ctx.fill();
+    ctx.strokeStyle = '#1f2937';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+    // 面具镜片（眼眶部分透明）
+    ctx.fillStyle = 'rgba(190,242,100,0.25)';
+    ctx.beginPath();
+    ctx.ellipse(-s*0.13, -s*0.38, s*0.06, s*0.05, 0, 0, Math.PI*2);
+    ctx.ellipse(s*0.13, -s*0.38, s*0.06, s*0.05, 0, 0, Math.PI*2);
+    ctx.fill();
+    // 滤毒罐（面具下方的圆柱）
+    ctx.fillStyle = flash ? '#fff' : '#374151';
+    ctx.fillRect(-s*0.08, -s*0.2, s*0.16, s*0.14);
+    ctx.strokeStyle = '#1f2937';
+    ctx.strokeRect(-s*0.08, -s*0.2, s*0.16, s*0.14);
+    // 滤毒罐网格
+    ctx.strokeStyle = '#1f2937';
+    ctx.lineWidth = 0.8;
+    for (let i = 0; i < 3; i++) {
+      ctx.beginPath();
+      ctx.moveTo(-s*0.08, -s*0.2 + (i+1)*s*0.035);
+      ctx.lineTo(s*0.08, -s*0.2 + (i+1)*s*0.035);
+      ctx.stroke();
+    }
+    // 面具漏气（从面具边缘冒毒气）
+    ctx.fillStyle = 'rgba(132,204,22,0.6)';
+    for (let i = 0; i < 2; i++) {
+      const lx = -s*0.26 + i*s*0.52;
+      const ly = -s*0.32 - ((t*6 + i*10) % (s*0.25));
+      ctx.beginPath();
+      ctx.arc(lx, ly, s*0.04, 0, Math.PI*2);
+      ctx.fill();
+    }
+    // 短粗肿胀手臂
+    ctx.fillStyle = skin;
+    ctx.beginPath();
+    ctx.ellipse(-s*0.62, s*0.1, s*0.18, s*0.28, 0.2, 0, Math.PI*2);
+    ctx.ellipse(s*0.62, s*0.1, s*0.18, s*0.28, -0.2, 0, Math.PI*2);
     ctx.fill();
   }
 
   drawBoss(ctx, s) {
     const flash = this.hitFlash > 0;
     // 阴影
-    ctx.fillStyle = 'rgba(0,0,0,0.4)';
+    ctx.fillStyle = 'rgba(0,0,0,0.45)';
     ctx.beginPath();
-    ctx.ellipse(0, s*0.75, s*0.8, s*0.25, 0, 0, Math.PI*2);
+    ctx.ellipse(0, s*0.82, s*0.85, s*0.26, 0, 0, Math.PI*2);
     ctx.fill();
-    // 多角
-    ctx.fillStyle = flash ? '#fff' : '#7f1d1d';
-    const horns = [
-      [-0.8,-0.6,-1.0,-1.1,-0.5,-0.7],
-      [0.8,-0.6,1.0,-1.1,0.5,-0.7],
-      [-0.3,-0.9,-0.4,-1.3,-0.1,-0.95],
-      [0.3,-0.9,0.4,-1.3,0.1,-0.95],
-      [0,-1.0,0,-1.4,0.15,-1.0]
-    ];
-    for (const h of horns) {
-      ctx.beginPath();
-      ctx.moveTo(h[0]*s, h[1]*s);
-      ctx.lineTo(h[2]*s, h[3]*s);
-      ctx.lineTo(h[4]*s, h[5]*s);
-      ctx.closePath();
-      ctx.fill();
-    }
-    // 身体（巨大不规则）
-    const grad = ctx.createRadialGradient(-s*0.2, -s*0.2, s*0.1, 0, 0, s*1.1);
-    grad.addColorStop(0, flash ? '#fff' : '#fca5a5');
-    grad.addColorStop(0.5, flash ? '#fff' : '#dc2626');
-    grad.addColorStop(1, flash ? '#fff' : '#7f1d1d');
-    ctx.fillStyle = grad;
+    // 身体（巨大腐烂丧尸王）
+    ctx.fillStyle = this._zombieSkin(ctx, s, flash, '#7a4a4a', '#4a1a1a');
     ctx.beginPath();
-    ctx.moveTo(0, -s);
-    ctx.quadraticCurveTo(s*1.1, -s*0.8, s*1.0, 0);
-    ctx.quadraticCurveTo(s*1.1, s*0.8, 0, s*0.9);
-    ctx.quadraticCurveTo(-s*1.1, s*0.8, -s*1.0, 0);
-    ctx.quadraticCurveTo(-s*1.1, -s*0.8, 0, -s);
+    ctx.ellipse(0, s*0.15, s*0.8, s*0.7, 0, 0, Math.PI*2);
     ctx.fill();
-    ctx.strokeStyle = '#450a0a';
+    ctx.strokeStyle = '#2a0a0a';
     ctx.lineWidth = 3;
     ctx.stroke();
-    // 多只眼睛
-    const eyes = [[-0.4,-0.2],[0.4,-0.2],[0,-0.35],[-0.25,0.1],[0.25,0.1]];
+    // 暴露的肋骨
+    ctx.strokeStyle = flash ? '#fff' : '#3a1a1a';
+    ctx.lineWidth = 2;
+    for (let i = 0; i < 4; i++) {
+      ctx.beginPath();
+      ctx.arc(0, s*0.0 + i*s*0.16, s*0.5, -0.5, Math.PI + 0.5);
+      ctx.stroke();
+    }
+    // 脖子
+    ctx.fillStyle = flash ? '#fff' : '#5a2a2a';
+    ctx.fillRect(-s*0.2, -s*0.35, s*0.4, s*0.3);
+    // 头
+    ctx.fillStyle = this._zombieSkin(ctx, s, flash, '#7a4a4a', '#4a1a1a');
+    ctx.beginPath();
+    ctx.arc(0, -s*0.55, s*0.4, 0, Math.PI*2);
+    ctx.fill();
+    ctx.strokeStyle = '#2a0a0a';
+    ctx.lineWidth = 2.5;
+    ctx.stroke();
+    // 王冠
+    ctx.fillStyle = flash ? '#fff' : '#fbbf24';
+    ctx.beginPath();
+    ctx.moveTo(-s*0.3, -s*0.85);
+    ctx.lineTo(-s*0.3, -s*0.65);
+    ctx.lineTo(-s*0.15, -s*0.78);
+    ctx.lineTo(0, -s*0.62);
+    ctx.lineTo(s*0.15, -s*0.78);
+    ctx.lineTo(s*0.3, -s*0.65);
+    ctx.lineTo(s*0.3, -s*0.85);
+    ctx.closePath();
+    ctx.fill();
+    ctx.strokeStyle = '#b45309';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+    // 王冠宝石
+    ctx.fillStyle = '#dc2626';
+    ctx.beginPath();
+    ctx.arc(0, -s*0.72, s*0.05, 0, Math.PI*2);
+    ctx.fill();
+    // 多只眼睛（血红发光）
+    ctx.shadowColor = '#ef4444';
+    ctx.shadowBlur = 10;
+    const eyes = [[-0.22,-0.55],[0.22,-0.55],[-0.12,-0.45],[0.12,-0.45]];
     for (const [ex,ey] of eyes) {
       ctx.fillStyle = '#fef08a';
       ctx.beginPath();
-      ctx.arc(ex*s, ey*s, s*0.16, 0, Math.PI*2);
+      ctx.arc(ex*s, ey*s, s*0.1, 0, Math.PI*2);
       ctx.fill();
       ctx.fillStyle = '#dc2626';
       ctx.beginPath();
-      ctx.arc(ex*s, ey*s, s*0.08, 0, Math.PI*2);
+      ctx.arc(ex*s, ey*s, s*0.05, 0, Math.PI*2);
       ctx.fill();
     }
-    // 大嘴+尖牙
+    ctx.shadowBlur = 0;
+    // 大嘴+多层尖牙
     ctx.fillStyle = '#1f2937';
     ctx.beginPath();
-    ctx.ellipse(0, s*0.45, s*0.5, s*0.25, 0, 0, Math.PI*2);
+    ctx.ellipse(0, -s*0.25, s*0.32, s*0.2, 0, 0, Math.PI*2);
     ctx.fill();
-    ctx.fillStyle = '#fff';
-    for (let i = -2; i <= 2; i++) {
+    ctx.fillStyle = '#e8e0d0';
+    for (let i = -3; i <= 3; i++) {
       ctx.beginPath();
-      ctx.moveTo(i*s*0.18 - s*0.07, s*0.3);
-      ctx.lineTo(i*s*0.18, s*0.55);
-      ctx.lineTo(i*s*0.18 + s*0.07, s*0.3);
+      ctx.moveTo(i*s*0.09 - s*0.035, -s*0.38);
+      ctx.lineTo(i*s*0.09, -s*0.15);
+      ctx.lineTo(i*s*0.09 + s*0.035, -s*0.38);
       ctx.fill();
     }
+    // 巨臂
+    ctx.fillStyle = flash ? '#fff' : '#5a2a2a';
+    ctx.beginPath();
+    ctx.ellipse(-s*0.75, s*0.1, s*0.22, s*0.45, 0.3, 0, Math.PI*2);
+    ctx.ellipse(s*0.75, s*0.1, s*0.22, s*0.45, -0.3, 0, Math.PI*2);
+    ctx.fill();
   }
 }
 
 // ============== 投射物 ==============
 class Projectile {
-  constructor(x, y, target, unit, targetCell, pierceDir) {
+  constructor(x, y, target, unit, targetCell, pierceDir, shotgun) {
     this.x = x; this.y = y;
     this.startX = x; this.startY = y;
     this.target = target;
-    this.damage = unit.atk;
     this.aoe = !!unit.cfg.aoe;
     this.color = unit.cfg.color;
     this.freeze = unit.cfg.freeze || null; // 冰冻配置 {slowFactor, duration}
     this.pierce = !!unit.cfg.pierce;
     this.pierceDir = pierceDir || null; // 穿透方向 {x, y}
     this.pierceHit = new Set(); // 已命中的怪物，避免重复伤害
+    this.shotgun = !!shotgun; // 霰弹弹丸：直线飞行，命中首怪消失
     this.alive = true;
+    // 武器类型（英雄继承 baseClass）
+    this.atkClass = unit.cfg.baseClass || unit.type;
     this.size = this.aoe ? 6 : 4;
     this.trail = [];
-    // targetCell：散射弹模式，飞向固定格子中心而非追踪怪物
-    this.targetCell = targetCell || null;
-    if (this.targetCell) {
-      const c = cellCenter(this.targetCell.col, this.targetCell.row);
-      this.lastX = c.x;
-      this.lastY = c.y;
-    } else if (this.pierce && this.pierceDir) {
-      // 穿透弹：飞向射程尽头的固定点（不追踪）
+    // 霰弹弹丸：每颗伤害为总攻击的35%，飞向射程尽头固定点（不追踪）
+    if (this.shotgun) {
+      this.damage = Math.round(unit.atk * 0.35);
+      this.targetCell = null;
       this.lastX = x + this.pierceDir.x * unit.range * CONFIG.cellW;
       this.lastY = y + this.pierceDir.y * unit.range * CONFIG.cellH;
     } else {
-      this.lastX = target.x;
-      this.lastY = target.y;
-      this.lastCol = target.col;
-      this.lastRow = target.row;
+      this.damage = unit.atk;
+      // targetCell：散射弹模式，飞向固定格子中心而非追踪怪物
+      this.targetCell = targetCell || null;
+      if (this.targetCell) {
+        const c = cellCenter(this.targetCell.col, this.targetCell.row);
+        this.lastX = c.x;
+        this.lastY = c.y;
+      } else if (this.pierce && this.pierceDir) {
+        // 穿透弹：飞向射程尽头的固定点（不追踪）
+        this.lastX = x + this.pierceDir.x * unit.range * CONFIG.cellW;
+        this.lastY = y + this.pierceDir.y * unit.range * CONFIG.cellH;
+      } else {
+        this.lastX = target.x;
+        this.lastY = target.y;
+        this.lastCol = target.col;
+        this.lastRow = target.row;
+      }
     }
     // 抛物线弹道参数
     this.arcHeight = this.aoe ? 80 : 0;
     this.progress = 0;
-    // 榴弹速度稍慢，有飞行感
-    this.speed = this.aoe ? 260 : 480; // 穿透弹更快
+    // 按武器类型差异化速度
+    const speedMap = { sniper:1400, crossbow:620, mg:560, rifle:520, shotgun:500, outpost:460 };
+    this.speed = this.aoe ? 260 : (speedMap[this.atkClass] || 480);
+    // 按武器类型差异化拖尾长度
+    const trailMap = { sniper:12, crossbow:9, mg:7, rifle:6 };
+    this.maxTrail = trailMap[this.atkClass] || 5;
     this.totalDist = Math.hypot(this.lastX - x, this.lastY - y);
   }
   update(dt) {
     if (!this.alive) return;
-    // 目标存活：追踪目标并记录最后位置（散射弹和穿透弹不追踪）
-    if (this.target && this.target.alive && !this.targetCell && !this.pierce) {
+    // 目标存活：追踪目标并记录最后位置（散射弹/穿透弹/霰弹弹丸不追踪）
+    if (this.target && this.target.alive && !this.targetCell && !this.pierce && !this.shotgun) {
       this.lastX = this.target.x;
       this.lastY = this.target.y;
       this.lastCol = this.target.col;
@@ -1547,7 +2410,11 @@ class Projectile {
     } else {
       // 直线弹道
       if (d <= step) {
-        if (this.targetCell) {
+        if (this.shotgun) {
+          // 霰弹弹丸到达最大射程，未命中则消失
+          this.alive = false;
+          return;
+        } else if (this.targetCell) {
           // 散射弹：对目标格内的怪物造成伤害
           this.hitCell();
         } else if (this.pierce) {
@@ -1556,6 +2423,12 @@ class Projectile {
           return;
         } else if (this.target && this.target.alive) {
           this.target.takeDamage(this.damage);
+          // 命中火花
+          Game.effects.push(new ImpactSpark(this.target.x, this.target.y, this.color));
+          // 狙击命中：红色冲击波
+          if (this.atkClass === 'sniper') {
+            Game.effects.push(new ShockwaveEffect(this.target.x, this.target.y, '#ef4444'));
+          }
           // 冰冻效果：减速
           if (this.freeze) {
             this.target.applySlow(this.freeze.slowFactor, this.freeze.duration);
@@ -1575,13 +2448,27 @@ class Projectile {
             if (dist(m, this) <= (m.cfg.size || 16) + this.size + 4) {
               m.takeDamage(this.damage);
               this.pierceHit.add(m);
+              // 穿透命中火花
+              Game.effects.push(new ImpactSpark(m.x, m.y, this.color));
+            }
+          }
+        }
+        // 霰弹弹丸：命中路径上第一个怪物后消失
+        if (this.shotgun) {
+          for (const m of Game.monsters) {
+            if (!m.alive) continue;
+            if (dist(m, this) <= (m.cfg.size || 16) + this.size + 2) {
+              m.takeDamage(this.damage);
+              Game.effects.push(new ImpactSpark(m.x, m.y, this.color));
+              this.alive = false;
+              break;
             }
           }
         }
       }
     }
     this.trail.push({x:this.x, y:this.y});
-    if (this.trail.length > 5) this.trail.shift();
+    if (this.trail.length > this.maxTrail) this.trail.shift();
   }
   explode() {
     // 用实际像素坐标计算爆炸中心格（避免 col/row 滞后）
@@ -1617,6 +2504,7 @@ class Projectile {
       const mc = pxToCell(m.x, m.y);
       if (mc && mc.col === tc && mc.row === tr) {
         m.takeDamage(this.damage);
+        Game.effects.push(new ImpactSpark(m.x, m.y, this.color));
         // 冰冻效果：减速
         if (this.freeze) {
           m.applySlow(this.freeze.slowFactor, this.freeze.duration);
@@ -1630,15 +2518,23 @@ class Projectile {
     }
   }
   draw(ctx) {
+    // 拖尾
     for (let i = 0; i < this.trail.length; i++) {
       const t = this.trail[i];
-      ctx.fillStyle = this.color;
-      ctx.globalAlpha = (i/this.trail.length) * 0.5;
+      const ratio = i / this.trail.length;
+      ctx.globalAlpha = ratio * 0.5;
+      // 狙击手：红→橙渐变拖尾，拉长
+      if (this.atkClass === 'sniper') {
+        ctx.fillStyle = ratio > 0.5 ? '#fbbf24' : '#ef4444';
+      } else {
+        ctx.fillStyle = this.color;
+      }
       ctx.beginPath();
-      ctx.arc(t.x, t.y, this.size * (i/this.trail.length), 0, Math.PI*2);
+      ctx.arc(t.x, t.y, this.size * ratio, 0, Math.PI*2);
       ctx.fill();
     }
     ctx.globalAlpha = 1;
+
     if (this.aoe) {
       // 榴弹：带阴影的圆形，模拟高度
       const arcOff = Math.sin(this.progress * Math.PI) * this.arcHeight * 0.3;
@@ -1654,12 +2550,146 @@ class Projectile {
       ctx.beginPath();
       ctx.arc(this.x - 1.5, this.y - arcOff - 1.5, 1.5, 0, Math.PI*2);
       ctx.fill();
+    } else if (this.atkClass === 'sniper') {
+      // 狙击手：拉长的红色激光弹
+      const dx = this.lastX - this.x, dy = this.lastY - this.y;
+      const angle = Math.atan2(dy, dx);
+      ctx.save();
+      ctx.translate(this.x, this.y);
+      ctx.rotate(angle);
+      // 外层红光
+      ctx.fillStyle = 'rgba(239,68,68,0.5)';
+      ctx.beginPath();
+      ctx.ellipse(0, 0, 10, 3, 0, 0, Math.PI*2);
+      ctx.fill();
+      // 核心亮黄
+      ctx.fillStyle = '#fef08a';
+      ctx.beginPath();
+      ctx.ellipse(0, 0, 7, 1.8, 0, 0, Math.PI*2);
+      ctx.fill();
+      ctx.restore();
+    } else if (this.atkClass === 'crossbow') {
+      // 弩手：三角形箭矢
+      const angle = this.pierceDir ? Math.atan2(this.pierceDir.y, this.pierceDir.x) : Math.atan2(this.lastY - this.y, this.lastX - this.x);
+      ctx.save();
+      ctx.translate(this.x, this.y);
+      ctx.rotate(angle);
+      ctx.fillStyle = this.color;
+      ctx.beginPath();
+      ctx.moveTo(8, 0);
+      ctx.lineTo(-5, -4);
+      ctx.lineTo(-3, 0);
+      ctx.lineTo(-5, 4);
+      ctx.closePath();
+      ctx.fill();
+      ctx.fillStyle = '#fff';
+      ctx.beginPath();
+      ctx.moveTo(4, 0);
+      ctx.lineTo(-1, -1.5);
+      ctx.lineTo(-1, 1.5);
+      ctx.closePath();
+      ctx.fill();
+      ctx.restore();
     } else {
+      // 普通弹丸：圆形
       ctx.fillStyle = this.color;
       ctx.beginPath();
       ctx.arc(this.x, this.y, this.size, 0, Math.PI*2);
       ctx.fill();
+      // 高光
+      ctx.fillStyle = 'rgba(255,255,255,0.6)';
+      ctx.beginPath();
+      ctx.arc(this.x - this.size*0.3, this.y - this.size*0.3, this.size*0.35, 0, Math.PI*2);
+      ctx.fill();
     }
+  }
+}
+
+// 枪口火光：开火瞬间的星形闪光
+class MuzzleFlash {
+  constructor(x, y, angle, color) {
+    this.x = x; this.y = y; this.angle = angle; this.color = color;
+    this.life = 0.09; this.maxLife = 0.09;
+  }
+  update(dt) { this.life -= dt; }
+  get alive() { return this.life > 0; }
+  draw(ctx) {
+    const t = this.life / this.maxLife;
+    ctx.save();
+    ctx.translate(this.x, this.y);
+    ctx.rotate(this.angle);
+    ctx.globalAlpha = t;
+    const r = 7 + (1 - t) * 5;
+    const grad = ctx.createRadialGradient(0, 0, 0, 0, 0, r);
+    grad.addColorStop(0, 'rgba(255,255,210,0.95)');
+    grad.addColorStop(0.4, this.color);
+    grad.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.fillStyle = grad;
+    ctx.beginPath();
+    ctx.arc(0, 0, r, 0, Math.PI*2);
+    ctx.fill();
+    ctx.restore();
+    ctx.globalAlpha = 1;
+  }
+}
+
+// 命中火花：子弹命中时的小型粒子飞溅
+class ImpactSpark {
+  constructor(x, y, color) {
+    this.x = x; this.y = y; this.color = color;
+    this.particles = [];
+    const count = 6;
+    for (let i = 0; i < count; i++) {
+      const a = Math.random() * Math.PI * 2;
+      const sp = 80 + Math.random() * 100;
+      this.particles.push({
+        x, y,
+        vx: Math.cos(a) * sp,
+        vy: Math.sin(a) * sp,
+        size: 1.5 + Math.random() * 2,
+        life: 0.2 + Math.random() * 0.15
+      });
+    }
+  }
+  update(dt) {
+    for (const p of this.particles) {
+      p.x += p.vx * dt; p.y += p.vy * dt;
+      p.vx *= 0.92; p.vy *= 0.92;
+      p.life -= dt;
+    }
+    this.particles = this.particles.filter(p => p.life > 0);
+  }
+  get alive() { return this.particles.length > 0; }
+  draw(ctx) {
+    for (const p of this.particles) {
+      ctx.globalAlpha = Math.min(1, p.life * 4);
+      ctx.fillStyle = this.color;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.size, 0, Math.PI*2);
+      ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+  }
+}
+
+// 冲击波：扩散圆环（用于狙击命中、爆炸等）
+class ShockwaveEffect {
+  constructor(x, y, color) {
+    this.x = x; this.y = y; this.color = color;
+    this.life = 0.35; this.maxLife = 0.35;
+  }
+  update(dt) { this.life -= dt; }
+  get alive() { return this.life > 0; }
+  draw(ctx) {
+    const t = 1 - this.life / this.maxLife;
+    const radius = 6 + t * CONFIG.cellW * 1.1;
+    ctx.globalAlpha = (1 - t) * 0.8;
+    ctx.strokeStyle = this.color;
+    ctx.lineWidth = 3 * (1 - t);
+    ctx.beginPath();
+    ctx.arc(this.x, this.y, radius, 0, Math.PI*2);
+    ctx.stroke();
+    ctx.globalAlpha = 1;
   }
 }
 
@@ -1678,6 +2708,27 @@ class HealEffect {
     ctx.font = 'bold 12px sans-serif';
     ctx.textAlign = 'center';
     ctx.fillText('+', this.x, this.y - (1-this.life/this.maxLife)*15);
+    ctx.globalAlpha = 1;
+  }
+}
+
+// 修复特效：绿色上升扳手图标 + 圆环
+class RepairEffect {
+  constructor(x, y) { this.x=x; this.y=y; this.life=0.35; this.maxLife=0.35; }
+  update(dt) { this.life -= dt; }
+  get alive() { return this.life > 0; }
+  draw(ctx) {
+    const p = 1 - this.life/this.maxLife;
+    ctx.globalAlpha = this.life/this.maxLife;
+    ctx.strokeStyle = '#84cc16';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(this.x, this.y, 6 + p*10, 0, Math.PI*2);
+    ctx.stroke();
+    ctx.fillStyle = '#84cc16';
+    ctx.font = 'bold 11px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('🔧', this.x, this.y - p*14);
     ctx.globalAlpha = 1;
   }
 }
@@ -1816,6 +2867,162 @@ class FreezeEffect {
   }
 }
 
+// 闪电链特效：沿路径绘制曲折闪电，带发光与末端火花
+class LightningEffect {
+  constructor(path, color) {
+    this.path = path; // [{x,y}, ...]
+    this.color = color || '#a855f7';
+    this.life = 0.22;
+    this.maxLife = 0.22;
+    // 为每段预先生成锯齿偏移（固定随机，避免每帧抖动）
+    this.segments = [];
+    for (let i = 0; i < path.length - 1; i++) {
+      const a = path[i], b = path[i + 1];
+      const segs = this.buildBolt(a, b);
+      this.segments.push(segs);
+    }
+    // 每个命中点的小火花
+    this.sparks = [];
+    for (let i = 1; i < path.length; i++) {
+      const p = path[i];
+      const parts = [];
+      const cnt = 5;
+      for (let k = 0; k < cnt; k++) {
+        const ang = Math.random() * Math.PI * 2;
+        const sp = 50 + Math.random() * 70;
+        parts.push({
+          x: p.x, y: p.y,
+          vx: Math.cos(ang) * sp,
+          vy: Math.sin(ang) * sp,
+          size: 1.5 + Math.random() * 1.5,
+          life: 0.15 + Math.random() * 0.12
+        });
+      }
+      this.sparks.push({ x: p.x, y: p.y, parts });
+    }
+  }
+  // 在两点间生成一条锯齿折线路径
+  buildBolt(a, b) {
+    const dx = b.x - a.x, dy = b.y - a.y;
+    const len = Math.hypot(dx, dy);
+    const segs = Math.max(3, Math.floor(len / 14));
+    const points = [];
+    const nx = -dy / (len || 1), ny = dx / (len || 1);
+    for (let i = 0; i <= segs; i++) {
+      const t = i / segs;
+      const bx = a.x + dx * t;
+      const by = a.y + dy * t;
+      let off = 0;
+      if (i !== 0 && i !== segs) off = (Math.random() - 0.5) * 10;
+      points.push({ x: bx + nx * off, y: by + ny * off });
+    }
+    return points;
+  }
+  update(dt) {
+    this.life -= dt;
+    for (const s of this.sparks) {
+      for (const p of s.parts) {
+        p.x += p.vx * dt; p.y += p.vy * dt;
+        p.vx *= 0.9; p.vy *= 0.9;
+        p.life -= dt;
+      }
+    }
+  }
+  get alive() { return this.life > 0; }
+  draw(ctx) {
+    const t = Math.max(0, this.life / this.maxLife);
+    ctx.save();
+    ctx.globalAlpha = t;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    // 外层光晕（粗）
+    ctx.shadowColor = this.color;
+    ctx.shadowBlur = 14;
+    ctx.strokeStyle = this.color;
+    ctx.lineWidth = 5;
+    for (const pts of this.segments) {
+      ctx.beginPath();
+      ctx.moveTo(pts[0].x, pts[0].y);
+      for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i].x, pts[i].y);
+      ctx.stroke();
+    }
+    // 内层亮白核心
+    ctx.shadowBlur = 6;
+    ctx.strokeStyle = '#f5f3ff';
+    ctx.lineWidth = 2;
+    for (const pts of this.segments) {
+      ctx.beginPath();
+      ctx.moveTo(pts[0].x, pts[0].y);
+      for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i].x, pts[i].y);
+      ctx.stroke();
+    }
+    ctx.restore();
+    // 命中点火花
+    for (const s of this.sparks) {
+      for (const p of s.parts) {
+        if (p.life <= 0) continue;
+        ctx.globalAlpha = Math.min(1, p.life * 5) * t;
+        ctx.fillStyle = '#fde68a';
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+    ctx.globalAlpha = 1;
+  }
+}
+
+// 扇形斩击特效：135度扇形扩散+渐隐
+class SlashEffect {
+  constructor(x, y, centerAngle, color) {
+    this.x = x; this.y = y;
+    this.centerAngle = centerAngle;
+    this.life = 0.28;
+    this.maxLife = 0.28;
+    this.sweep = 3 * Math.PI / 4; // 135度扇形（覆盖连续3格）
+  }
+  update(dt) { this.life -= dt; }
+  get alive() { return this.life > 0; }
+  draw(ctx) {
+    const t = 1 - this.life / this.maxLife; // 0→1
+    const r = CONFIG.cellW * (0.5 + t * 0.8);
+    const alpha = (1 - t) * 0.8;
+    const start = this.centerAngle - this.sweep / 2;
+    const end = this.centerAngle + this.sweep / 2;
+    ctx.save();
+    ctx.globalAlpha = alpha;
+    // 红色扇形填充（外深内亮渐变）
+    const grad = ctx.createRadialGradient(this.x, this.y, 0, this.x, this.y, r);
+    grad.addColorStop(0, 'rgba(255,80,80,0.85)');
+    grad.addColorStop(0.6, 'rgba(220,38,38,0.6)');
+    grad.addColorStop(1, 'rgba(127,29,29,0.15)');
+    ctx.fillStyle = grad;
+    ctx.beginPath();
+    ctx.moveTo(this.x, this.y);
+    ctx.arc(this.x, this.y, r, start, end);
+    ctx.closePath();
+    ctx.fill();
+    // 红色发光弧刃
+    ctx.shadowColor = '#ef4444';
+    ctx.shadowBlur = 12;
+    ctx.globalAlpha = Math.min(1, alpha * 1.3);
+    ctx.strokeStyle = '#fca5a5';
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.arc(this.x, this.y, r, start, end);
+    ctx.stroke();
+    // 内层亮白弧芯
+    ctx.shadowBlur = 6;
+    ctx.strokeStyle = '#fff';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.arc(this.x, this.y, r * 0.92, start, end);
+    ctx.stroke();
+    ctx.restore();
+    ctx.globalAlpha = 1;
+  }
+}
+
 // 酸液弹丸：从吐酸丧尸飞向目标单位的绿色弹道
 class AcidProjectile {
   constructor(sx, sy, tx, ty) {
@@ -1887,6 +3094,115 @@ class AcidSplash {
   }
 }
 
+// 燃烧地面特效：橙色径向渐变地面 + 跳动火苗，随剩余时间淡出
+class FlameZoneEffect {
+  constructor(x, y, duration) {
+    this.x = x; this.y = y;
+    this.life = duration;
+    this.maxLife = duration;
+    this.t = 0;
+    // 预生成火苗粒子（围绕格子中心）
+    this.flames = [];
+    const count = 8;
+    for (let i = 0; i < count; i++) {
+      const ang = (i / count) * Math.PI * 2 + Math.random() * 0.5;
+      const rad = CONFIG.cellW * (0.15 + Math.random() * 0.25);
+      this.flames.push({
+        ox: Math.cos(ang) * rad,
+        oy: Math.sin(ang) * rad,
+        phase: Math.random() * Math.PI * 2,
+        speed: 3 + Math.random() * 3
+      });
+    }
+  }
+  update(dt) {
+    this.life -= dt;
+    this.t += dt;
+  }
+  get alive() { return this.life > 0; }
+  draw(ctx) {
+    const p = Math.max(0, this.life / this.maxLife);
+    const cw = CONFIG.cellW;
+    ctx.save();
+    // 地面径向渐变（半透明橙红）
+    const grad = ctx.createRadialGradient(this.x, this.y, 0, this.x, this.y, cw * 0.5);
+    grad.addColorStop(0, `rgba(255,140,40,${0.45 * p})`);
+    grad.addColorStop(0.6, `rgba(239,68,68,${0.3 * p})`);
+    grad.addColorStop(1, `rgba(220,38,38,0)`);
+    ctx.fillStyle = grad;
+    ctx.beginPath();
+    ctx.arc(this.x, this.y, cw * 0.5, 0, Math.PI * 2);
+    ctx.fill();
+    // 跳动火苗
+    for (const f of this.flames) {
+      const fh = 6 + Math.sin(this.t * f.speed + f.phase) * 4;
+      const fx = this.x + f.ox;
+      const fy = this.y + f.oy;
+      const fg = ctx.createLinearGradient(fx, fy, fx, fy - fh);
+      fg.addColorStop(0, `rgba(255,200,60,${0.9 * p})`);
+      fg.addColorStop(0.5, `rgba(249,115,22,${0.7 * p})`);
+      fg.addColorStop(1, `rgba(239,68,68,0)`);
+      ctx.fillStyle = fg;
+      ctx.beginPath();
+      ctx.moveTo(fx - 3, fy);
+      ctx.quadraticCurveTo(fx, fy - fh, fx + 3, fy);
+      ctx.closePath();
+      ctx.fill();
+    }
+    ctx.restore();
+  }
+}
+
+// 火球飞行特效：从施法者飞向目标格，带橙色拖尾
+class FireballProjectile {
+  constructor(sx, sy, tx, ty) {
+    this.sx = sx; this.sy = sy;
+    this.tx = tx; this.ty = ty;
+    this.x = sx; this.y = sy;
+    this.speed = 600;
+    this.totalDist = Math.hypot(tx - sx, ty - sy) || 1;
+    this.traveled = 0;
+    this.trail = [];
+    this.dead = false;
+  }
+  update(dt) {
+    this.traveled += this.speed * dt;
+    if (this.traveled >= this.totalDist) {
+      this.x = this.tx; this.y = this.ty;
+      this.dead = true;
+      return;
+    }
+    const r = this.traveled / this.totalDist;
+    this.x = this.sx + (this.tx - this.sx) * r;
+    this.y = this.sy + (this.ty - this.sy) * r;
+    this.trail.push({ x: this.x, y: this.y, life: 0.25 });
+    if (this.trail.length > 10) this.trail.shift();
+    for (const t of this.trail) t.life -= dt;
+    this.trail = this.trail.filter(t => t.life > 0);
+  }
+  get alive() { return !this.dead; }
+  draw(ctx) {
+    // 拖尾
+    for (let i = 0; i < this.trail.length; i++) {
+      const t = this.trail[i];
+      const a = (t.life / 0.25) * 0.6;
+      ctx.fillStyle = `rgba(249,115,22,${a})`;
+      ctx.beginPath();
+      ctx.arc(t.x, t.y, 4 + i * 0.4, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    // 火球本体
+    const g = ctx.createRadialGradient(this.x, this.y, 0, this.x, this.y, 8);
+    g.addColorStop(0, 'rgba(255,240,150,1)');
+    g.addColorStop(0.5, 'rgba(249,115,22,0.9)');
+    g.addColorStop(1, 'rgba(239,68,68,0)');
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.arc(this.x, this.y, 8, 0, Math.PI * 2);
+    ctx.fill();
+  }
+}
+
 // ============== 游戏主对象 ==============
 const Game = {
   canvas: null, ctx: null,
@@ -1895,6 +3211,7 @@ const Game = {
   waveActive: false,
   levelId: 1, levelCfg: LEVELS[0],
   units: [], monsters: [], projectiles: [], effects: [],
+  burningCells: [], poisonCells: [],
   spawnQueue: [], spawnTimer: 0,
   placedHeroes: new Set(), // 已部署过的英雄（整局限一个）
   selectedBuildType: null,
@@ -1940,13 +3257,13 @@ const Game = {
   canBuildAtDirect(col, row) {
     // 基地4格内
     if (Math.abs(col - CONFIG.baseCol) + Math.abs(row - CONFIG.baseRow) <= 4) return true;
-    // 前哨站3格内 / 医院2格内
+    // 前哨站3格内 / 医院3格内
     for (const u of this.units) {
       if (!u.alive) continue;
       if (u.type === 'outpost') {
         if (Math.abs(col - u.col) + Math.abs(row - u.row) <= 3) return true;
       } else if (u.type === 'hospital') {
-        if (Math.abs(col - u.col) + Math.abs(row - u.row) <= 2) return true;
+        if (Math.abs(col - u.col) + Math.abs(row - u.row) <= 3) return true;
       }
     }
     return false;
@@ -1962,10 +3279,10 @@ const Game = {
         }
       }
     }
-    // 前哨站3格内 / 医院2格内
+    // 前哨站3格内 / 医院3格内
     for (const u of this.units) {
       if (!u.alive) continue;
-      const r = u.type === 'outpost' ? 3 : (u.type === 'hospital' ? 2 : 0);
+      const r = u.type === 'outpost' ? 3 : (u.type === 'hospital' ? 3 : 0);
       if (r === 0) continue;
       for (let dr = -r; dr <= r; dr++) {
         for (let dc = -r; dc <= r; dc++) {
@@ -1985,9 +3302,9 @@ const Game = {
     const bar = document.getElementById('buildBar');
     bar.innerHTML = '';
     const tab = this.buildTab || 'building';
-    const buildingTypes = ['fence', 'outpost', 'hospital', 'freeze', 'flame'];
-    const characterTypes = ['pistol', 'assault', 'rifle', 'mg', 'sniper', 'grenadier', 'shotgun', 'crossbow'];
-    const heroTypes = ['macarthur', 'yanshuangying'];
+    const buildingTypes = ['fence', 'outpost', 'hospital', 'freeze', 'flame', 'lightning'];
+    const characterTypes = ['pistol', 'assault', 'rifle', 'mg', 'sniper', 'grenadier', 'shotgun', 'crossbow', 'medic', 'axe', 'engineer', 'firemage'];
+    const heroTypes = ['macarthur', 'yanshuangying', 'huasheng'];
     let types;
     if (tab === 'building') types = buildingTypes;
     else if (tab === 'hero') types = heroTypes;
@@ -2027,6 +3344,7 @@ const Game = {
       b.classList.toggle('active', b.dataset.tab === tab);
     });
     this.buildBuildBar();
+    this.updateBuildBar();
   },
 
   selectBuild(type) {
@@ -2047,7 +3365,7 @@ const Game = {
       const type = btn.dataset.type;
       const cfg = UNIT_TYPES[type];
       const noGold = this.gold < cfg.cost;
-      const heroUsed = cfg.hero && this.placedHeroes.has(type);
+      const heroUsed = cfg.hero === true && this.placedHeroes.has(type);
       btn.classList.toggle('disabled', noGold || heroUsed);
       btn.classList.toggle('selected', this.selectedBuildType === type);
     });
@@ -2087,8 +3405,8 @@ const Game = {
     this.hideAllOverlays();
     this.resetGameState();
     this.enterGame();
-    this.showToast('准备布防，10秒后开始第1波...');
-    setTimeout(() => { if (this.state === 'playing' && !this.waveActive) this.startNextWave(); }, 10000);
+    this.showToast('准备布防，5秒后开始第1波...');
+    setTimeout(() => { if (this.state === 'playing' && !this.waveActive) this.startNextWave(); }, 5000);
   },
 
   // 打开关卡选择界面
@@ -2153,17 +3471,23 @@ const Game = {
     this.monsters = [];
     this.projectiles = [];
     this.effects = [];
+    this.burningCells = [];
+    this.poisonCells = [];
     this.spawnQueue = [];
     this.placedHeroes = new Set();
     this.selectedBuildType = null;
     this.selectedUnit = null;
     this.moveMode = false;
+    this.focusTarget = null;
+    this.focusMode = false;
     this.waveActive = false;
     this.honorEarned = 0;
     this.gameSpeed = 1;
     this.buildableCells = null;
     const spdBtn = document.getElementById('speedBtn');
     if (spdBtn) spdBtn.textContent = '1x';
+    const fb = document.getElementById('focusBtn');
+    if (fb) fb.classList.remove('active');
     Save.clearGame();
   },
 
@@ -2177,11 +3501,15 @@ const Game = {
     this.monsters = [];
     this.projectiles = [];
     this.effects = [];
+    this.burningCells = [];
+    this.poisonCells = [];
     this.spawnQueue = [];
     this.waveActive = false;
     this.selectedBuildType = null;
     this.selectedUnit = null;
     this.moveMode = false;
+    this.focusTarget = null;
+    this.focusMode = false;
     this.honorEarned = 0;
     for (const u of (s.units || [])) {
       const unit = new Unit(u.type, u.col, u.row);
@@ -2189,10 +3517,14 @@ const Game = {
       unit.totalSpent = u.totalSpent;
       this.units.push(unit);
     }
-    // 从已加载单位重建已部署英雄集合
-    this.placedHeroes = new Set();
-    for (const u of this.units) {
-      if (u.cfg.hero) this.placedHeroes.add(u.type);
+    // 恢复已部署英雄集合：优先使用存档记录（含已被摧毁的英雄），兼容旧存档则从单位重建
+    if (Array.isArray(s.placedHeroes)) {
+      this.placedHeroes = new Set(s.placedHeroes);
+    } else {
+      this.placedHeroes = new Set();
+      for (const u of this.units) {
+        if (u.cfg.hero) this.placedHeroes.add(u.type);
+      }
     }
     this.buildableCells = null;
   },
@@ -2209,7 +3541,10 @@ const Game = {
   openShop() {
     document.getElementById('mainMenu').style.display = 'none';
     document.getElementById('shopScreen').style.display = 'flex';
-    this.renderShop();
+    this.shopTab = 'building';
+    document.querySelectorAll('#shopTabs .tab-btn').forEach(b => b.classList.remove('active'));
+    document.querySelector('#shopTabs .tab-btn[data-tab="building"]').classList.add('active');
+    this.renderShop('building');
     this.state = 'shop';
   },
   closeShop() {
@@ -2231,8 +3566,8 @@ const Game = {
     document.getElementById('mainMenu').style.display = 'none';
     document.getElementById('codexScreen').style.display = 'flex';
     this.state = 'codex';
-    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-    document.querySelector('.tab-btn[data-tab="building"]').classList.add('active');
+    document.querySelectorAll('#codexTabs .tab-btn').forEach(b => b.classList.remove('active'));
+    document.querySelector('#codexTabs .tab-btn[data-tab="building"]').classList.add('active');
     this.renderCodex('building');
   },
   closeCodex() {
@@ -2244,22 +3579,26 @@ const Game = {
     const list = document.getElementById('codexList');
     list.innerHTML = '';
     if (tab === 'building') {
-      for (const [type, cfg] of Object.entries(UNIT_TYPES)) {
-        if (!cfg.isBuilding) continue;
+      const items = Object.entries(UNIT_TYPES).filter(([t,c]) => c.isBuilding);
+      items.sort((a,b) => a[1].cost - b[1].cost);
+      for (const [type, cfg] of items) {
         list.appendChild(this.createCodexItem(type, 'unit', cfg.name, cfg.desc, this.buildUnitStats(cfg)));
       }
     } else if (tab === 'character') {
-      for (const [type, cfg] of Object.entries(UNIT_TYPES)) {
-        if (cfg.isBuilding || cfg.hero) continue;
+      const items = Object.entries(UNIT_TYPES).filter(([t,c]) => !c.isBuilding && !c.hero);
+      items.sort((a,b) => a[1].cost - b[1].cost);
+      for (const [type, cfg] of items) {
         list.appendChild(this.createCodexItem(type, 'unit', cfg.name, cfg.desc, this.buildUnitStats(cfg)));
       }
     } else if (tab === 'hero') {
-      for (const [type, cfg] of Object.entries(UNIT_TYPES)) {
-        if (!cfg.hero) continue;
+      const items = Object.entries(UNIT_TYPES).filter(([t,c]) => c.hero);
+      items.sort((a,b) => a[1].cost - b[1].cost);
+      for (const [type, cfg] of items) {
         list.appendChild(this.createCodexItem(type, 'unit', cfg.name, cfg.desc, this.buildUnitStats(cfg)));
       }
     } else if (tab === 'monster') {
-      for (const [type, cfg] of Object.entries(MONSTER_TYPES)) {
+      const items = Object.entries(MONSTER_TYPES).sort((a,b) => a[1].gold - b[1].gold);
+      for (const [type, cfg] of items) {
         list.appendChild(this.createCodexItem(type, 'monster', cfg.name, cfg.desc, this.buildMonsterStats(cfg)));
       }
     }
@@ -2270,8 +3609,20 @@ const Game = {
     if (cfg.canAttack) {
       if (cfg.flame) {
         stats.push(`🔥${cfg.atk}/秒`, `🎯${cfg.range}格`, `🧭自动转向`);
-      } else {
+      } else if (cfg.freeze) {
+        stats.push(`⚔️${cfg.atk}`, `🎯${cfg.range}格`, `⚡${cfg.fireRate}/秒`, `❄️减速${Math.round((1-cfg.freeze.slowFactor)*100)}%`);
+      } else if (cfg.chain) {
+        const pct = cfg.chain.falloff.map(f => Math.round(f * 100) + '%').join('/');
         stats.push(`⚔️${cfg.atk}`, `🎯${cfg.range}格`, `⚡${cfg.fireRate}/秒`);
+        stats.push(`⚡连锁${cfg.chain.jumps}次`, `📉${pct}`);
+      } else {
+        const atkVal = cfg.spread ? Math.round(cfg.atk * 0.35) : cfg.atk;
+        stats.push(`⚔️${atkVal}`, `🎯${cfg.range}格`, `⚡${cfg.fireRate}/秒`);
+        if (cfg.fan) stats.push('🪓扇形3格');
+        if (cfg.spread) stats.push('💢5发扇形');
+        if (cfg.heal) stats.push(`💚+${cfg.heal}/次`, `🩹自身+1格`);
+        if (cfg.repair) stats.push(`🔧+${cfg.repair}/秒`, `🏗️修相邻1格`);
+        if (cfg.burn) stats.push(`🔥地面${cfg.burn.groundDur}秒`, `🩸${cfg.burn.dps}/秒·${cfg.burn.debuffDur}秒`);
       }
     } else if (cfg.heal) {
       stats.push(`💚+${cfg.heal}/秒`, `🎯${cfg.range}格`);
@@ -2279,7 +3630,11 @@ const Game = {
     return stats;
   },
   buildMonsterStats(cfg) {
-    return [`❤️${cfg.hp}`, `⚔️${cfg.atk}`, `🏃${cfg.speed}格/秒`, `💰${cfg.gold}`];
+    const catLabel = cfg.category === 'zombie' ? '🧟丧尸' : '🦇野兽';
+    const stats = [`🏷️${catLabel}`, `❤️${cfg.hp}`, `⚔️${cfg.atk}`, `🏃${cfg.speed}格/秒`, `💰${cfg.gold}`];
+    if (cfg.flying) stats.push('🦅飞行');
+    if (cfg.ranged) stats.push(`🎯远程${cfg.rangedRange}格`);
+    return stats;
   },
   drawCodexIcon(canvas, type, kind) {
     const ctx = canvas.getContext('2d');
@@ -2317,22 +3672,30 @@ const Game = {
     return div;
   },
 
-  renderShop() {
+  renderShop(tab) {
     document.getElementById('shopHonor').textContent = Save.meta.honor;
     const list = document.getElementById('upgradeList');
     list.innerHTML = '';
+    const t = tab || this.shopTab || 'building';
+    this.shopTab = t;
 
-    // 经济天赋
+    // 经济天赋（全局，每个分页都显示）
     for (const upg of UPGRADES) {
       list.appendChild(this.createUpgradeItem(upg, Save.meta.upgrades[upg.id] || 0));
     }
 
-    // 每个单位一行：左侧名称，右侧横向排列所有升级项
+    // 按分页筛选单位升级项
     for (const [type, fields] of Object.entries(UNIT_UPGRADE_FIELDS)) {
       const cfg = UNIT_TYPES[type];
+      if (t === 'building') {
+        if (!cfg.isBuilding) continue;
+      } else if (t === 'character') {
+        if (cfg.isBuilding || cfg.hero) continue;
+      } else if (t === 'hero') {
+        if (!cfg.hero) continue;
+      }
       const row = document.createElement('div');
       row.className = 'unit-upgrade-row';
-      // 左侧单位名（矢量图标，与战斗画布同源）
       const nameDiv = document.createElement('div');
       nameDiv.className = 'unit-upgrade-name';
       const ncv = document.createElement('canvas');
@@ -2344,7 +3707,6 @@ const Game = {
       nspan.textContent = cfg.name;
       nameDiv.appendChild(nspan);
       row.appendChild(nameDiv);
-      // 右侧升级项
       const fieldsDiv = document.createElement('div');
       fieldsDiv.className = 'unit-upgrade-fields';
       for (const field of fields) {
@@ -2465,7 +3827,8 @@ const Game = {
       levelId: this.levelId,
       wave: this.wave,
       waveActive: this.waveActive,
-      units: this.units.filter(u=>u.alive).map(u => ({ type:u.type, col:u.col, row:u.row, hp:u.hp, totalSpent:u.totalSpent }))
+      units: this.units.filter(u=>u.alive).map(u => ({ type:u.type, col:u.col, row:u.row, hp:u.hp, totalSpent:u.totalSpent })),
+      placedHeroes: [...this.placedHeroes] // 保存已部署过的英雄（含已被摧毁的）
     };
     Save.save();
     this.refreshMenu();
@@ -2523,6 +3886,29 @@ const Game = {
     const onTap = (e) => {
       if (this.state !== 'playing') return;
       e.preventDefault();
+      // 集火模式：点击怪物设定集火目标
+      if (this.focusMode) {
+        const p = clientToCanvas(e);
+        let target = null, bestD = Infinity;
+        for (const m of this.monsters) {
+          if (!m.alive) continue;
+          const d = Math.hypot(m.x - p.x, m.y - p.y);
+          if (d < bestD && d <= (m.cfg.size || 16) + 12) {
+            bestD = d;
+            target = m;
+          }
+        }
+        if (target) {
+          this.focusTarget = target;
+          this.focusMode = false;
+          document.getElementById('focusHint').style.display = 'none';
+          document.getElementById('focusBtn').classList.add('active');
+          this.showToast('集火目标：' + target.cfg.name);
+        } else {
+          this.showToast('未点中敌人，请点击怪物');
+        }
+        return;
+      }
       const cell = getCell(e);
       if (!cell) return;
       this.handleCellTap(cell);
@@ -2535,11 +3921,20 @@ const Game = {
     document.getElementById('closeBtn').addEventListener('click', () => this.hideInfoPanel());
 
     // 百科标签切换（一次性绑定）
-    document.querySelectorAll('.tab-btn').forEach(btn => {
+    document.querySelectorAll('#codexTabs .tab-btn').forEach(btn => {
       btn.addEventListener('click', () => {
-        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+        document.querySelectorAll('#codexTabs .tab-btn').forEach(b => b.classList.remove('active'));
         btn.classList.add('active');
         this.renderCodex(btn.dataset.tab);
+      });
+    });
+
+    // 升级商店标签切换
+    document.querySelectorAll('#shopTabs .tab-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('#shopTabs .tab-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        this.renderShop(btn.dataset.tab);
       });
     });
   },
@@ -2604,6 +3999,7 @@ const Game = {
       this.gold -= cfg.cost;
       this.units.push(new Unit(this.selectedBuildType, col, row));
       if (cfg.hero) this.placedHeroes.add(this.selectedBuildType);
+      this.selectedBuildType = null;
       this.buildableCells = null;
       this.updateHUD();
       this.updateBuildBar();
@@ -2660,16 +4056,42 @@ const Game = {
         html += `<span>🎯 射程</span><span>${unit.range.toFixed(1)} 格</span>`;
         html += `<span>🧭 模式</span><span style="color:#f97316;">自动转向</span>`;
       } else {
-        html += `<span>⚔️ 攻击</span><span>${Math.round(unit.atk)}${atkLvl > 0 ? ` <small style="color:#4ade80;">(+${atkLvl}级)</small>` : ''}</span>`;
+        const atkVal = cfg.spread ? Math.round(unit.atk * 0.35) : Math.round(unit.atk);
+        html += `<span>⚔️ 攻击</span><span>${atkVal}${atkLvl > 0 ? ` <small style="color:#4ade80;">(+${atkLvl}级)</small>` : ''}</span>`;
         html += `<span>🎯 射程</span><span>${unit.range.toFixed(1)} 格</span>`;
         html += `<span>⚡ 攻速</span><span>${unit.fireRate.toFixed(2)}/秒${rateLvl > 0 ? ` <small style="color:#4ade80;">(+${rateLvl}级)</small>` : ''}</span>`;
       }
       if (cfg.aoe) html += `<span>💥 范围</span><span style="color:#f97316;">十字AOE</span>`;
-      if (cfg.spread) html += `<span>🎯 模式</span><span style="color:#f59e0b;">散射3发</span>`;
+      if (cfg.spread) html += `<span>🎯 模式</span><span style="color:#f59e0b;">5发扇形</span>`;
       if (cfg.pierce) html += `<span>🏹 穿透</span><span style="color:#14b8a6;">直线穿透</span>`;
+      if (cfg.fan) html += `<span>🪓 扇形</span><span style="color:#b45309;">连续3格·自动选向</span>`;
+      if (cfg.freeze) html += `<span>❄️ 冰冻</span><span style="color:#38bdf8;">减速${Math.round((1-cfg.freeze.slowFactor)*100)}% ${cfg.freeze.duration}秒</span>`;
+      if (cfg.chain) {
+        const pct = cfg.chain.falloff.map(f => Math.round(f * 100) + '%').join('/');
+        html += `<span>⚡ 连锁</span><span style="color:#a855f7;">传导${cfg.chain.jumps}次 · 相邻${cfg.chain.range}格</span>`;
+        html += `<span>📉 衰减</span><span style="color:#c084fc;">${pct}</span>`;
+      }
+      // 军医：同时显示治疗属性
+      if (cfg.heal) {
+        const healPerSec = Math.round(unit.heal * unit.fireRate * 10) / 10;
+        html += `<span>💚 治疗</span><span>+${healPerSec}/秒${rateLvl > 0 ? ` <small style="color:#4ade80;">(+${rateLvl}级)</small>` : ''}</span>`;
+        html += `<span>🩹 目标</span><span style="color:#06b6d4;">自身+1个最低血量</span>`;
+      }
+      // 工程师：修复属性
+      if (cfg.repair) {
+        html += `<span>🔧 修复</span><span>+${cfg.repair}/秒</span>`;
+        html += `<span>🏗️ 目标</span><span style="color:#84cc16;">相邻1格·血量最低建筑</span>`;
+      }
+      // 火法师：燃烧属性
+      if (cfg.burn) {
+        html += `<span>🔥 地面</span><span style="color:#f97316;">燃烧 ${cfg.burn.groundDur} 秒</span>`;
+        html += `<span>🩸 灼烧</span><span style="color:#ef4444;">${cfg.burn.dps}/秒 · ${cfg.burn.debuffDur}秒</span>`;
+      }
     } else if (unit.type === 'hospital') {
-      html += `<span>💚 治疗</span><span>+${unit.heal}/秒${rateLvl > 0 ? ` <small style="color:#4ade80;">(+${rateLvl}级)</small>` : ''}</span>`;
+      const healPerSec = Math.round(unit.heal * unit.fireRate * 10) / 10;
+      html += `<span>💚 治疗</span><span>+${healPerSec}/秒${rateLvl > 0 ? ` <small style="color:#4ade80;">(+${rateLvl}级)</small>` : ''}</span>`;
       html += `<span>🎯 范围</span><span>${cfg.range} 格</span>`;
+      html += `<span>🩹 目标</span><span style="color:#22c55e;">最多2个最低血量</span>`;
     } else {
       html += `<span>🧱 功能</span><span>阻挡怪物前进</span>`;
     }
@@ -2702,6 +4124,29 @@ const Game = {
     document.getElementById('moveHint').style.display = 'block';
   },
 
+  // 集火模式切换：点击按钮进入选目标模式，再点按钮取消集火
+  toggleFocusMode() {
+    if (this.focusMode) {
+      // 取消选目标模式
+      this.focusMode = false;
+      document.getElementById('focusHint').style.display = 'none';
+    } else if (this.focusTarget) {
+      // 已有集火目标 → 取消集火
+      this.focusTarget = null;
+      document.getElementById('focusBtn').classList.remove('active');
+      this.showToast('已取消集火');
+    } else {
+      // 进入选目标模式
+      if (this.monsters.filter(m => m.alive).length === 0) {
+        this.showToast('当前没有敌人可集火');
+        return;
+      }
+      this.focusMode = true;
+      this.hideInfoPanel();
+      document.getElementById('focusHint').style.display = 'block';
+    }
+  },
+
   sellUnit() {
     if (!this.selectedUnit) return;
     const u = this.selectedUnit;
@@ -2710,6 +4155,7 @@ const Game = {
     this.units = this.units.filter(x => x !== u);
     this.selectedUnit = null;
     this.hideInfoPanel();
+    this.buildableCells = null; // 出售后重建可建造范围缓存
     this.updateHUD();
     this.updateBuildBar();
     this.showToast('已出售 +💰' + u.sellValue);
@@ -2759,6 +4205,57 @@ const Game = {
     // 怪物
     for (const m of this.monsters) m.update(dt);
     this.monsters = this.monsters.filter(m => m.alive);
+    // 集火目标死亡则自动清除
+    if (this.focusTarget && !this.focusTarget.alive) {
+      this.focusTarget = null;
+      const fb = document.getElementById('focusBtn');
+      if (fb) fb.classList.remove('active');
+      this.showToast('集火目标已被击杀');
+    }
+
+    // 燃烧地面结算：经过的怪物 / 站在燃烧格上的单位获得燃烧 debuff
+    for (const b of this.burningCells) {
+      b.remaining -= dt;
+      if (b.remaining <= 0) continue;
+      // 怪物经过燃烧格
+      for (const m of this.monsters) {
+        if (!m.alive) continue;
+        const mc = pxToCell(m.x, m.y);
+        if (mc && mc.col === b.col && mc.row === b.row) {
+          m.burnTimer = Math.max(m.burnTimer, b.debuffDur);
+          m.burnDps = Math.max(m.burnDps, b.dps);
+        }
+      }
+      // 单位（角色/建筑）站在燃烧格上
+      for (const u of this.units) {
+        if (!u.alive) continue;
+        if (u.col === b.col && u.row === b.row) {
+          u.burnTimer = Math.max(u.burnTimer, b.debuffDur);
+          u.burnDps = Math.max(u.burnDps, b.dps);
+        }
+      }
+    }
+    this.burningCells = this.burningCells.filter(b => b.remaining > 0);
+
+    // 毒气结算：玩家角色扣血；非丧尸类怪物（如蝙蝠怪）也扣血；建筑和丧尸免疫
+    for (const p of this.poisonCells) {
+      p.remaining -= dt;
+      if (p.remaining <= 0) continue;
+      for (const u of this.units) {
+        if (!u.alive || u.isBuilding) continue; // 建筑免疫
+        if (u.col === p.col && u.row === p.row) {
+          u.takeDamage(p.dps * dt);
+        }
+      }
+      for (const m of this.monsters) {
+        if (!m.alive) continue;
+        if (m.category === 'zombie') continue; // 丧尸免疫毒气
+        if (m.col === p.col && m.row === p.row) {
+          m.takeDamage(p.dps * dt);
+        }
+      }
+    }
+    this.poisonCells = this.poisonCells.filter(p => p.remaining > 0);
 
     // 投射物
     for (const p of this.projectiles) p.update(dt);
@@ -2846,6 +4343,26 @@ const Game = {
     this.drawGrid(ctx);
     this.drawBase(ctx);
 
+    // 毒气格：绿色半透明 + 脉动粒子
+    for (const p of this.poisonCells) {
+      const c = cellCenter(p.col, p.row);
+      const alpha = 0.25 + Math.sin(Date.now() / 200) * 0.08;
+      ctx.save();
+      ctx.fillStyle = `rgba(101,163,13,${alpha})`;
+      ctx.fillRect(c.x - CONFIG.cellW / 2, c.y - CONFIG.cellH / 2, CONFIG.cellW, CONFIG.cellH);
+      // 毒气粒子（小圆点随机漂浮）
+      ctx.fillStyle = 'rgba(132,204,22,0.5)';
+      for (let i = 0; i < 4; i++) {
+        const t = (Date.now() / 1000 + i * 1.7) % 2;
+        const px = c.x + Math.sin(t * 3 + i) * 12;
+        const py = c.y - (t * 20) + Math.cos(t * 2 + i) * 8;
+        ctx.beginPath();
+        ctx.arc(px, py, 2 + t, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.restore();
+    }
+
     // 选中单位的生效/攻击范围
     if (this.selectedUnit) {
       const su = this.selectedUnit;
@@ -2917,6 +4434,27 @@ const Game = {
 
     // 怪物
     for (const m of this.monsters) m.draw(ctx);
+    // 集火目标标记：红色脉动圆环
+    if (this.focusTarget && this.focusTarget.alive) {
+      const ft = this.focusTarget;
+      const r = (ft.cfg.size || 16) + 8 + Math.sin(Date.now() / 150) * 3;
+      ctx.save();
+      ctx.strokeStyle = '#ef4444';
+      ctx.lineWidth = 2.5;
+      ctx.shadowColor = '#ef4444';
+      ctx.shadowBlur = 10;
+      ctx.beginPath();
+      ctx.arc(ft.x, ft.y, r, 0, Math.PI * 2);
+      ctx.stroke();
+      // 十字准星
+      ctx.beginPath();
+      ctx.moveTo(ft.x - r - 4, ft.y); ctx.lineTo(ft.x - r + 2, ft.y);
+      ctx.moveTo(ft.x + r - 2, ft.y); ctx.lineTo(ft.x + r + 4, ft.y);
+      ctx.moveTo(ft.x, ft.y - r - 4); ctx.lineTo(ft.x, ft.y - r + 2);
+      ctx.moveTo(ft.x, ft.y + r - 2); ctx.lineTo(ft.x, ft.y + r + 4);
+      ctx.stroke();
+      ctx.restore();
+    }
 
     // 投射物
     for (const p of this.projectiles) p.draw(ctx);

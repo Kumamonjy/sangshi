@@ -64,7 +64,7 @@
 
   /* 底部建造栏标签页 */
   .build-tabs {
-    position: absolute; bottom: 82px; left: 0; right: 0;
+    position: absolute; bottom: 92px; left: 0; right: 0;
     display: flex; z-index: 10;
     background: rgba(15,52,96,0.95);
     border-top: 2px solid rgba(255,255,255,0.15);
@@ -79,6 +79,22 @@
     color: #fff;
     background: rgba(255,255,255,0.12);
     border-bottom: 2px solid #4ecdc4;
+  }
+  .build-tab.focus-tab {
+    flex: 0 0 auto;
+    padding: 7px 14px;
+    border-left: 1px solid rgba(255,255,255,0.15);
+  }
+  .build-tab.focus-tab.active {
+    color: #fde047;
+    background: rgba(253,224,71,0.18);
+    border-bottom: 2px solid #facc15;
+  }
+  .focus-hint {
+    position: absolute; bottom: 130px; left: 0; right: 0;
+    text-align: center; color: #fde047; font-size: 13px;
+    background: rgba(0,0,0,0.6); padding: 5px; z-index: 11;
+    pointer-events: none;
   }
   /* 底部建造栏（可横向滚动） */
   #buildBar {
@@ -185,6 +201,10 @@
   /* 百科标签 */
   .codex-tabs {
     display: flex; gap: 6px; margin-bottom: 14px;
+    width: 100%; max-width: 380px;
+  }
+  .shop-tabs {
+    display: flex; gap: 6px; margin-bottom: 12px;
     width: 100%; max-width: 380px;
   }
   .tab-btn {
@@ -400,8 +420,10 @@
     <button class="build-tab active" data-tab="building">🏗️ 建筑</button>
     <button class="build-tab" data-tab="character">🎖️ 角色</button>
     <button class="build-tab" data-tab="hero">🦸 英雄</button>
+    <button class="build-tab focus-tab" id="focusBtn" onclick="Game.toggleFocusMode()">🎯 集火</button>
   </div>
   <div id="buildBar" style="display:none;"></div>
+  <div class="focus-hint" id="focusHint" style="display:none;">👆 点击敌人设定集火目标，再次点击集火按钮取消</div>
 
   <div id="infoPanel">
     <div class="unit-info" id="unitInfo"></div>
@@ -430,6 +452,11 @@
     <div class="shop-header">
       <h2 style="margin:0;">⬆️ 升级商店</h2>
       <div class="shop-currency">⭐ <span id="shopHonor">0</span></div>
+    </div>
+    <div class="shop-tabs" id="shopTabs">
+      <button class="tab-btn active" data-tab="building">🏗️ 建筑</button>
+      <button class="tab-btn" data-tab="character">👤 角色</button>
+      <button class="tab-btn" data-tab="hero">🦸 英雄</button>
     </div>
     <div class="upgrade-list" id="upgradeList"></div>
     <button class="menu-btn btn-secondary" onclick="Game.closeShop()">← 返回主菜单</button>
@@ -500,6 +527,6 @@
   </div>
 </div>
 
-<script src="game.js?v=20261024e"></script>
+<script src="game.js?v=20261025g"></script>
 </body>
 </html>

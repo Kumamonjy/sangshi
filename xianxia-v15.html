@@ -1474,7 +1474,14 @@ const SKILL_BOOK_PRICES={
   // 土系
   earth_s1:190,earth_s2:480,earth_s3:460,earth_s4:430,earth_s5:1440,
   earth_s6:180,earth_s7:650,earth_s8:720,earth_s9:520,
+  // 职业扩展技能（从突破解锁序列中移出，改为藏经阁购买；仅对应职业可学）
+  sword_s6:540,      // 御风剑诀（玄阶）
+  body_s6:540,       // 碎甲拳（玄阶）
+  formation_s6:650,  // 铁壁阵（黄阶）
+  formation_s7:650,  // 风行大阵（黄阶）
 };
+// 藏经阁出售的职业扩展技能（仅对应职业弟子可学）
+const PROFESSION_BOOK_SKILLS=['sword_s6','body_s6','formation_s6','formation_s7'];
 function randomSpiritRoot(){
   // 伪灵根 10% 概率，其余五行均等
   if(Math.random()<.10)return 'pseudo';
@@ -2132,12 +2139,13 @@ function getStatusDesc(type){
 // All human characters have: norm (profession basic), ult (profession big), plus universal skills
 const HUMAN_SKILLS=['qiBlast','qiBullet','qiStorm','qiHeal'];
 const MAX_EQUIPPED=4;
-// 每个职业的扩展专属技能键（norm/ult 之外）
+// 每个职业扩展技能键（norm/ult 之外）；索引对应所需大境界：extras[0]=金丹(2), extras[1]=元婴(3), extras[2]=化神(4), extras[3]=渡劫(5), extras[4]=飞升(6)
+// 末尾为地阶绝学，确保飞升期可学；被移出的技能转入藏经阁技能书商店
 const PROFESSION_EXTRA={
-  sword:['sword_s2','sword_s3','sword_s4','sword_s5','sword_s6','sword_s7'],
+  sword:['sword_s2','sword_s3','sword_s4','sword_s5','sword_s7'],
   alchemy:['alchemy_s2','alchemy_s3','alchemy_s4','alchemy_s5','alchemy_s6'],
-  body:['body_s2','body_s3','body_s4','body_s5','body_s6','body_s7'],
-  formation:['formation_s2','formation_s3','formation_s4','formation_s5','formation_s6','formation_s7','formation_s8'],
+  body:['body_s2','body_s3','body_s4','body_s5','body_s7'],
+  formation:['formation_s2','formation_s3','formation_s4','formation_s5','formation_s8'],
   spirit:['spirit_s2','spirit_s3','spirit_s4','spirit_s5','spirit_s6'],
   soul:['soul_s2','soul_s3','soul_s4','soul_s5','soul_s6'],
 };
@@ -2150,8 +2158,9 @@ const PROFESSION_QI_SKILLS={
   spirit:['spirit_q1','spirit_q2'],
   soul:['soul_q1','soul_q2'],
 };
-// 职业技能按大境界解锁顺序：炼气(norm) → 筑基(ult) → 金丹(s2) → 元婴(s3) → 化神(s4) → 渡劫(s5) → 飞升(s6/s7...)
-// 即 index 为所需 bigRealm：norm=0, ult=1, extras[0]=2, extras[1]=3 ...
+// 职业技能按大境界解锁顺序：炼气(norm) → 筑基(ult) → 金丹(s2) → 元婴(s3) → 化神(s4) → 渡劫(s5) → 飞升(地阶绝学)
+// 即 index 为所需 bigRealm：norm=0, ult=1, extras[0]=2, extras[1]=3 ...extras[4]=6(飞升)
+// 每个职业恰好 5 个扩展技能，飞升期解锁地阶绝学；剑修/体修/阵修多余的技能转入藏经阁技能书
 function getProfSkillOrder(prof){
   const p=PROFESSIONS[prof];if(!p)return[];
   return [p.norm,p.ult,...(PROFESSION_EXTRA[prof]||[])];
@@ -6996,6 +7005,23 @@ function renderLibrary(){
       }
       html+='</div>';
     }
+    // 职业扩展技能书（仅对应职业可学）
+    const profList=PROFESSION_BOOK_SKILLS.filter(sk=>_libraryGrade==='all'||SKILLS[sk]?.grade===_libraryGrade)
+      .sort((a,b)=>(SKILL_BOOK_PRICES[a]||0)-(SKILL_BOOK_PRICES[b]||0));
+    if(profList.length>0){
+      html+=`<div class="card" style="margin-bottom:10px"><div class="card-title" style="color:var(--gold)">职业技能书 <span style="font-size:10px;color:var(--dim)">（仅对应职业可学）</span></div>`;
+      for(const sk of profList){
+        const s=SKILLS[sk];const price=SKILL_BOOK_PRICES[sk];
+        const prof=sk.split('_')[0];
+        const profName=PROFESSIONS[prof]?.name||'';
+        const canBuy=game.resources.spirit>=price;
+        html+=`<div class="attr-row">
+          <span>${s.name}${gradeTag(s.grade)} <span style="font-size:10px;color:var(--dim)">${getSkillDesc(sk)} · ${profName}专用</span></span>
+          <button class="btn ${canBuy?'btn-gold':'btn-gray'}" ${canBuy?'':'disabled'} onclick="buySkillBook('${sk}')">${price}💎</button>
+        </div>`;
+      }
+      html+='</div>';
+    }
   }else if(_libraryTab==='pillShop'){
     html+='<p style="color:var(--dim);font-size:11px;margin-bottom:10px">突破丹仅对应灵根角色可使用，用于大境界突破。价格随目标境界递增。</p>';
     for(const key in BREAKTHROUGH_PILLS){
@@ -7078,15 +7104,20 @@ function useSkillBook(sk,fromWarehouse){
   _useBookFromWarehouse=!!fromWarehouse;
   const s=SKILLS[sk];
   const elem=sk.split('_')[0];
+  const isProfBook=PROFESSION_BOOK_SKILLS.includes(sk);
   const chars=[{slot:'player',char:game.player},...game.disciples.map((d,i)=>({slot:i,char:d}))];
   const eligible=chars.filter(({char})=>{
     if(!char)return false;
     if(char.learnedSkills&&char.learnedSkills.includes(sk))return false;
+    if(isProfBook){
+      // 职业技能书：仅对应职业可学
+      return char.profession===elem;
+    }
     const sr=char.spiritRoot;
     return sr==='pseudo'||sr===elem;
   });
   let html=`<h3>使用技能书 - ${s.name}${gradeTag(s.grade)}</h3>
-    <p style="color:var(--dim);margin-bottom:10px">选择一名弟子学习（仅灵根匹配或伪灵根可学）</p>`;
+    <p style="color:var(--dim);margin-bottom:10px">选择一名弟子学习${isProfBook?'（仅对应职业可学）':'（仅灵根匹配或伪灵根可学）'}</p>`;
   if(eligible.length===0){
     html+='<p style="color:var(--dim);text-align:center;padding:16px">没有可学习该技能的弟子</p>';
   }else{
@@ -7182,6 +7213,15 @@ function showWikiTab(tab){
       for(const qk of (PROFESSION_QI_SKILLS[key]||[])){html+=`<div class="attr-row"><span>${SKILLS[qk].name}${gradeTag(SKILLS[qk].grade)} <span style="color:var(--jade)">初始</span>${realmBadge(0)}</span><span style="font-size:11px;color:var(--dim)">${getSkillDesc(qk)}</span></div>`;}
       html+=`<div class="attr-row"><span>${SKILLS[p.ult].name}${gradeTag(SKILLS[p.ult].grade)} <span style="color:var(--gold)">大招</span>${realmBadge(getProfSkillRealm(key,p.ult))}</span><span style="font-size:11px;color:var(--dim)">${getSkillDesc(p.ult)}</span></div>`;
       for(const ek of (PROFESSION_EXTRA[key]||[])){html+=`<div class="attr-row"><span>${SKILLS[ek].name}${gradeTag(SKILLS[ek].grade)}${realmBadge(getProfSkillRealm(key,ek))}</span><span style="font-size:11px;color:var(--dim)">${getSkillDesc(ek)}</span></div>`;}
+      html+='</div>';
+    }
+    // 藏经阁职业技能书（从突破序列移出，购买后仅对应职业可学）
+    if(PROFESSION_BOOK_SKILLS.length>0){
+      html+='<div class="card" style="margin-bottom:10px"><div class="card-title">藏经阁职业技能书 <span style="font-size:10px;color:var(--dim)">（购买后仅对应职业可学）</span></div>';
+      for(const sk of PROFESSION_BOOK_SKILLS){
+        const s=SKILLS[sk];const prof=sk.split('_')[0];const profName=PROFESSIONS[prof]?.name||'';
+        html+=`<div class="attr-row"><span>${s.name}${gradeTag(s.grade)} <span style="color:var(--gold)">${profName}专用</span></span><span style="font-size:11px;color:var(--dim)">${getSkillDesc(sk)}</span></div>`;
+      }
       html+='</div>';
     }
     // 五行技能

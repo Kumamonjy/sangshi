@@ -3,6 +3,9 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
 <title>塔防战记</title>
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
@@ -372,6 +375,7 @@
   }
   .btn-move { background: linear-gradient(135deg, #4ecdc4, #44a08d); }
   .btn-sell { background: linear-gradient(135deg, #667eea, #764ba2); }
+  .btn-upgrade { background: linear-gradient(135deg, #f59e0b, #d97706); }
   .btn-close { background: rgba(255,255,255,0.2); }
 
   /* 移动提示 */
@@ -427,6 +431,7 @@
 
   <div id="infoPanel">
     <div class="unit-info" id="unitInfo"></div>
+    <button class="btn-upgrade" id="upgradeBtn" style="display:none;">升级</button>
     <button class="btn-move" id="moveBtn" style="display:none;">移动 (💰10)</button>
     <button class="btn-sell" id="sellBtn">出售</button>
     <button class="btn-close" id="closeBtn">关闭</button>
@@ -441,6 +446,10 @@
     <button class="menu-btn btn-warning" onclick="Game.openShop()">⬆️ 升级商店</button>
     <button class="menu-btn btn-secondary" onclick="Game.openCodex()">📖 游戏百科</button>
     <button class="menu-btn btn-secondary" onclick="Game.showHelp()">❓ 游戏说明</button>
+    <div style="display:flex;gap:8px;width:100%;margin-top:4px;">
+      <button class="menu-btn btn-secondary" onclick="Game.openSaveManager()" style="flex:1;font-size:13px;">📤 导出存档</button>
+      <button class="menu-btn btn-secondary" onclick="Game.openImportSave()" style="flex:1;font-size:13px;">📥 导入存档</button>
+    </div>
     <div class="menu-info">
       <span class="honor">⭐ 功勋点：<span id="menuHonor">0</span></span><br>
       最高波次：<span id="menuBestWave">0</span>
@@ -507,6 +516,8 @@
     <h2>⏸ 游戏暂停</h2>
     <button class="menu-btn btn-primary" onclick="Game.resume()">▶️ 继续游戏</button>
     <button class="menu-btn btn-success" onclick="Game.saveGame()">💾 保存游戏</button>
+    <button class="menu-btn btn-secondary" onclick="Game.openSaveManager()">📤 导出存档</button>
+    <button class="menu-btn btn-secondary" onclick="Game.openImportSave()">📥 导入存档</button>
     <button class="menu-btn btn-danger" onclick="Game.quitToMenu()">🏠 返回主菜单</button>
   </div>
 
@@ -525,8 +536,30 @@
     <div id="levelList" class="level-list"></div>
     <button class="menu-btn btn-secondary" onclick="Game.showMainMenu()" style="margin-top:14px;">← 返回主菜单</button>
   </div>
+
+  <!-- 导出存档 -->
+  <div id="exportSaveScreen" class="overlay" style="display:none;">
+    <h2>📤 导出存档</h2>
+    <p class="subtitle" style="margin-bottom:10px;font-size:12px;">复制下方 JSON 文本可备份或转移存档</p>
+    <textarea id="exportSaveText" readonly style="width:100%;height:180px;font-size:11px;font-family:monospace;background:#1e293b;color:#e2e8f0;border:1px solid #475569;border-radius:6px;padding:8px;resize:none;" onclick="this.select()"></textarea>
+    <div style="display:flex;gap:8px;margin-top:10px;">
+      <button class="menu-btn btn-success" id="copySaveBtn" onclick="Game.copySaveJson()" style="flex:1;">📋 复制到剪贴板</button>
+      <button class="menu-btn btn-secondary" onclick="Game.closeSaveManager()" style="flex:1;">← 返回</button>
+    </div>
+  </div>
+
+  <!-- 导入存档 -->
+  <div id="importSaveScreen" class="overlay" style="display:none;">
+    <h2>📥 导入存档</h2>
+    <p class="subtitle" style="margin-bottom:10px;font-size:12px;color:#f87171;">⚠️ 导入将覆盖当前所有存档数据，请谨慎操作</p>
+    <textarea id="importSaveText" placeholder="在此粘贴导出的存档 JSON..." style="width:100%;height:180px;font-size:11px;font-family:monospace;background:#1e293b;color:#e2e8f0;border:1px solid #475569;border-radius:6px;padding:8px;resize:none;"></textarea>
+    <div style="display:flex;gap:8px;margin-top:10px;">
+      <button class="menu-btn btn-success" onclick="Game.doImportSave()" style="flex:1;">✅ 确认导入</button>
+      <button class="menu-btn btn-secondary" onclick="Game.closeSaveManager()" style="flex:1;">← 返回</button>
+    </div>
+  </div>
 </div>
 
-<script src="game.js?v=20261025g"></script>
+<script src="game.js?v=20261027r"></script>
 </body>
 </html>

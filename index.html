@@ -308,37 +308,43 @@
 
   /* 紧凑单位升级行 */
   .unit-upgrade-row {
-    display: flex; align-items: center; gap: 8px;
+    display: flex; align-items: stretch; gap: 8px;
     background: rgba(255,255,255,0.06);
     border: 1px solid rgba(255,255,255,0.1);
     border-radius: 10px;
-    padding: 6px 8px;
+    padding: 8px;
   }
   .unit-upgrade-name {
     font-size: 11px; font-weight: bold; color: #e2e8f0;
-    min-width: 52px; text-align: center; flex-shrink: 0;
-    line-height: 1.2;
+    width: 56px; text-align: center; flex-shrink: 0;
+    line-height: 1.2; display: flex; flex-direction: column;
+    align-items: center; justify-content: center; gap: 2px;
   }
   .unit-upgrade-name span { font-size: 10px; color: #94a3b8; }
   .unit-upgrade-fields {
-    display: flex; gap: 6px; flex-wrap: wrap; flex: 1; justify-content: flex-end;
+    display: flex; flex-direction: column;
+    gap: 5px; flex: 1; min-width: 0;
   }
   .compact-upgrade {
-    display: flex; align-items: center; gap: 4px;
+    display: flex; align-items: center; gap: 6px;
     background: rgba(0,0,0,0.25);
     border-radius: 8px;
-    padding: 4px 6px;
+    padding: 5px 8px;
+    min-width: 0;
   }
-  .cu-icon { font-size: 13px; }
-  .cu-lvl { font-size: 10px; color: #fbbf24; font-weight: bold; }
+  .cu-icon { font-size: 13px; flex-shrink: 0; }
+  .cu-name { font-size: 10px; color: #cbd5e1; font-weight: bold; flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .cu-lvl { font-size: 10px; color: #fbbf24; font-weight: bold; white-space: nowrap; flex-shrink: 0; }
   .cu-inc {
     font-size: 10px; color: #4ade80; font-weight: bold;
     background: rgba(34,197,94,0.15);
     padding: 1px 5px; border-radius: 4px;
-    min-width: 22px; text-align: center;
+    min-width: 24px; text-align: center;
+    white-space: nowrap; flex-shrink: 0;
   }
   .cu-btn {
     padding: 3px 6px; font-size: 10px; border-radius: 6px;
+    min-width: 40px; flex-shrink: 0;
   }
 
   /* 波次提示 */
@@ -441,7 +447,7 @@
   <div id="mainMenu" class="overlay">
     <h1>塔防战记</h1>
     <p class="subtitle">守护基地 · 击退怪物 · 永久成长</p>
-    <button class="menu-btn btn-primary" onclick="Game.openLevelSelect()">⚔️ 开始游戏</button>
+    <button class="menu-btn btn-primary" onclick="Game.openModeSelect()">⚔️ 开始游戏</button>
     <button class="menu-btn btn-success" id="continueBtn" onclick="Game.continueGame()">📂 继续游戏</button>
     <button class="menu-btn btn-warning" onclick="Game.openShop()">⬆️ 升级商店</button>
     <button class="menu-btn btn-secondary" onclick="Game.openCodex()">📖 游戏百科</button>
@@ -530,6 +536,14 @@
   </div>
 
   <!-- 关卡选择 -->
+  <!-- 模式选择 -->
+  <div id="modeSelectScreen" class="overlay" style="display:none;">
+    <h2>选择模式</h2>
+    <p class="subtitle" style="margin-bottom:14px;">选择你想挑战的游戏模式</p>
+    <div id="modeList" class="level-list"></div>
+    <button class="menu-btn btn-secondary" onclick="Game.showMainMenu()" style="margin-top:14px;">← 返回主菜单</button>
+  </div>
+
   <div id="levelSelectScreen" class="overlay" style="display:none;">
     <h2>选择关卡</h2>
     <p class="subtitle" style="margin-bottom:10px;">通关前一关即可解锁下一关</p>
@@ -560,6 +574,6 @@
   </div>
 </div>
 
-<script src="game.js?v=20261027r"></script>
+<script src="game.js?v=20261029f"></script>
 </body>
 </html>

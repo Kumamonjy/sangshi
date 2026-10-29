@@ -840,7 +840,7 @@ const UNIT_TYPES = {
   mine:     { name:'地雷',   icon:'💣', cost:60,  hp:50,  atk:150, range:1, fireRate:0, isBuilding:true, canAttack:false, color:'#1f2937', mine:true, desc:'一次性陷阱建筑，摆放后前3秒为埋设期（不生效），3秒后埋入地下生效。怪物踩到后爆炸，对3*3范围内所有怪物造成150点伤害，爆炸后消失。' },
   outpost:  { name:'前哨站', icon:'🗼', cost:100, hp:300, atk:20, range:3, fireRate:0.5, isBuilding:true, canAttack:true, color:'#6b7280', desc:'特殊防御塔，可建造在地图任意位置，攻击3格范围内的敌人，并为周围2格提供建造区域。' },
   hospital: { name:'医院',   icon:'🏥', cost:250, hp:300, atk:0,  range:2, fireRate:1, heal:10, isBuilding:true, canAttack:false, color:'#22c55e', desc:'医疗建筑，每秒治疗周围2格范围内2个血量最低的友方角色10点生命值，并保护2格范围内的角色免受毒气伤害，周围3格内可放置单位。' },
-  freeze:   { name:'冰冻塔', icon:'❄️', cost:250, hp:300, atk:15, range:5, fireRate:0.25, isBuilding:true, canAttack:true, color:'#38bdf8', aoe:true, aoeStraight:true, freeze:{slowFactor:0.5,duration:6}, desc:'冰冻防御塔，发射直线冰弹，命中后爆炸（目标格及上下左右共5格），对范围内所有怪物造成伤害并减速50%，持续6秒。' },
+  freeze:   { name:'冰冻塔', icon:'❄️', cost:250, hp:300, atk:15, range:5, fireRate:0.3, isBuilding:true, canAttack:true, color:'#38bdf8', aoe:true, aoeStraight:true, freeze:{slowFactor:0.5,duration:6}, desc:'冰冻防御塔，发射直线冰弹，命中后爆炸（目标格及上下左右共5格），对范围内所有怪物造成伤害并减速50%，持续6秒。' },
   flame:    { name:'火焰塔', icon:'🔥', cost:210, hp:300, atk:90, range:2, fireRate:0, isBuilding:true, canAttack:true, color:'#f97316', flame:true, desc:'火焰防御塔，自动旋转朝向敌人最多的方向，持续喷射火焰，对2格内直线上所有敌人造成90/秒持续伤害，伤害高但射程短。' },
   lightning:{ name:'闪电塔', icon:'⚡', cost:250, hp:300, atk:60, range:5, fireRate:0.5, isBuilding:true, canAttack:true, color:'#a855f7', chain:{jumps:5, range:1, falloff:[1,0.8,0.6,0.4,0.2]}, desc:'闪电防御塔，发射闪电链攻击目标，并在1格内相邻怪物间传导，最多传导5次，伤害依次衰减为100%/80%/60%/40%/20%。' },
   pistol:   { name:'手枪手', icon:'🔫', cost:40,  hp:100, atk:15, range:4,  fireRate:1.0, isBuilding:false, canAttack:true, color:'#3b82f6', desc:'基础远程单位，性价比高，适合前期防守。' },
@@ -850,10 +850,10 @@ const UNIT_TYPES = {
   sniper:   { name:'狙击手', icon:'🎯', cost:240, hp:100, atk:120,range:10, fireRate:0.3, isBuilding:false, canAttack:true, color:'#ef4444', desc:'超远程高伤单位，可覆盖全图，但射速极慢。' },
   grenadier:{ name:'掷弹兵', icon:'💣', cost:250, hp:150, atk:100,range:3, fireRate:0.15, isBuilding:false, canAttack:true, aoe:true, color:'#f97316', desc:'强力爆破兵种，投掷榴弹对目标格及上下左右格造成范围伤害，射速慢但威力巨大。' },
   shotgun:  { name:'霰弹枪手', icon:'💢', cost:180, hp:150, atk:35,range:4, fireRate:0.4, isBuilding:false, canAttack:true, spread:true, color:'#f59e0b', desc:'近距离高伤兵种，每次射击发射5颗扇形弹丸，每颗35点伤害，越近命中越多伤害越高，远距离弹丸分散伤害降低。' },
-  crossbow: { name:'神射手', icon:'🏹', cost:150, hp:120, atk:45, range:4, fireRate:0.6, isBuilding:false, canAttack:true, pierce:true, color:'#14b8a6', desc:'远程穿透兵种，锁定射程内最近的敌人并射出穿透箭矢，箭矢沿直线飞行贯穿路径上的所有敌人，射程4格。' },
+  crossbow: { name:'神射手', icon:'🏹', cost:150, hp:140, atk:50, range:4, fireRate:0.6, isBuilding:false, canAttack:true, pierce:true, color:'#14b8a6', desc:'远程穿透兵种，锁定射程内最近的敌人并射出穿透箭矢，箭矢沿直线飞行贯穿路径上的所有敌人，射程4格。' },
   medic:    { name:'军医',   icon:'🩹', cost:130, hp:160, atk:15, range:4, fireRate:1.0, isBuilding:false, canAttack:true, heal:10, color:'#06b6d4', desc:'战场医疗兵种，既能射击敌人，又能治疗自己和周围一格（上下左右）的友方角色，攻速1次/秒，每次治疗10点生命值。' },
   pharmacist:{ name:'制药师', icon:'💊', cost:50,  hp:80,  atk:10, range:1, fireRate:1.0, isBuilding:false, canAttack:true, heal:5, plagueImmune:true, cure:true, color:'#a855f7', desc:'制药支援兵种，自身免疫血疫。攻速1次/秒，每次治疗身边1格（曼哈顿距离）内血量最低的1个友方角色5点生命值，并清除其身上的中毒与血疫状态，同时可攻击敌人。' },
-  axe:      { name:'刀斧手', icon:'🪓', cost:100, hp:250, atk:50, range:1, fireRate:0.8, isBuilding:false, canAttack:true, fan:true, color:'#b45309', desc:'近战扇形攻击兵种，生命值较高，每次挥砍自动选择周围8格中敌人最多的连续3格造成伤害，攻速0.8次/秒。' },
+  axe:      { name:'刀斧手', icon:'🪓', cost:100, hp:300, atk:55, range:1, fireRate:0.8, isBuilding:false, canAttack:true, fan:true, color:'#b45309', desc:'近战旋风斩兵种，生命值较高，每次挥砍自动选择周围8格中敌人最多的连续5格造成伤害，攻速0.8次/秒。' },
   engineer: { name:'工程师', icon:'🔧', cost:100, hp:120, atk:10, range:1, fireRate:0.8, isBuilding:false, canAttack:true, repair:10, color:'#65a30d', desc:'战场支援兵种，既能近战攻击，又能持续修复周围一圈（3*3）内血量最低的建筑物，修复速度10点/秒。' },
   firemage: { name:'火法师', icon:'🔥', cost:230, hp:100, atk:50, range:5, fireRate:0.25, isBuilding:false, canAttack:true, burn:{groundDur:5, debuffDur:3, dps:25}, color:'#f97316', desc:'远程法系兵种，锁定5格内最近敌人并点燃其所在格子，燃烧地面持续5秒，经过的敌人或放置的单位会进入燃烧状态（3秒内每秒掉25血）。' },
   icemage:  { name:'冰法师', icon:'❄️', cost:240, hp:100, atk:20, range:4, fireRate:0.35, isBuilding:false, canAttack:true, pierce:true, freeze:{slowFactor:0.5, duration:3}, color:'#38bdf8', desc:'远程法系兵种，射出冰锥沿直线穿透4格内所有敌人，造成伤害并使其减速50%，持续3秒。攻速慢但控场能力强。' },
@@ -881,7 +881,9 @@ const MONSTER_TYPES = {
   bully:       { name:'恶霸',       icon:'💪', category:'raider', hp:150, atk:40, speed:1.0, gold:35, color:'#b45309', size:18, rangedRange:1, fireRate:1.0, desc:'劫掠者近战单位，生命值较高，会主动寻找并攻击最近的玩家角色/建筑，而非冲向基地。' },
   raider_gunner:{ name:'劫掠枪手',  icon:'🔫', category:'raider', hp:150, atk:20, speed:1.0, gold:35, color:'#0891b2', size:17, ranged:true, rangedRange:4, fireRate:0.8, desc:'劫掠者远程单位，手持枪械，从4格开外射击最近的玩家角色/建筑。' },
   armed_raider:{ name:'武装劫掠者', icon:'🎖️', category:'raider', hp:200, atk:25, speed:1.0, gold:55, color:'#7c2d12', size:19, ranged:true, rangedRange:5, fireRate:0.7, desc:'劫掠者精英远程单位，装备精良，射程更远（5格），伤害与生命均高于劫掠枪手。' },
-  thug:        { name:'暴徒',       icon:'🔥', category:'raider', hp:150, atk:20, speed:1.0, gold:40, color:'#dc2626', size:18, ranged:true, rangedRange:2, fireRate:1.0, aoe:true, burn:{groundDur:5, debuffDur:3, dps:20}, desc:'劫掠者纵火单位，投掷燃烧弹攻击目标格及上下左右共5格，使地面持续燃烧5秒，经过的单位受到灼烧伤害。' }
+  thug:        { name:'暴徒',       icon:'🔥', category:'raider', hp:150, atk:20, speed:1.0, gold:40, color:'#dc2626', size:18, ranged:true, rangedRange:2, fireRate:1.0, aoe:true, burn:{groundDur:5, debuffDur:3, dps:20}, desc:'劫掠者纵火单位，投掷燃烧弹攻击目标格及上下左右共5格，使地面持续燃烧5秒，经过的单位受到灼烧伤害。' },
+  raider_camp: { name:'劫掠者营地', icon:'⛺', category:'raider', hp:350, atk:0,  speed:0, gold:70, color:'#7c2d12', size:26, deathFx:'#7c2d12', stationary:true, spawn:{types:['bully','raider_gunner'], interval:10, range:1}, desc:'劫掠者据点建筑，无法移动与攻击。生命值350，每隔10秒在自身周围1格内召唤1名恶霸与1名劫掠枪手。出现在后期关卡地图边缘，需优先摧毁以阻止劫掠者持续涌出。' },
+  raider_barracks:{ name:'劫掠者兵营', icon:'🏰', category:'raider', hp:1000, atk:0, speed:0, gold:150, color:'#451a03', size:30, deathFx:'#451a03', stationary:true, spawn:{types:['thug','armed_raider','raider_gunner','raider_gunner'], interval:15, range:2}, desc:'劫掠者大型军事建筑，无法移动与攻击。生命值1000，每隔15秒在自身周围2格内召唤1名暴徒、1名武装劫掠者与2名劫掠枪手。出现在高难度关卡，威胁极大，需集火优先摧毁。' }
 };
 
 // ============== 波次配置 ==============
@@ -901,24 +903,49 @@ const LEVELS = [
   {
     id: 2, name: '基地防御2', desc: '中等难度 · 怪物更多',
     waves: [
-      [{ type:'normal', count:8, interval:1.1, delay:0 },{ type:'fast', count:4, interval:0.6, delay:3 },{ type:'bat', count:4, interval:0.8, delay:5 }],
-      [{ type:'normal', count:10, interval:0.9, delay:0 },{ type:'fast', count:8, interval:0.5, delay:3 },{ type:'tank', count:3, interval:1.8, delay:6 },{ type:'acid', count:3, interval:1.5, delay:5 },{ type:'gas', count:2, interval:1.4, delay:7 },{ type:'mother', count:2, interval:4, delay:5 }],
-      [{ type:'normal', count:12, interval:0.8, delay:0 },{ type:'fast', count:10, interval:0.45, delay:3 },{ type:'tank', count:4, interval:1.6, delay:5 },{ type:'bat', count:6, interval:0.7, delay:6 },{ type:'acid', count:4, interval:1.3, delay:5 },{ type:'mother', count:2, interval:4, delay:6 },{ type:'warcry', count:1, interval:0, delay:7 },{ type:'redeye', count:2, interval:1.0, delay:4 },{ type:'bully', count:3, interval:1.5, delay:5 },{ type:'raider_gunner', count:2, interval:1.2, delay:6 },{ type:'thug', count:2, interval:1.5, delay:6 }],
-      [{ type:'tank', count:6, interval:1.5, delay:0 },{ type:'fast', count:14, interval:0.4, delay:3 },{ type:'bat', count:8, interval:0.6, delay:4 },{ type:'acid', count:6, interval:1.1, delay:4 },{ type:'normal', count:10, interval:0.6, delay:6 },{ type:'gas', count:4, interval:1.2, delay:5 },{ type:'mother', count:3, interval:4, delay:5 },{ type:'warcry', count:2, interval:5, delay:6 },{ type:'redeye', count:3, interval:0.9, delay:4 },{ type:'bully', count:4, interval:1.3, delay:5 },{ type:'raider_gunner', count:3, interval:1.0, delay:6 },{ type:'armed_raider', count:1, interval:0, delay:8 },{ type:'thug', count:2, interval:1.3, delay:7 }],
-      [{ type:'boss', count:1, interval:0, delay:0 },{ type:'tank', count:5, interval:1.5, delay:3 },{ type:'bat', count:10, interval:0.5, delay:4 },{ type:'acid', count:7, interval:1.0, delay:5 },{ type:'fast', count:16, interval:0.35, delay:5 },{ type:'normal', count:12, interval:0.5, delay:7 },{ type:'gas', count:5, interval:1.1, delay:6 },{ type:'mother', count:3, interval:4, delay:5 },{ type:'warcry', count:2, interval:5, delay:5 },{ type:'ratnest', count:1, interval:0, delay:0 },{ type:'redeye', count:3, interval:0.9, delay:4 },{ type:'bully', count:4, interval:1.2, delay:6 },{ type:'raider_gunner', count:4, interval:0.9, delay:7 },{ type:'armed_raider', count:2, interval:3, delay:8 },{ type:'thug', count:3, interval:1.2, delay:7 }]
+      [{ type:'normal', count:7, interval:1.1, delay:0 },{ type:'fast', count:3, interval:0.6, delay:3 },{ type:'bat', count:3, interval:0.8, delay:5 }],
+      [{ type:'normal', count:8, interval:0.9, delay:0 },{ type:'fast', count:6, interval:0.5, delay:3 },{ type:'tank', count:2, interval:1.8, delay:6 },{ type:'acid', count:2, interval:1.5, delay:5 },{ type:'gas', count:1, interval:1.4, delay:7 },{ type:'mother', count:1, interval:4, delay:5 }],
+      [{ type:'normal', count:10, interval:0.8, delay:0 },{ type:'fast', count:8, interval:0.45, delay:3 },{ type:'tank', count:3, interval:1.6, delay:5 },{ type:'bat', count:5, interval:0.7, delay:6 },{ type:'acid', count:3, interval:1.3, delay:5 },{ type:'mother', count:1, interval:4, delay:6 },{ type:'warcry', count:1, interval:0, delay:7 },{ type:'redeye', count:1, interval:1.0, delay:4 },{ type:'bully', count:2, interval:1.5, delay:5 },{ type:'raider_gunner', count:1, interval:1.2, delay:6 },{ type:'thug', count:1, interval:1.5, delay:6 }],
+      [{ type:'tank', count:5, interval:1.5, delay:0 },{ type:'fast', count:11, interval:0.4, delay:3 },{ type:'bat', count:6, interval:0.6, delay:4 },{ type:'acid', count:5, interval:1.1, delay:4 },{ type:'normal', count:8, interval:0.6, delay:6 },{ type:'gas', count:3, interval:1.2, delay:5 },{ type:'mother', count:2, interval:4, delay:5 },{ type:'warcry', count:1, interval:5, delay:6 },{ type:'redeye', count:2, interval:0.9, delay:4 },{ type:'bully', count:3, interval:1.3, delay:5 },{ type:'raider_gunner', count:2, interval:1.0, delay:6 },{ type:'armed_raider', count:1, interval:0, delay:8 },{ type:'thug', count:1, interval:1.3, delay:7 },{ type:'raider_camp', count:1, interval:0, delay:0 }],
+      [{ type:'boss', count:1, interval:0, delay:0 },{ type:'tank', count:4, interval:1.5, delay:3 },{ type:'bat', count:8, interval:0.5, delay:4 },{ type:'acid', count:5, interval:1.0, delay:5 },{ type:'fast', count:13, interval:0.35, delay:5 },{ type:'normal', count:10, interval:0.5, delay:7 },{ type:'gas', count:4, interval:1.1, delay:6 },{ type:'mother', count:2, interval:4, delay:5 },{ type:'warcry', count:1, interval:5, delay:5 },{ type:'ratnest', count:1, interval:0, delay:0 },{ type:'redeye', count:2, interval:0.9, delay:4 },{ type:'bully', count:3, interval:1.2, delay:6 },{ type:'raider_gunner', count:3, interval:0.9, delay:7 },{ type:'armed_raider', count:1, interval:3, delay:8 },{ type:'thug', count:2, interval:1.2, delay:7 },{ type:'raider_camp', count:1, interval:0, delay:0 }]
     ],
-    hpMul: 1.0, atkMul: 1.0, speedMul: 1.0, startGoldMul: 1.0, honorMul: 1.2
+    hpMul: 1.0, atkMul: 1.0, speedMul: 1.0, startGoldMul: 1.0, honorMul: 1.5
   },
   {
     id: 3, name: '基地防御3', desc: '高难度 · 海量怪物',
     waves: [
-      [{ type:'normal', count:10, interval:1.0, delay:0 },{ type:'fast', count:6, interval:0.5, delay:3 },{ type:'bat', count:6, interval:0.7, delay:4 },{ type:'acid', count:4, interval:1.4, delay:5 },{ type:'gas', count:3, interval:1.3, delay:6 }],
-      [{ type:'normal', count:14, interval:0.9, delay:0 },{ type:'fast', count:10, interval:0.45, delay:3 },{ type:'tank', count:2, interval:2.0, delay:6 },{ type:'bat', count:8, interval:0.6, delay:5 },{ type:'acid', count:6, interval:1.2, delay:5 },{ type:'mother', count:3, interval:3.5, delay:5 },{ type:'warcry', count:1, interval:0, delay:6 },{ type:'redeye', count:3, interval:0.9, delay:4 },{ type:'bully', count:3, interval:1.3, delay:5 },{ type:'raider_gunner', count:2, interval:1.1, delay:6 },{ type:'thug', count:2, interval:1.4, delay:6 }],
-      [{ type:'normal', count:16, interval:0.8, delay:0 },{ type:'fast', count:14, interval:0.4, delay:3 },{ type:'tank', count:5, interval:1.5, delay:5 },{ type:'bat', count:10, interval:0.5, delay:6 },{ type:'acid', count:8, interval:1.0, delay:5 },{ type:'gas', count:5, interval:1.0, delay:6 },{ type:'mother', count:3, interval:3.5, delay:5 },{ type:'warcry', count:2, interval:4, delay:5 },{ type:'ratnest', count:1, interval:0, delay:0 },{ type:'redeye', count:4, interval:0.8, delay:4 },{ type:'bully', count:4, interval:1.2, delay:5 },{ type:'raider_gunner', count:3, interval:1.0, delay:6 },{ type:'armed_raider', count:1, interval:0, delay:8 },{ type:'thug', count:3, interval:1.3, delay:6 }],
-      [{ type:'tank', count:8, interval:1.4, delay:0 },{ type:'fast', count:20, interval:0.38, delay:3 },{ type:'bat', count:14, interval:0.45, delay:4 },{ type:'acid', count:10, interval:0.9, delay:4 },{ type:'normal', count:14, interval:0.55, delay:6 },{ type:'gas', count:6, interval:0.9, delay:5 },{ type:'mother', count:4, interval:3, delay:4 },{ type:'warcry', count:3, interval:4, delay:5 },{ type:'ratnest', count:1, interval:0, delay:0 },{ type:'redeye', count:5, interval:0.8, delay:4 },{ type:'bully', count:5, interval:1.1, delay:5 },{ type:'raider_gunner', count:4, interval:0.9, delay:6 },{ type:'armed_raider', count:2, interval:3, delay:7 },{ type:'thug', count:3, interval:1.2, delay:7 }],
-      [{ type:'boss', count:1, interval:0, delay:0 },{ type:'tank', count:7, interval:1.4, delay:3 },{ type:'bat', count:16, interval:0.4, delay:4 },{ type:'acid', count:12, interval:0.8, delay:4 },{ type:'fast', count:22, interval:0.33, delay:5 },{ type:'normal', count:16, interval:0.5, delay:7 },{ type:'gas', count:8, interval:0.8, delay:6 },{ type:'mother', count:4, interval:3, delay:5 },{ type:'warcry', count:3, interval:4, delay:5 },{ type:'ratnest', count:1, interval:0, delay:0 },{ type:'redeye', count:5, interval:0.8, delay:4 },{ type:'bully', count:5, interval:1.0, delay:6 },{ type:'raider_gunner', count:5, interval:0.8, delay:7 },{ type:'armed_raider', count:3, interval:2.5, delay:8 },{ type:'thug', count:4, interval:1.1, delay:7 }]
+      [{ type:'normal', count:8, interval:1.0, delay:0 },{ type:'fast', count:5, interval:0.5, delay:3 },{ type:'bat', count:5, interval:0.7, delay:4 },{ type:'acid', count:3, interval:1.4, delay:5 },{ type:'gas', count:2, interval:1.3, delay:6 }],
+      [{ type:'normal', count:12, interval:0.9, delay:0 },{ type:'fast', count:8, interval:0.45, delay:3 },{ type:'tank', count:2, interval:2.0, delay:6 },{ type:'bat', count:6, interval:0.6, delay:5 },{ type:'acid', count:5, interval:1.2, delay:5 },{ type:'mother', count:2, interval:3.5, delay:5 },{ type:'warcry', count:1, interval:0, delay:6 },{ type:'redeye', count:2, interval:0.9, delay:4 },{ type:'bully', count:2, interval:1.3, delay:5 },{ type:'raider_gunner', count:1, interval:1.1, delay:6 },{ type:'thug', count:1, interval:1.4, delay:6 }],
+      [{ type:'normal', count:13, interval:0.8, delay:0 },{ type:'fast', count:11, interval:0.4, delay:3 },{ type:'tank', count:4, interval:1.5, delay:5 },{ type:'bat', count:8, interval:0.5, delay:6 },{ type:'acid', count:6, interval:1.0, delay:5 },{ type:'gas', count:4, interval:1.0, delay:6 },{ type:'mother', count:2, interval:3.5, delay:5 },{ type:'warcry', count:1, interval:4, delay:5 },{ type:'ratnest', count:1, interval:0, delay:0 },{ type:'redeye', count:3, interval:0.8, delay:4 },{ type:'bully', count:3, interval:1.2, delay:5 },{ type:'raider_gunner', count:2, interval:1.0, delay:6 },{ type:'armed_raider', count:1, interval:0, delay:8 },{ type:'thug', count:2, interval:1.3, delay:6 }],
+      [{ type:'tank', count:6, interval:1.4, delay:0 },{ type:'fast', count:16, interval:0.38, delay:3 },{ type:'bat', count:11, interval:0.45, delay:4 },{ type:'acid', count:8, interval:0.9, delay:4 },{ type:'normal', count:11, interval:0.55, delay:6 },{ type:'gas', count:5, interval:0.9, delay:5 },{ type:'mother', count:3, interval:3, delay:4 },{ type:'warcry', count:2, interval:4, delay:5 },{ type:'ratnest', count:1, interval:0, delay:0 },{ type:'redeye', count:4, interval:0.8, delay:4 },{ type:'bully', count:4, interval:1.1, delay:5 },{ type:'raider_gunner', count:3, interval:0.9, delay:6 },{ type:'armed_raider', count:1, interval:3, delay:7 },{ type:'thug', count:2, interval:1.2, delay:7 },{ type:'raider_camp', count:1, interval:0, delay:0 },{ type:'raider_barracks', count:1, interval:0, delay:0 }],
+      [{ type:'boss', count:1, interval:0, delay:0 },{ type:'tank', count:5, interval:1.4, delay:3 },{ type:'bat', count:13, interval:0.4, delay:4 },{ type:'acid', count:9, interval:0.8, delay:4 },{ type:'fast', count:18, interval:0.33, delay:5 },{ type:'normal', count:13, interval:0.5, delay:7 },{ type:'gas', count:6, interval:0.8, delay:6 },{ type:'mother', count:3, interval:3, delay:5 },{ type:'warcry', count:2, interval:4, delay:5 },{ type:'ratnest', count:1, interval:0, delay:0 },{ type:'redeye', count:4, interval:0.8, delay:4 },{ type:'bully', count:4, interval:1.0, delay:6 },{ type:'raider_gunner', count:4, interval:0.8, delay:7 },{ type:'armed_raider', count:2, interval:2.5, delay:8 },{ type:'thug', count:3, interval:1.1, delay:7 },{ type:'raider_camp', count:1, interval:0, delay:0 },{ type:'raider_barracks', count:1, interval:0, delay:0 }]
     ],
-    hpMul: 1.0, atkMul: 1.0, speedMul: 1.0, startGoldMul: 1.0, honorMul: 1.4
+    hpMul: 1.0, atkMul: 1.0, speedMul: 1.0, startGoldMul: 1.0, honorMul: 1.8
+  }
+];
+
+// ============== 全军出击模式关卡配置 ==============
+// 无波次，顶部两行放置敌方建筑，持续召唤劫掠者，消灭全部敌人与建筑即胜利
+// hpMul/atkMul/speedMul：建筑及其召唤小怪的属性倍率
+// spawnIntervalMul：召唤间隔倍率（<1 表示刷新更频繁）
+const ATTACK_LEVELS = [
+  {
+    id: 1, name: '出击·前哨站', desc: '基础难度 · 少量敌方建筑',
+    barracks: 1, camps: 3,
+    hpMul: 1.0, atkMul: 1.0, speedMul: 1.0, spawnIntervalMul: 1.0,
+    startGoldMul: 1.0, honorMul: 1.6
+  },
+  {
+    id: 2, name: '出击·据点', desc: '中等难度 · 敌方建筑增多',
+    barracks: 2, camps: 4,
+    hpMul: 1.0, atkMul: 1.0, speedMul: 1.0, spawnIntervalMul: 1.0,
+    startGoldMul: 1.0, honorMul: 2.133
+  },
+  {
+    id: 3, name: '出击·要塞', desc: '高难度 · 重兵把守',
+    barracks: 3, camps: 5,
+    hpMul: 1.0, atkMul: 1.0, speedMul: 1.0, spawnIntervalMul: 1.0,
+    startGoldMul: 1.0, honorMul: 2.667
   }
 ];
 
@@ -963,57 +990,111 @@ const AXE_UPGRADE_FIELDS = [
   { key:'rate', name:'攻击速度', icon:'⚡', desc:'攻速 +0.05/级', add:0.05, baseCost:10, costMul:1.3, max:10 }
 ];
 
+// 步枪手：基础攻击较高，ATK增量提升
+const RIFLE_UPGRADE_FIELDS = [
+  { key:'hp',   name:'生命值',   icon:'❤️', desc:'生命值 +40/级',  add:40,   baseCost:8,  costMul:1.3, max:10 },
+  { key:'atk',  name:'攻击力',   icon:'⚔️', desc:'攻击力 +7/级',   add:7,    baseCost:10, costMul:1.3, max:10 },
+  { key:'rate', name:'攻击速度', icon:'⚡', desc:'攻速 +0.1/级',  add:0.1,  baseCost:10, costMul:1.3, max:10 }
+];
+
+// 机枪手：重火力单位，ATK增量提升；基础攻速高，攻速增量略降
+const MG_UPGRADE_FIELDS = [
+  { key:'hp',   name:'生命值',   icon:'❤️', desc:'生命值 +40/级',  add:40,   baseCost:8,  costMul:1.3, max:10 },
+  { key:'atk',  name:'攻击力',   icon:'⚔️', desc:'攻击力 +8/级',   add:8,    baseCost:10, costMul:1.3, max:10 },
+  { key:'rate', name:'攻击速度', icon:'⚡', desc:'攻速 +0.08/级', add:0.08, baseCost:10, costMul:1.3, max:10 }
+];
+
+// 神射手：基础攻击较高，ATK增量提升；攻速增量略降
+const CROSSBOW_UPGRADE_FIELDS = [
+  { key:'hp',   name:'生命值',   icon:'❤️', desc:'生命值 +40/级',  add:40,   baseCost:8,  costMul:1.3, max:10 },
+  { key:'atk',  name:'攻击力',   icon:'⚔️', desc:'攻击力 +8/级',   add:8,    baseCost:10, costMul:1.3, max:10 },
+  { key:'rate', name:'攻击速度', icon:'⚡', desc:'攻速 +0.08/级', add:0.08, baseCost:10, costMul:1.3, max:10 }
+];
+
+// 哨塔：基础攻击较高，ATK增量提升
+const OUTPOST_UPGRADE_FIELDS = [
+  { key:'hp',   name:'生命值',   icon:'❤️', desc:'生命值 +40/级',  add:40,   baseCost:8,  costMul:1.3, max:10 },
+  { key:'atk',  name:'攻击力',   icon:'⚔️', desc:'攻击力 +7/级',   add:7,    baseCost:10, costMul:1.3, max:10 },
+  { key:'rate', name:'攻击速度', icon:'⚡', desc:'攻速 +0.1/级',  add:0.1,  baseCost:10, costMul:1.3, max:10 }
+];
+
+// 军医：在通用字段基础上增加治疗量升级
+const MEDIC_UPGRADE_FIELDS = [
+  { key:'hp',   name:'生命值',   icon:'❤️', desc:'生命值 +40/级',  add:40,  baseCost:8,  costMul:1.3, max:10 },
+  { key:'atk',  name:'攻击力',   icon:'⚔️', desc:'攻击力 +5/级',  add:5,   baseCost:10, costMul:1.3, max:10 },
+  { key:'rate', name:'攻击速度', icon:'⚡', desc:'攻速 +0.1/级',  add:0.1, baseCost:10, costMul:1.3, max:10 },
+  { key:'heal', name:'治疗量',   icon:'🩹', desc:'治疗量 +3/级',  add:3,   baseCost:10, costMul:1.3, max:10 }
+];
+
+// 制药师：在通用字段基础上增加治疗量升级
+const PHARMACIST_UPGRADE_FIELDS = [
+  { key:'hp',   name:'生命值',   icon:'❤️', desc:'生命值 +40/级',  add:40,  baseCost:8,  costMul:1.3, max:10 },
+  { key:'atk',  name:'攻击力',   icon:'⚔️', desc:'攻击力 +5/级',  add:5,   baseCost:10, costMul:1.3, max:10 },
+  { key:'rate', name:'攻击速度', icon:'⚡', desc:'攻速 +0.1/级',  add:0.1, baseCost:10, costMul:1.3, max:10 },
+  { key:'heal', name:'治疗量',   icon:'🩹', desc:'治疗量 +2/级',  add:2,   baseCost:8,  costMul:1.3, max:10 }
+];
+
+// 工程师：在通用字段基础上增加修复量升级
+const ENGINEER_UPGRADE_FIELDS = [
+  { key:'hp',   name:'生命值',   icon:'❤️', desc:'生命值 +40/级',  add:40,  baseCost:8,  costMul:1.3, max:10 },
+  { key:'atk',  name:'攻击力',   icon:'⚔️', desc:'攻击力 +5/级',  add:5,   baseCost:10, costMul:1.3, max:10 },
+  { key:'rate', name:'攻击速度', icon:'⚡', desc:'攻速 +0.1/级',  add:0.1, baseCost:10, costMul:1.3, max:10 },
+  { key:'repair', name:'修复量', icon:'🔧', desc:'修复量 +3/级',  add:3,   baseCost:10, costMul:1.3, max:10 }
+];
+
 // 每个单位可升级的属性
 const UNIT_UPGRADE_FIELDS = {
   fence:    [{ key:'hp', name:'生命值', icon:'❤️', desc:'生命值 +40/级', add:40, baseCost:8, costMul:1.3, max:10 }],
-  outpost:  CHAR_UPGRADE_FIELDS,
+  outpost:  OUTPOST_UPGRADE_FIELDS,
   hospital: [{ key:'hp', name:'生命值', icon:'❤️', desc:'生命值 +40/级', add:40, baseCost:8, costMul:1.3, max:10 },
-             { key:'rate', name:'治疗速度', icon:'⚡', desc:'攻速 +0.1/级', add:0.1, baseCost:10, costMul:1.3, max:10 }],
+             { key:'rate', name:'治疗速度', icon:'⚡', desc:'攻速 +0.1/级', add:0.1, baseCost:10, costMul:1.3, max:10 },
+             { key:'heal', name:'治疗量', icon:'🩹', desc:'治疗量 +3/级', add:3, baseCost:10, costMul:1.3, max:10 }],
   freeze:   [{ key:'hp', name:'生命值', icon:'❤️', desc:'生命值 +40/级', add:40, baseCost:8, costMul:1.3, max:10 },
              { key:'atk', name:'冰冻伤害', icon:'❄️', desc:'攻击力 +5/级', add:5, baseCost:10, costMul:1.3, max:10 },
              { key:'rate', name:'冰冻频率', icon:'⚡', desc:'攻速 +0.05/级', add:0.05, baseCost:10, costMul:1.3, max:10 }],
   flame:    [{ key:'hp', name:'生命值', icon:'❤️', desc:'生命值 +40/级', add:40, baseCost:8, costMul:1.3, max:10 },
-             { key:'atk', name:'灼烧强度', icon:'🔥', desc:'攻击力 +12/级', add:12, baseCost:10, costMul:1.3, max:10 },
+             { key:'atk', name:'灼烧强度', icon:'🔥', desc:'攻击力 +10/级', add:10, baseCost:10, costMul:1.3, max:10 },
              { key:'rate', name:'灼烧频率', icon:'⚡', desc:'灼烧倍率 +0.1/级', add:0.1, baseCost:10, costMul:1.3, max:10 }],
   lightning:[{ key:'hp', name:'生命值', icon:'❤️', desc:'生命值 +40/级', add:40, baseCost:8, costMul:1.3, max:10 },
              { key:'atk', name:'闪电伤害', icon:'⚡', desc:'攻击力 +8/级', add:8, baseCost:10, costMul:1.3, max:10 },
              { key:'rate', name:'闪电频率', icon:'⚡', desc:'攻速 +0.05/级', add:0.05, baseCost:10, costMul:1.3, max:10 }],
   pistol:   CHAR_UPGRADE_FIELDS,
   assault:  CHAR_UPGRADE_FIELDS,
-  rifle:    CHAR_UPGRADE_FIELDS,
-  mg:       CHAR_UPGRADE_FIELDS,
+  rifle:    RIFLE_UPGRADE_FIELDS,
+  mg:       MG_UPGRADE_FIELDS,
   sniper:   SNIPER_UPGRADE_FIELDS,
   grenadier:GRENADIER_UPGRADE_FIELDS,
   shotgun:  SHOTGUN_UPGRADE_FIELDS,
-  crossbow: CHAR_UPGRADE_FIELDS,
-  medic:    CHAR_UPGRADE_FIELDS,
-  pharmacist: CHAR_UPGRADE_FIELDS,
+  crossbow: CROSSBOW_UPGRADE_FIELDS,
+  medic:    MEDIC_UPGRADE_FIELDS,
+  pharmacist: PHARMACIST_UPGRADE_FIELDS,
   axe:      AXE_UPGRADE_FIELDS,
-  engineer: CHAR_UPGRADE_FIELDS,
+  engineer: ENGINEER_UPGRADE_FIELDS,
   firemage: CHAR_UPGRADE_FIELDS,
   icemage:  CHAR_UPGRADE_FIELDS,
   // 英雄升级字段：每级提升高于普通角色
   macarthur: [
-    { key:'hp',   name:'生命值',   icon:'❤️', desc:'生命值 +60/级',  add:60,  baseCost:12, costMul:1.4, max:10 },
-    { key:'atk',  name:'攻击力',   icon:'⚔️', desc:'攻击力 +12/级', add:12,  baseCost:15, costMul:1.4, max:10 },
-    { key:'rate', name:'攻击速度', icon:'⚡', desc:'攻速 +0.04/级', add:0.04, baseCost:15, costMul:1.4, max:10 }
+    { key:'hp',   name:'生命值',   icon:'❤️', desc:'生命值 +80/级',  add:80,  baseCost:12, costMul:1.4, max:10 },
+    { key:'atk',  name:'攻击力',   icon:'⚔️', desc:'攻击力 +16/级', add:16,  baseCost:15, costMul:1.4, max:10 },
+    { key:'rate', name:'攻击速度', icon:'⚡', desc:'攻速 +0.05/级', add:0.05, baseCost:15, costMul:1.4, max:10 }
   ],
   yanshuangying: [
-    { key:'hp',   name:'生命值',   icon:'❤️', desc:'生命值 +60/级',  add:60,  baseCost:12, costMul:1.4, max:10 },
-    { key:'atk',  name:'攻击力',   icon:'⚔️', desc:'攻击力 +6/级',  add:6,   baseCost:12, costMul:1.4, max:10 },
-    { key:'rate', name:'攻击速度', icon:'⚡', desc:'攻速 +0.2/级',  add:0.2, baseCost:12, costMul:1.4, max:10 }
+    { key:'hp',   name:'生命值',   icon:'❤️', desc:'生命值 +80/级',  add:80,  baseCost:12, costMul:1.4, max:10 },
+    { key:'atk',  name:'攻击力',   icon:'⚔️', desc:'攻击力 +8/级',  add:8,   baseCost:12, costMul:1.4, max:10 },
+    { key:'rate', name:'攻击速度', icon:'⚡', desc:'攻速 +0.25/级',  add:0.25, baseCost:12, costMul:1.4, max:10 }
   ],
-  // 华生（军医英雄）：攻速升级同时提升治疗量
+  // 华生（军医英雄）：攻速升级同时提升治疗频率，治疗量可独立升级
   huasheng: [
-    { key:'hp',   name:'生命值',   icon:'❤️', desc:'生命值 +60/级',  add:60,  baseCost:12, costMul:1.4, max:10 },
-    { key:'atk',  name:'攻击力',   icon:'⚔️', desc:'攻击力 +5/级',  add:5,   baseCost:12, costMul:1.4, max:10 },
-    { key:'rate', name:'攻速/治疗', icon:'⚡', desc:'攻速 +0.1/级（同步提升治疗量）', add:0.1, baseCost:12, costMul:1.4, max:10 }
+    { key:'hp',   name:'生命值',   icon:'❤️', desc:'生命值 +80/级',  add:80,  baseCost:12, costMul:1.4, max:10 },
+    { key:'atk',  name:'攻击力',   icon:'⚔️', desc:'攻击力 +7/级',  add:7,   baseCost:12, costMul:1.4, max:10 },
+    { key:'rate', name:'攻速/治疗', icon:'⚡', desc:'攻速 +0.12/级（同步提升治疗频率）', add:0.12, baseCost:12, costMul:1.4, max:10 },
+    { key:'heal', name:'治疗量',   icon:'🩹', desc:'治疗量 +4/级',  add:4,   baseCost:12, costMul:1.4, max:10 }
   ],
   // 终结者（霰弹枪手英雄）
   terminator: [
-    { key:'hp',   name:'生命值',   icon:'❤️', desc:'生命值 +70/级',  add:70,  baseCost:14, costMul:1.4, max:10 },
-    { key:'atk',  name:'攻击力',   icon:'⚔️', desc:'攻击力 +5/级',  add:5,   baseCost:14, costMul:1.4, max:10 },
-    { key:'rate', name:'攻击速度', icon:'⚡', desc:'攻速 +0.05/级', add:0.05, baseCost:14, costMul:1.4, max:10 }
+    { key:'hp',   name:'生命值',   icon:'❤️', desc:'生命值 +90/级',  add:90,  baseCost:14, costMul:1.4, max:10 },
+    { key:'atk',  name:'攻击力',   icon:'⚔️', desc:'攻击力 +7/级',  add:7,   baseCost:14, costMul:1.4, max:10 },
+    { key:'rate', name:'攻击速度', icon:'⚡', desc:'攻速 +0.06/级', add:0.06, baseCost:14, costMul:1.4, max:10 }
   ]
 };
 
@@ -1129,12 +1210,14 @@ const Save = {
     for (const type in UNIT_TYPES) {
       const fields = UNIT_UPGRADE_FIELDS[type] || [];
       const up = this.meta.unitUpgrades[type] || {};
-      const mul = { hpAdd: 0, atkAdd: 0, rateAdd: 0 };
+      const mul = { hpAdd: 0, atkAdd: 0, rateAdd: 0, healAdd: 0, repairAdd: 0 };
       for (const f of fields) {
         const lvl = up[f.key] || 0;
         if (f.key === 'hp') mul.hpAdd = f.add * lvl;
         else if (f.key === 'atk') mul.atkAdd = f.add * lvl;
         else if (f.key === 'rate') mul.rateAdd = f.add * lvl;
+        else if (f.key === 'heal') mul.healAdd = f.add * lvl;
+        else if (f.key === 'repair') mul.repairAdd = f.add * lvl;
       }
       this.unitMul[type] = mul;
     }
@@ -1160,8 +1243,13 @@ class Unit {
     this.range = cfg.range;
     this.fireRate = cfg.fireRate + mul.rateAdd;
     this.fireTimer = 0;
-    this.heal = cfg.heal || 0;
-    this.repair = cfg.repair || 0;
+    this.moveTimer = 0; // 全军出击模式：移动冷却计时器
+    // 全军出击模式：连续移动插值
+    this.moveProgress = 1; // 1=已到达当前格，可开始下一步
+    this.targetCol = col;
+    this.targetRow = row;
+    this.heal = (cfg.heal || 0) + (mul.healAdd || 0);
+    this.repair = (cfg.repair || 0) + (mul.repairAdd || 0);
     // 记录永久升级后的基础属性（战斗内升级以此为基准做倍率）
     this.baseMaxHp = this.maxHp;
     this.baseAtk = this.atk;
@@ -1327,6 +1415,10 @@ class Unit {
         }
       }
     }
+    // 全军出击模式：角色/英雄自动向上推进，无敌人时移动（连续插值）
+    if (Game.mode === 'attack' && !this.cfg.isBuilding && !this.cfg.mine) {
+      this.updateMove(dt);
+    }
     if (!this.canAttack && !this.cfg.heal) return;
 
     // 火焰塔：自动旋转 + 持续灼烧
@@ -1437,6 +1529,43 @@ class Unit {
       this.fireTimer = 1 / this.fireRate;
       this.performAttack(atkClass, target);
     }
+  }
+
+  // 全军出击模式：连续移动（像素级插值，与怪物移动一致）
+  updateMove(dt) {
+    const moveSpeed = this.cfg.moveSpeed || 2.0; // 每秒推进格数（默认2.0=原0.5秒/格）
+    // 正在移动中：继续向目标格插值
+    if (this.moveProgress < 1) {
+      this.moveProgress += moveSpeed * dt;
+      const from = cellCenter(this.col, this.row);
+      const to = cellCenter(this.targetCol, this.targetRow);
+      const p = Math.min(1, this.moveProgress);
+      this.x = from.x + (to.x - from.x) * p;
+      this.y = from.y + (to.y - from.y) * p;
+      if (p >= 1) {
+        this.col = this.targetCol;
+        this.row = this.targetRow;
+        this.moveProgress = 1;
+      }
+      return;
+    }
+    // 已到达目标格：射程内无敌人则尝试向上推进
+    const target = this.findTarget();
+    if (!target) {
+      this.tryStartMoveUp();
+    }
+  }
+
+  // 全军出击模式：开始向上移动一格（设置目标格，moveProgress 由 updateMove 推进）
+  tryStartMoveUp() {
+    const nr = this.row - 1;
+    if (nr < 0) return;
+    // 上方格子被友方单位或敌方建筑占据则不移动
+    if (Game.getUnit(this.col, nr)) return;
+    if (Game.getEnemyBuildingAt(this.col, nr)) return;
+    this.targetCol = this.col;
+    this.targetRow = nr;
+    this.moveProgress = 0;
   }
 
   // 治疗范围内友方角色（range=曼哈顿距离，includeSelf=是否治疗自己，maxTargets=最多治疗几个友方角色）
@@ -1613,21 +1742,21 @@ class Unit {
         }
       }
     }
-    // 寻找怪物最多的连续3格扇形
+    // 寻找怪物最多的连续5格扇形
     let bestSector = 0, bestCount = 0;
     for (let i = 0; i < 8; i++) {
-      const count = cellMonsters[i].length + cellMonsters[(i+1)%8].length + cellMonsters[(i+2)%8].length;
+      const count = cellMonsters[i].length + cellMonsters[(i+1)%8].length + cellMonsters[(i+2)%8].length + cellMonsters[(i+3)%8].length + cellMonsters[(i+4)%8].length;
       if (count > bestCount) { bestCount = count; bestSector = i; }
     }
     if (bestCount === 0) return false; // 周围无敌人则不攻击
-    // 对最佳扇形3格内所有怪物造成伤害
+    // 对最佳扇形5格内所有怪物造成伤害
     const hitSet = new Set();
-    for (const idx of [bestSector, (bestSector+1)%8, (bestSector+2)%8]) {
+    for (const idx of [bestSector, (bestSector+1)%8, (bestSector+2)%8, (bestSector+3)%8, (bestSector+4)%8]) {
       for (const m of cellMonsters[idx]) hitSet.add(m);
     }
     for (const m of hitSet) m.takeDamage(this.atk);
     // 扇形斩击特效（朝中间格方向）
-    const midIdx = (bestSector + 1) % 8;
+    const midIdx = (bestSector + 2) % 8;
     Game.effects.push(new SlashEffect(this.x, this.y, angles[midIdx], this.cfg.color));
     return true;
   }
@@ -1888,6 +2017,8 @@ class Monster {
     // 母体丧尸：保存关卡倍率（召唤的普通丧尸继承此倍率）+ 召唤计时器
     this.mul = m;
     this.spawnTimer = 0;
+    // 召唤间隔（受关卡 spawnIntervalMul 缩放）
+    this.spawnInterval = cfg.spawn ? (cfg.spawn.interval * (m.spawnInterval || 1)) : 0;
     // 战吼丧尸：战吼计时器
     this.warcryTimer = 0;
   }
@@ -1910,7 +2041,7 @@ class Monster {
     // 母体丧尸：定时召唤普通丧尸
     if (this.cfg.spawn) {
       this.spawnTimer += dt;
-      if (this.spawnTimer >= this.cfg.spawn.interval) {
+      if (this.spawnTimer >= this.spawnInterval) {
         this.spawnTimer = 0;
         this.spawnMinions();
       }
@@ -2172,13 +2303,22 @@ class Monster {
     }
   }
 
-  // 母体丧尸/鼠穴：在自身周围 range 格内随机位置召唤 count 只小怪
+  // 母体丧尸/鼠穴/劫掠者营地：在自身周围 range 格内随机位置召唤小怪
+  // 支持 sp.type（单类型，召唤 count 只）或 sp.types（类型数组，每种召唤1只）
   spawnMinions() {
     const sp = this.cfg.spawn;
     const range = sp.range || 1;
+    // 确定要召唤的类型列表
+    let typeList;
+    if (sp.types) {
+      typeList = sp.types;
+    } else {
+      typeList = [];
+      for (let i = 0; i < sp.count; i++) typeList.push(sp.type);
+    }
     let spawned = 0, attempts = 0;
-    const maxAttempts = sp.count * 30;
-    while (spawned < sp.count && attempts < maxAttempts) {
+    const maxAttempts = typeList.length * 30;
+    while (spawned < typeList.length && attempts < maxAttempts) {
       attempts++;
       // 随机偏移（曼哈顿距离 <= range）
       let dc, dr;
@@ -2192,7 +2332,7 @@ class Monster {
       if (nc < 0 || nc >= CONFIG.cols) continue;
       if (nr < 0 || nr > CONFIG.baseRow) continue;
       // 创建小怪，继承召唤者的关卡倍率
-      const baby = new Monster(sp.type, nc, this.mul);
+      const baby = new Monster(typeList[spawned], nc, this.mul);
       baby.row = nr;
       baby.targetRow = nr;
       baby.moveProgress = 1;
@@ -2293,6 +2433,8 @@ class Monster {
     else if (this.type === 'raider_gunner') this.drawRaiderGunner(ctx, size);
     else if (this.type === 'armed_raider') this.drawArmedRaider(ctx, size);
     else if (this.type === 'thug') this.drawThug(ctx, size);
+    else if (this.type === 'raider_camp') this.drawRaiderCamp(ctx, size);
+    else if (this.type === 'raider_barracks') this.drawRaiderBarracks(ctx, size);
 
     ctx.restore();
 
@@ -3648,6 +3790,256 @@ class Monster {
       ctx.fill();
     }
   }
+
+  drawRaiderCamp(ctx, s) {
+    const flash = this.hitFlash > 0;
+    // 阴影
+    ctx.fillStyle = 'rgba(0,0,0,0.4)';
+    ctx.beginPath();
+    ctx.ellipse(0, s * 0.85, s * 0.9, s * 0.22, 0, 0, Math.PI * 2);
+    ctx.fill();
+    // 营地地面（木栅栏底盘）
+    ctx.fillStyle = flash ? '#fff' : '#5c3a1e';
+    ctx.beginPath();
+    ctx.ellipse(0, s * 0.5, s * 0.9, s * 0.35, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = flash ? '#fff' : '#3a2410';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    // 帐篷主体（三角形，暗红条纹）
+    const tentGrad = ctx.createLinearGradient(0, -s * 0.9, 0, s * 0.3);
+    if (flash) {
+      tentGrad.addColorStop(0, '#fff');
+      tentGrad.addColorStop(1, '#fff');
+    } else {
+      tentGrad.addColorStop(0, '#991b1b');
+      tentGrad.addColorStop(0.5, '#7f1d1d');
+      tentGrad.addColorStop(1, '#450a0a');
+    }
+    ctx.fillStyle = tentGrad;
+    ctx.beginPath();
+    ctx.moveTo(-s * 0.7, s * 0.3);
+    ctx.lineTo(0, -s * 0.9);
+    ctx.lineTo(s * 0.7, s * 0.3);
+    ctx.closePath();
+    ctx.fill();
+    ctx.strokeStyle = flash ? '#fff' : '#2a0a0a';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    // 帐篷条纹
+    if (!flash) {
+      ctx.strokeStyle = 'rgba(0,0,0,0.25)';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.moveTo(-s * 0.23, s * 0.3);
+      ctx.lineTo(0, -s * 0.9);
+      ctx.lineTo(s * 0.23, s * 0.3);
+      ctx.stroke();
+    }
+    // 帐篷顶旗杆 + 黑色旗帜
+    if (!flash) {
+      ctx.strokeStyle = '#3f2a1a';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(0, -s * 0.9);
+      ctx.lineTo(0, -s * 1.3);
+      ctx.stroke();
+      ctx.fillStyle = '#1a1a1a';
+      ctx.beginPath();
+      ctx.moveTo(0, -s * 1.3);
+      ctx.lineTo(s * 0.35, -s * 1.2);
+      ctx.lineTo(0, -s * 1.1);
+      ctx.closePath();
+      ctx.fill();
+    }
+    // 帐篷入口（黑暗门洞）
+    const doorGrad = ctx.createLinearGradient(0, -s * 0.1, 0, s * 0.3);
+    doorGrad.addColorStop(0, '#1a0a0a');
+    doorGrad.addColorStop(1, '#000');
+    ctx.fillStyle = doorGrad;
+    ctx.beginPath();
+    ctx.moveTo(-s * 0.18, s * 0.3);
+    ctx.lineTo(-s * 0.12, -s * 0.05);
+    ctx.lineTo(s * 0.12, -s * 0.05);
+    ctx.lineTo(s * 0.18, s * 0.3);
+    ctx.closePath();
+    ctx.fill();
+    // 入口火光（脉动，暗示内部有人）
+    if (!flash) {
+      const t = Date.now() / 100;
+      const flick = 0.7 + Math.sin(t * 2) * 0.3;
+      ctx.fillStyle = `rgba(251,146,60,${0.5 * flick})`;
+      ctx.beginPath();
+      ctx.ellipse(0, s * 0.18, s * 0.1, s * 0.08, 0, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    // 两侧武器架（步枪轮廓）
+    if (!flash) {
+      ctx.strokeStyle = '#2a1a0a';
+      ctx.lineWidth = 3;
+      ctx.lineCap = 'round';
+      ctx.beginPath();
+      ctx.moveTo(-s * 0.85, s * 0.45);
+      ctx.lineTo(-s * 0.78, -s * 0.1);
+      ctx.moveTo(-s * 0.85, s * 0.45);
+      ctx.lineTo(-s * 0.95, s * 0.2);
+      ctx.moveTo(s * 0.85, s * 0.45);
+      ctx.lineTo(s * 0.78, -s * 0.1);
+      ctx.moveTo(s * 0.85, s * 0.45);
+      ctx.lineTo(s * 0.95, s * 0.2);
+      ctx.stroke();
+      ctx.lineCap = 'butt';
+    }
+  }
+
+  drawRaiderBarracks(ctx, s) {
+    const flash = this.hitFlash > 0;
+    // 阴影
+    ctx.fillStyle = 'rgba(0,0,0,0.45)';
+    ctx.beginPath();
+    ctx.ellipse(0, s * 0.88, s * 0.95, s * 0.24, 0, 0, Math.PI * 2);
+    ctx.fill();
+    // 地基（石质平台）
+    const baseGrad = ctx.createLinearGradient(0, s * 0.3, 0, s * 0.75);
+    if (flash) {
+      baseGrad.addColorStop(0, '#fff');
+      baseGrad.addColorStop(1, '#fff');
+    } else {
+      baseGrad.addColorStop(0, '#5c4033');
+      baseGrad.addColorStop(1, '#2d1810');
+    }
+    ctx.fillStyle = baseGrad;
+    ctx.fillRect(-s * 0.9, s * 0.3, s * 1.8, s * 0.45);
+    ctx.strokeStyle = flash ? '#fff' : '#1a0f08';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(-s * 0.9, s * 0.3, s * 1.8, s * 0.45);
+    // 石砖纹理
+    if (!flash) {
+      ctx.strokeStyle = 'rgba(0,0,0,0.3)';
+      ctx.lineWidth = 1;
+      for (let i = 1; i < 3; i++) {
+        ctx.beginPath();
+        ctx.moveTo(-s * 0.9 + s * 0.6 * i, s * 0.3);
+        ctx.lineTo(-s * 0.9 + s * 0.6 * i, s * 0.75);
+        ctx.stroke();
+      }
+      ctx.beginPath();
+      ctx.moveTo(-s * 0.9, s * 0.525);
+      ctx.lineTo(s * 0.9, s * 0.525);
+      ctx.stroke();
+    }
+    // 主楼墙体（暗色木石混合）
+    const wallGrad = ctx.createLinearGradient(0, -s * 0.9, 0, s * 0.3);
+    if (flash) {
+      wallGrad.addColorStop(0, '#fff');
+      wallGrad.addColorStop(1, '#fff');
+    } else {
+      wallGrad.addColorStop(0, '#5c2d0e');
+      wallGrad.addColorStop(0.5, '#451a03');
+      wallGrad.addColorStop(1, '#2d1003');
+    }
+    ctx.fillStyle = wallGrad;
+    ctx.fillRect(-s * 0.7, -s * 0.9, s * 1.4, s * 1.2);
+    ctx.strokeStyle = flash ? '#fff' : '#1a0a04';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(-s * 0.7, -s * 0.9, s * 1.4, s * 1.2);
+    // 木板横向纹理
+    if (!flash) {
+      ctx.strokeStyle = 'rgba(0,0,0,0.25)';
+      ctx.lineWidth = 1;
+      for (let i = 1; i < 4; i++) {
+        ctx.beginPath();
+        ctx.moveTo(-s * 0.7, -s * 0.9 + s * 0.3 * i);
+        ctx.lineTo(s * 0.7, -s * 0.9 + s * 0.3 * i);
+        ctx.stroke();
+      }
+    }
+    // 屋顶（三角，深红）
+    const roofGrad = ctx.createLinearGradient(0, -s * 1.4, 0, -s * 0.85);
+    if (flash) {
+      roofGrad.addColorStop(0, '#fff');
+      roofGrad.addColorStop(1, '#fff');
+    } else {
+      roofGrad.addColorStop(0, '#7f1d1d');
+      roofGrad.addColorStop(1, '#450a0a');
+    }
+    ctx.fillStyle = roofGrad;
+    ctx.beginPath();
+    ctx.moveTo(-s * 0.85, -s * 0.85);
+    ctx.lineTo(0, -s * 1.45);
+    ctx.lineTo(s * 0.85, -s * 0.85);
+    ctx.closePath();
+    ctx.fill();
+    ctx.strokeStyle = flash ? '#fff' : '#1a0404';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    // 屋顶旗杆 + 黑旗
+    if (!flash) {
+      ctx.strokeStyle = '#1a0a04';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(0, -s * 1.45);
+      ctx.lineTo(0, -s * 1.85);
+      ctx.stroke();
+      ctx.fillStyle = '#0f0f0f';
+      ctx.beginPath();
+      ctx.moveTo(0, -s * 1.85);
+      ctx.lineTo(s * 0.4, -s * 1.72);
+      ctx.lineTo(0, -s * 1.6);
+      ctx.closePath();
+      ctx.fill();
+      // 旗上骷髅标记
+      ctx.fillStyle = '#e5e5e5';
+      ctx.font = `${s * 0.18}px sans-serif`;
+      ctx.textAlign = 'center';
+      ctx.fillText('☠', s * 0.13, -s * 1.69);
+    }
+    // 中央大门（加固铁门）
+    const doorGrad = ctx.createLinearGradient(0, -s * 0.2, 0, s * 0.3);
+    doorGrad.addColorStop(0, flash ? '#fff' : '#3a3a3a');
+    doorGrad.addColorStop(1, flash ? '#fff' : '#1a1a1a');
+    ctx.fillStyle = doorGrad;
+    ctx.beginPath();
+    ctx.moveTo(-s * 0.22, s * 0.3);
+    ctx.lineTo(-s * 0.22, -s * 0.15);
+    ctx.quadraticCurveTo(0, -s * 0.45, s * 0.22, -s * 0.15);
+    ctx.lineTo(s * 0.22, s * 0.3);
+    ctx.closePath();
+    ctx.fill();
+    ctx.strokeStyle = flash ? '#fff' : '#0a0a0a';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    // 铁门铆钉
+    if (!flash) {
+      ctx.fillStyle = '#666';
+      const rivets = [[-0.12,0.05],[0.12,0.05],[-0.12,0.2],[0.12,0.2]];
+      for (const [rx, ry] of rivets) {
+        ctx.beginPath();
+        ctx.arc(rx * s, ry * s, s * 0.025, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+    // 两侧箭窗/射击孔
+    if (!flash) {
+      ctx.fillStyle = '#000';
+      ctx.fillRect(-s * 0.55, -s * 0.55, s * 0.1, s * 0.25);
+      ctx.fillRect(s * 0.45, -s * 0.55, s * 0.1, s * 0.25);
+      // 射击孔火光
+      const t = Date.now() / 120;
+      const flick = 0.6 + Math.sin(t * 1.5) * 0.4;
+      ctx.fillStyle = `rgba(251,146,60,${0.6 * flick})`;
+      ctx.fillRect(-s * 0.55, -s * 0.4, s * 0.1, s * 0.1);
+      ctx.fillRect(s * 0.45, -s * 0.4, s * 0.1, s * 0.1);
+    }
+    // 顶部城墙垛口
+    if (!flash) {
+      ctx.fillStyle = '#451a03';
+      for (let i = 0; i < 5; i++) {
+        const x = -s * 0.7 + i * s * 0.35;
+        ctx.fillRect(x, -s * 1.0, s * 0.15, s * 0.15);
+      }
+    }
+  }
 }
 
 // ============== 投射物 ==============
@@ -4748,6 +5140,7 @@ const Game = {
   state: 'menu',
   gold: 0, baseHp: 0, wave: 0,
   waveActive: false,
+  mode: 'defense', // 'defense' 基地防御 / 'attack' 全军出击
   levelId: 1, levelCfg: LEVELS[0],
   units: [], monsters: [], projectiles: [], effects: [],
   burningCells: [], poisonCells: [],
@@ -4942,7 +5335,7 @@ const Game = {
   },
 
   hideAllOverlays() {
-    ['mainMenu','shopScreen','helpScreen','codexScreen','pauseScreen','endScreen','levelSelectScreen','exportSaveScreen','importSaveScreen'].forEach(id => {
+    ['mainMenu','shopScreen','helpScreen','codexScreen','pauseScreen','endScreen','modeSelectScreen','levelSelectScreen','exportSaveScreen','importSaveScreen'].forEach(id => {
       document.getElementById(id).style.display = 'none';
     });
   },
@@ -4960,14 +5353,91 @@ const Game = {
   },
 
   startNewGame(levelId) {
-    const lvl = LEVELS.find(l => l.id === levelId) || LEVELS[0];
+    const levels = this.mode === 'attack' ? ATTACK_LEVELS : LEVELS;
+    const lvl = levels.find(l => l.id === levelId) || levels[0];
     this.levelId = lvl.id;
     this.levelCfg = lvl;
     this.hideAllOverlays();
     this.resetGameState();
     this.enterGame();
-    this.showToast('准备布防，5秒后开始第1波...');
-    setTimeout(() => { if (this.state === 'playing' && !this.waveActive) this.startNextWave(); }, 5000);
+    if (this.mode === 'attack') {
+      this.setupAttackMode();
+      this.showToast('全军出击！消灭所有敌人与建筑！');
+    } else {
+      this.showToast('准备布防，3秒后开始第1波...');
+      setTimeout(() => { if (this.state === 'playing' && !this.waveActive) this.startNextWave(); }, 3000);
+    }
+  },
+
+  // 全军出击模式：在顶部三行随机放置敌方建筑
+  setupAttackMode() {
+    const lvl = this.levelCfg;
+    const topRows = [0, 1, 2];
+    const occupied = new Set();
+    // 收集所有要放置的建筑类型
+    const buildings = [];
+    for (let i = 0; i < (lvl.barracks || 0); i++) buildings.push('raider_barracks');
+    for (let i = 0; i < (lvl.camps || 0); i++) buildings.push('raider_camp');
+    for (const type of buildings) {
+      let placed = false, attempts = 0;
+      while (!placed && attempts < 50) {
+        attempts++;
+        const row = topRows[Math.floor(Math.random() * topRows.length)];
+        const col = Math.floor(Math.random() * CONFIG.cols);
+        const key = col + ',' + row;
+        if (occupied.has(key)) continue;
+        if (this.getEnemyBuildingAt(col, row) || this.getUnit(col, row)) continue;
+        // 基地在底部，顶部两行不会和基地冲突
+        const b = new Monster(type, col, {
+          hp: lvl.hpMul, atk: lvl.atkMul, speed: lvl.speedMul,
+          spawnInterval: lvl.spawnIntervalMul || 1
+        });
+        b.row = row;
+        b.targetRow = row;
+        b.moveProgress = 1;
+        const c = cellCenter(col, row);
+        b.x = c.x; b.y = c.y;
+        this.monsters.push(b);
+        occupied.add(key);
+        placed = true;
+      }
+    }
+  },
+
+  // 打开模式选择界面
+  openModeSelect() {
+    this.hideAllOverlays();
+    this.state = 'levelSelect';
+    document.getElementById('modeSelectScreen').style.display = 'flex';
+    this.renderModeSelect();
+  },
+
+  renderModeSelect() {
+    const list = document.getElementById('modeList');
+    list.innerHTML = '';
+    const modes = [
+      { id:'defense', icon:'🏰', name:'基地防御', desc:'放置防御单位，抵御5波怪物进攻，守护基地不被攻破。', color:'#4ecdc4' },
+      { id:'attack',  icon:'⚔️', name:'全军出击', desc:'角色与英雄自动向上推进，消灭顶部所有敌方建筑与劫掠者！', color:'#ef4444' }
+    ];
+    for (const m of modes) {
+      const card = document.createElement('div');
+      card.className = 'level-card';
+      card.style.borderColor = m.color;
+      card.innerHTML = `
+        <div class="level-title" style="color:${m.color};">${m.icon} ${m.name}</div>
+        <div class="level-desc">${m.desc}</div>
+        <button class="menu-btn btn-primary level-start-btn" data-mode="${m.id}">
+          进入模式
+        </button>
+      `;
+      list.appendChild(card);
+    }
+    list.querySelectorAll('.level-start-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        this.mode = btn.dataset.mode;
+        this.openLevelSelect();
+      });
+    });
   },
 
   // 打开关卡选择界面
@@ -4981,25 +5451,43 @@ const Game = {
   renderLevelSelect() {
     const list = document.getElementById('levelList');
     list.innerHTML = '';
+    const isAttack = this.mode === 'attack';
+    const levels = isAttack ? ATTACK_LEVELS : LEVELS;
     const unlocked = Save.meta.unlockedLevel || 1;
-    for (const lvl of LEVELS) {
+    for (const lvl of levels) {
       const locked = lvl.id > unlocked;
       const card = document.createElement('div');
       card.className = 'level-card' + (locked ? ' locked' : '');
       const bw = Save.meta.bestWaves[lvl.id] || 0;
-      const totalMonsters = lvl.waves.reduce((sum, wave) =>
-        sum + wave.reduce((s, g) => s + g.count, 0), 0);
+      let statsHtml;
+      if (isAttack) {
+        statsHtml = `
+          <div class="level-stats">
+            <span>🏰兵营×${lvl.barracks||0}</span>
+            <span>⛺营地×${lvl.camps||0}</span>
+            <span>❤️×${lvl.hpMul}</span>
+            <span>⚔️×${lvl.atkMul}</span>
+          </div>
+          <div style="font-size:12px;color:#cbd5e1;margin:4px 0;">🎯 目标：消灭全部敌人与建筑</div>
+        `;
+      } else {
+        const totalMonsters = lvl.waves.reduce((sum, wave) =>
+          sum + wave.reduce((s, g) => s + g.count, 0), 0);
+        statsHtml = `
+          <div class="level-stats">
+            <span>❤️×${lvl.hpMul}</span>
+            <span>⚔️×${lvl.atkMul}</span>
+            <span>🏃×${lvl.speedMul}</span>
+            <span>💰×${lvl.startGoldMul}</span>
+          </div>
+          <div class="level-best" style="font-size:12px;color:#ffd700;margin:4px 0;">🏆 最高波次：${bw}/${CONFIG.totalWaves}</div>
+          <div style="font-size:12px;color:#cbd5e1;margin-bottom:6px;">👾 怪物总数：${totalMonsters}</div>
+        `;
+      }
       card.innerHTML = `
-        <div class="level-title">${locked?'🔒':'🏰'} ${lvl.name}</div>
+        <div class="level-title">${locked?'🔒':(isAttack?'⚔️':'🏰')} ${lvl.name}</div>
         <div class="level-desc">${lvl.desc}</div>
-        <div class="level-stats">
-          <span>❤️×${lvl.hpMul}</span>
-          <span>⚔️×${lvl.atkMul}</span>
-          <span>🏃×${lvl.speedMul}</span>
-          <span>💰×${lvl.startGoldMul}</span>
-        </div>
-        <div class="level-best" style="font-size:12px;color:#ffd700;margin:4px 0;">🏆 最高波次：${bw}/${CONFIG.totalWaves}</div>
-        <div style="font-size:12px;color:#cbd5e1;margin-bottom:6px;">👾 怪物总数：${totalMonsters}</div>
+        ${statsHtml}
         <button class="menu-btn btn-primary level-start-btn" ${locked?'disabled':''} data-id="${lvl.id}">
           ${locked ? '未解锁' : '开始挑战'}
         </button>
@@ -5019,8 +5507,8 @@ const Game = {
     this.loadGameState(Save.game);
     this.enterGame();
     if (!this.waveActive) {
-      this.showToast('准备就绪，即将开始下一波...');
-      setTimeout(() => { if (this.state === 'playing' && !this.waveActive) this.startNextWave(); }, 1500);
+      this.showToast('准备就绪，3秒后开始下一波...');
+      setTimeout(() => { if (this.state === 'playing' && !this.waveActive) this.startNextWave(); }, 3000);
     }
   },
 
@@ -5211,7 +5699,14 @@ const Game = {
     const stats = [`🏷️${catLabel}`, `❤️${cfg.hp}`, `⚔️${cfg.atk}`, `🏃${cfg.speed}格/秒`, `💰${cfg.gold}`];
     if (cfg.flying) stats.push('🦅飞行');
     if (cfg.ranged) stats.push(`🎯远程${cfg.rangedRange}格`);
-    if (cfg.spawn) stats.push(`🤰召唤${cfg.spawn.count}只/${cfg.spawn.interval}秒`);
+    if (cfg.spawn) {
+      if (cfg.spawn.types) {
+        const names = cfg.spawn.types.map(t => MONSTER_TYPES[t].name).join('+');
+        stats.push(`🤰召唤${names}/${cfg.spawn.interval}秒`);
+      } else {
+        stats.push(`🤰召唤${cfg.spawn.count}只/${cfg.spawn.interval}秒`);
+      }
+    }
     if (cfg.warcry) stats.push(`📢战吼${cfg.warcry.damage}伤·眩晕${cfg.warcry.stunDur}秒/${cfg.warcry.interval}秒`);
     if (cfg.plague) stats.push('🩸血疫·7/秒·传染');
     return stats;
@@ -5334,6 +5829,7 @@ const Game = {
     div.className = 'compact-upgrade';
     div.innerHTML = `
       <span class="cu-icon">${field.icon}</span>
+      <span class="cu-name">${field.name}</span>
       <span class="cu-lvl">${lvl}/${field.max}</span>
       <span class="cu-inc" title="${field.desc}">${maxed ? '—' : incText}</span>
       <button class="upgrade-btn cu-btn ${maxed?'maxed':''}" ${maxed||!canAfford?'disabled':''} data-id="${id}">
@@ -5506,7 +6002,9 @@ const Game = {
   updateHUD() {
     document.getElementById('goldText').textContent = this.gold;
     document.getElementById('lifeText').textContent = Math.max(0, Math.floor(this.baseHp));
-    document.getElementById('waveText').textContent = this.wave + '/' + CONFIG.totalWaves;
+    document.getElementById('waveText').textContent = this.mode === 'attack'
+      ? `👾${this.monsters.length}`
+      : this.wave + '/' + CONFIG.totalWaves;
     this.updateBuildBar();
   },
 
@@ -5532,11 +6030,11 @@ const Game = {
     const waveCfg = this.levelCfg.waves[this.wave-1];
     this.spawnQueue = [];
     for (const group of waveCfg) {
-      if (group.type === 'ratnest') {
-        // 鼠穴：在波次开始时直接生成在地图边缘的随机格子（不进入普通刷怪队列）
+      if (group.type === 'ratnest' || group.type === 'raider_camp' || group.type === 'raider_barracks') {
+        // 敌方巢穴建筑：在波次开始时直接生成在地图边缘的随机格子（不进入普通刷怪队列）
         for (let i = 0; i < group.count; i++) {
           const edge = this.randomEdgeCell();
-          const nest = new Monster('ratnest', edge.col, {
+          const nest = new Monster(group.type, edge.col, {
             hp: this.levelCfg.hpMul, atk: this.levelCfg.atkMul, speed: this.levelCfg.speedMul
           });
           nest.row = edge.row;
@@ -5985,6 +6483,11 @@ const Game = {
     // 怪物
     for (const m of this.monsters) m.update(dt);
     this.monsters = this.monsters.filter(m => m.alive);
+    // 全军出击模式：消灭所有敌人（含建筑）即胜利
+    if (this.mode === 'attack' && this.monsters.length === 0) {
+      this.win();
+      return;
+    }
     // 集火目标死亡则自动清除
     if (this.focusTarget && !this.focusTarget.alive) {
       this.focusTarget = null;
@@ -6105,7 +6608,7 @@ const Game = {
       this.updateHUD();
       this.updateBuildBar();
       if (this.wave < CONFIG.totalWaves) {
-        setTimeout(() => { if (this.state === 'playing' && !this.waveActive) this.startNextWave(); }, 2500);
+        setTimeout(() => { if (this.state === 'playing' && !this.waveActive) this.startNextWave(); }, 3000);
       } else {
         setTimeout(() => this.win(), 1500);
       }
@@ -6127,10 +6630,20 @@ const Game = {
     document.getElementById('buildTabs').style.display = 'none';
     this.hideInfoPanel();
     Save.clearGame();
+    const isAttack = this.mode === 'attack';
+    const levels = isAttack ? ATTACK_LEVELS : LEVELS;
+    // 全军出击模式：胜利时按 honorMul 发放功勋
+    if (isAttack) {
+      const honorMul = this.levelCfg.honorMul || 1;
+      const honor = Math.round(15 * honorMul);
+      Save.meta.honor += honor;
+      this.honorEarned += honor;
+      Save.save();
+    }
     // 解锁下一关
     const next = this.levelId + 1;
     const curUnlocked = Save.meta.unlockedLevel || 1;
-    if (next > curUnlocked && next <= LEVELS.length) {
+    if (next > curUnlocked && next <= levels.length) {
       Save.meta.unlockedLevel = next;
       Save.save();
     }
@@ -6138,8 +6651,9 @@ const Game = {
     el.textContent = '🏆 胜利！';
     el.style.background = 'linear-gradient(90deg, #ffd700, #22c55e)';
     el.style.webkitBackgroundClip = 'text'; el.style.webkitTextFillColor = 'transparent';
-    const unlockMsg = (next <= LEVELS.length && next > curUnlocked) ? `<br>🎉 解锁新关卡：${LEVELS[next-1].name}` : '';
-    document.getElementById('endMsg').innerHTML = `你成功守护了基地！<br>本局获得功勋点：<span style="color:#fbbf24;">⭐${this.honorEarned}</span><br>累计功勋点：⭐${Save.meta.honor}${unlockMsg}`;
+    const unlockMsg = (next <= levels.length && next > curUnlocked) ? `<br>🎉 解锁新关卡：${levels[next-1].name}` : '';
+    const victoryMsg = isAttack ? '你成功消灭了所有敌人与建筑！' : '你成功守护了基地！';
+    document.getElementById('endMsg').innerHTML = `${victoryMsg}<br>本局获得功勋点：<span style="color:#fbbf24;">⭐${this.honorEarned}</span><br>累计功勋点：⭐${Save.meta.honor}${unlockMsg}`;
     document.getElementById('endScreen').style.display = 'flex';
   },
 

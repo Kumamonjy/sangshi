@@ -2463,19 +2463,15 @@ const AFFIX_TYPES=[
   {stat:'critRate',name:'暴击',min:1,max:3},
   {stat:'critDmg',name:'暴伤',min:5,max:15},
 ];
-// 不同品阶装备的词条上限
-const EQUIP_AFFIX_MAX={common:1,fine:2,rare:3,epic:4,legendary:5,mythic:6};
-// 生成随机词条：数量 1~max（均匀随机），词条类型可重复
+// 所有品质固定 1 条词条，词条数值随品质提升（0.5 梯度）
+const EQUIP_AFFIX_QUALITY_MUL={common:1.0,fine:1.5,rare:2.0,epic:2.5,legendary:3.0,mythic:3.5};
+// 生成随机词条：固定 1 条，类型等概率随机，数值 = 基础区间随机值 × 品质倍率
 function genAffixes(quality){
-  const max=EQUIP_AFFIX_MAX[quality]||1;
-  const count=1+Math.floor(Math.random()*max); // 1..max
-  const affixes=[];
-  for(let i=0;i<count;i++){
-    const at=AFFIX_TYPES[Math.floor(Math.random()*AFFIX_TYPES.length)];
-    const val=at.min+Math.floor(Math.random()*(at.max-at.min+1));
-    affixes.push({stat:at.stat,name:at.name,val});
-  }
-  return affixes;
+  const at=AFFIX_TYPES[Math.floor(Math.random()*AFFIX_TYPES.length)];
+  const mul=EQUIP_AFFIX_QUALITY_MUL[quality]||1.0;
+  const raw=at.min+Math.random()*(at.max-at.min);
+  const val=Math.floor(raw*mul);
+  return[{stat:at.stat,name:at.name,val}];
 }
 // 通用装备名称（无套装），按品阶索引：普通/精良/稀有/史诗
 const EQUIP_NAMES_COMMON={
@@ -3594,7 +3590,7 @@ function hexA(hex,a){
   const r=parseInt(h.slice(0,2),16)||0,g=parseInt(h.slice(2,4),16)||0,b=parseInt(h.slice(4,6),16)||0;
   return `rgba(${r},${g},${b},${a})`;
 }
-function createPlayer(){const sk=getCharSkills(game.player.profession);const learned=game.player.learnedSkills&&game.player.learnedSkills.length>0?game.player.learnedSkills:sk.learned;const equipped=game.player.equippedSkills&&game.player.equippedSkills.length>0?game.player.equippedSkills:sk.equipped;return{name:game.player.name,profession:game.player.profession,bigRealm:game.player.bigRealm,smallRealm:game.player.smallRealm,talents:game.player.talents,gender:game.player.gender,isPlayer:true,portraitIdx:game.player.portraitIdx||0,learnedSkills:learned,equippedSkills:equipped,equipment:game.player.equipment,treasures:game.player.treasures}}
+function createPlayer(){const sk=getCharSkills(game.player.profession);const learned=game.player.learnedSkills&&game.player.learnedSkills.length>0?game.player.learnedSkills:sk.learned;const equipped=game.player.equippedSkills&&game.player.equippedSkills.length>0?game.player.equippedSkills:sk.equipped;return{name:game.player.name,profession:game.player.profession,bigRealm:game.player.bigRealm,smallRealm:game.player.smallRealm,talents:game.player.talents,gender:game.player.gender,spiritRoot:game.player.spiritRoot,honor:game.player.honor,isPlayer:true,portraitIdx:game.player.portraitIdx||0,learnedSkills:learned,equippedSkills:equipped,equipment:game.player.equipment,treasures:game.player.treasures}}
 function createDisciple(){
   const prof=pick(Object.keys(PROFESSIONS));
   const g = Math.random()<.5?'m':'f';
@@ -4194,6 +4190,8 @@ class Battle{
     if(!a||!e){this.over=true;this.winner=a?'allies':'enemies';this.onEnd()}
   }
   onEnd(){
+    if(this._ended)return; // 幂等：防止重复调用
+    this._ended=true;
     this.focusTarget=null;this.focusMode=false;
     const btn=document.getElementById('focus-btn');
     if(btn){btn.classList.remove('active');btn.style.background='';btn.style.color='';btn.textContent='🎯 集火'}
@@ -5197,6 +5195,7 @@ function enterRealmFloor(realmId,floor){
 }
 function retreat(){
   if(!game.battle)return;
+  if(game.battle.over)return; // 战斗已结束，避免覆盖胜负结果
   if(game.battle.isEndless){
     // 百鬼夜行：主动撤退 = 结束本次挑战，保留已获得奖励
     endEndlessRun('retreat');
@@ -6269,8 +6268,7 @@ function showScreen(name){
   if(name==='wiki')renderWiki();
   if(name==='save')renderSave();
 }
-function renderRes(elId){
-  document.getElementById(elId).innerHTML=
+function renderRes(elId){const el=document.getElementById(elId);if(!el)return;el.innerHTML=
     `<div class="res">💎<span>${fmt(game.resources.spirit)}</span></div>`+
     `<div class="res">🌿<span>${fmt(game.resources.herb)}</span></div>`+
     `<div class="res">📜<span>${fmt(game.resources.skillPage)}</span></div>`;
@@ -7397,7 +7395,7 @@ function showWikiTab(tab){
 }
 
 //============ TOAST ============
-function toast(msg){const el=document.getElementById('toast');el.textContent=msg;el.classList.add('show');setTimeout(()=>el.classList.remove('show'),1500)}
+function toast(msg){const el=document.getElementById('toast');if(!el)return;el.textContent=msg;el.classList.add('show');setTimeout(()=>el.classList.remove('show'),1500)}
 
 //============ GAME LOOP ============
 let lastTime=0;

@@ -1,0 +1,2518 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>末日围城 · 生存战棋</title>
+<style>
+/* ============ 基础与主题（末世废土） ============ */
+* { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+:root {
+  --bg:#151a12; --bg2:#1e2418; --panel:#262e20; --panel2:#2f3826;
+  --line:#3d4830; --line2:#4d5a3c;
+  --txt:#d8dcc8; --txt2:#9aa387; --dim:#6b7358;
+  --green:#7da345; --green2:#94bd55; --yellow:#d4a72c; --red:#c05b40; --red2:#e07a55;
+  --blue:#5f8fb0; --purple:#8a6fae;
+  --ally:#5cb85c; --enemy:#d9534f; --sel:#f0ad4e;
+}
+html,body { height:100%; }
+body {
+  background:var(--bg); color:var(--txt);
+  font-family:"PingFang SC","Microsoft YaHei",system-ui,sans-serif;
+  font-size:14px; line-height:1.5;
+  display:flex; justify-content:center; overflow:hidden;
+}
+#app {
+  width:100%; max-width:540px; height:100%; position:relative;
+  background:linear-gradient(180deg,#1a2015 0%,#12160e 100%);
+  box-shadow:0 0 40px rgba(0,0,0,.6); display:flex; flex-direction:column; overflow:hidden;
+}
+.screen { position:absolute; inset:0; display:none; flex-direction:column; overflow:hidden; }
+.screen.active { display:flex; }
+button { font-family:inherit; cursor:pointer; border:none; background:none; color:inherit; }
+button:disabled { opacity:.45; cursor:not-allowed; }
+
+/* ============ 通用组件 ============ */
+.topbar {
+  flex-shrink:0; display:flex; align-items:center; gap:8px; padding:10px 12px;
+  background:rgba(20,26,16,.92); border-bottom:1px solid var(--line);
+}
+.topbar .back {
+  width:34px; height:34px; border-radius:8px; background:var(--panel2);
+  border:1px solid var(--line2); color:var(--txt); font-size:17px; flex-shrink:0;
+}
+.topbar h2 { font-size:17px; flex:1; letter-spacing:2px; color:var(--green2); }
+.topbar .spacer { flex:1; }
+.page { flex:1; overflow-y:auto; padding:12px; -webkit-overflow-scrolling:touch; }
+.page::-webkit-scrollbar { width:4px; } .page::-webkit-scrollbar-thumb { background:var(--line2); border-radius:2px; }
+
+.btn {
+  padding:10px 14px; border-radius:8px; background:var(--panel2); border:1px solid var(--line2);
+  color:var(--txt); font-size:14px; transition:transform .08s, background .15s;
+}
+.btn:active { transform:scale(.96); }
+.btn.primary { background:linear-gradient(180deg,#5c7d2e,#486522); border-color:#7a9a44; color:#eef3dd; font-weight:bold; }
+.btn.danger  { background:linear-gradient(180deg,#8f3a26,#75301f); border-color:#b05a3d; color:#fbe9df; font-weight:bold; }
+.btn.warn    { background:linear-gradient(180deg,#9a7a1e,#7d6418); border-color:#c99e35; color:#fdf3d8; font-weight:bold; }
+.btn.small   { padding:6px 10px; font-size:12px; border-radius:6px; }
+
+.panel {
+  background:linear-gradient(180deg,var(--panel2),var(--panel));
+  border:1px solid var(--line); border-radius:10px; padding:12px; margin-bottom:12px;
+}
+.panel h3 { font-size:14px; color:var(--yellow); margin-bottom:8px; letter-spacing:1px; }
+.row { display:flex; gap:8px; align-items:center; }
+.tag {
+  display:inline-block; padding:1px 8px; border-radius:10px; font-size:11px;
+  background:rgba(125,163,69,.15); color:var(--green2); border:1px solid rgba(125,163,69,.4);
+}
+.tag.red { background:rgba(192,91,64,.15); color:var(--red2); border-color:rgba(192,91,64,.4); }
+.tag.blue { background:rgba(95,143,176,.15); color:#8fc3e3; border-color:rgba(95,143,176,.4); }
+.tag.yellow { background:rgba(212,167,44,.15); color:#e8c565; border-color:rgba(212,167,44,.4); }
+.hr { height:1px; background:var(--line); margin:10px 0; }
+
+/* 模态弹窗 */
+.modal-mask {
+  position:absolute; inset:0; background:rgba(8,10,6,.78); z-index:50;
+  display:none; align-items:center; justify-content:center; padding:20px;
+}
+.modal-mask.show { display:flex; }
+.modal {
+  width:100%; max-width:440px; max-height:88%; overflow-y:auto;
+  background:linear-gradient(180deg,#2c3423,#222a1b); border:1px solid var(--line2);
+  border-radius:12px; padding:16px; box-shadow:0 10px 40px rgba(0,0,0,.7);
+}
+.modal h3 { color:var(--yellow); margin-bottom:10px; font-size:16px; letter-spacing:1px; }
+.modal .close-x { float:right; color:var(--txt2); font-size:18px; padding:0 4px; }
+
+/* toast */
+#toast {
+  position:absolute; top:14%; left:50%; transform:translateX(-50%); z-index:99;
+  background:rgba(20,26,14,.95); border:1px solid var(--line2); color:var(--txt);
+  padding:9px 18px; border-radius:20px; font-size:13px; display:none; max-width:86%; text-align:center;
+  box-shadow:0 4px 16px rgba(0,0,0,.6);
+}
+
+/* 战斗字幕 */
+#battle-subtitle {
+  position:absolute; top:26%; left:50%; transform:translate(-50%,-50%) scale(1); z-index:80;
+  font-size:22px; font-weight:bold; color:#ffd76b; text-shadow:0 0 12px rgba(255,180,40,.8), 0 2px 4px #000;
+  pointer-events:none; opacity:0; transition:opacity .2s; letter-spacing:2px; white-space:nowrap;
+}
+#battle-subtitle.show { opacity:1; animation:subPop .3s; }
+@keyframes subPop { 0%{transform:translate(-50%,-50%) scale(.6);} 70%{transform:translate(-50%,-50%) scale(1.15);} 100%{transform:translate(-50%,-50%) scale(1);} }
+
+/* ============ 主界面 ============ */
+#scr-home { background:linear-gradient(180deg,#20281a 0%,#141910 60%,#0e1209 100%); }
+.home-top {
+  padding:12px 14px 8px; border-bottom:1px solid var(--line);
+  background:linear-gradient(180deg,rgba(38,46,32,.9),rgba(30,36,24,.7));
+}
+.home-title { display:flex; align-items:baseline; gap:10px; margin-bottom:8px; }
+.home-title h1 { font-size:21px; color:var(--green2); letter-spacing:4px; text-shadow:0 0 14px rgba(125,163,69,.4); }
+.home-title .day { color:var(--yellow); font-size:14px; font-weight:bold; }
+.home-title .weather { margin-left:auto; font-size:13px; color:var(--txt2); }
+.res-bar { display:flex; gap:6px; }
+.res-item {
+  flex:1; display:flex; align-items:center; justify-content:center; gap:4px;
+  background:rgba(20,26,15,.6); border:1px solid var(--line); border-radius:8px; padding:6px 2px;
+  font-size:13px; font-weight:bold;
+}
+.res-item .ic { font-size:15px; }
+.res-item small { color:var(--dim); font-weight:normal; font-size:10px; display:block; }
+
+.base-scene {
+  position:relative; height:132px; margin:12px; border-radius:12px; overflow:hidden;
+  border:1px solid var(--line2); flex-shrink:0;
+  background:linear-gradient(180deg,#3a4433 0%,#2a3226 55%,#1c2217 100%);
+}
+.base-scene .sky-sun { position:absolute; top:10px; right:16px; width:34px; height:34px; border-radius:50%; background:radial-gradient(circle,#e8d48a,#c9a227 70%,transparent 72%); box-shadow:0 0 24px rgba(212,167,44,.5); }
+.base-scene .ground { position:absolute; bottom:0; left:0; right:0; height:46px; background:linear-gradient(180deg,#2e351f,#222815); border-top:2px solid #3d4830; }
+.base-scene .emoji { position:absolute; font-size:26px; filter:drop-shadow(0 3px 3px rgba(0,0,0,.5)); }
+.base-scene .day-label { position:absolute; top:10px; left:14px; font-size:12px; color:var(--txt2); }
+.base-scene .campfire { animation:fireGlow 2.2s infinite alternate; }
+@keyframes fireGlow { from{filter:drop-shadow(0 0 4px rgba(255,150,50,.4));} to{filter:drop-shadow(0 0 14px rgba(255,150,50,.9));} }
+
+.func-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; padding:0 12px; }
+.func-btn {
+  display:flex; align-items:center; gap:10px; padding:13px 12px; border-radius:12px;
+  background:linear-gradient(180deg,var(--panel2),var(--panel)); border:1px solid var(--line2);
+  transition:transform .08s; position:relative;
+}
+.func-btn:active { transform:scale(.96); }
+.func-btn.wide { grid-column:1 / -1; }
+.func-btn .ic {
+  width:44px; height:44px; border-radius:10px; display:flex; align-items:center; justify-content:center;
+  font-size:22px; background:rgba(125,163,69,.12); border:1px solid var(--line2); flex-shrink:0;
+}
+.func-btn .t { font-size:15px; font-weight:bold; letter-spacing:1px; }
+.func-btn .d { font-size:11px; color:var(--txt2); }
+.func-btn .badge {
+  position:absolute; top:6px; right:8px; background:var(--red); color:#fff; font-size:10px;
+  min-width:16px; height:16px; border-radius:8px; display:none; align-items:center; justify-content:center; padding:0 4px;
+}
+.home-foot { padding:10px 12px 14px; }
+.home-tip { font-size:11px; color:var(--dim); text-align:center; margin-top:8px; }
+
+/* ============ 人物卡片 ============ */
+.char-card {
+  display:flex; gap:10px; padding:10px; border-radius:10px; margin-bottom:10px;
+  background:linear-gradient(180deg,var(--panel2),var(--panel)); border:1px solid var(--line);
+  transition:border-color .15s;
+}
+.char-card.selected { border-color:var(--sel); box-shadow:0 0 0 1px var(--sel); }
+.char-card.disabled { opacity:.5; }
+.avatar {
+  width:52px; height:52px; border-radius:50%; flex-shrink:0; display:flex; align-items:center; justify-content:center;
+  font-size:24px; border:3px solid var(--line2); background:#1a2015; position:relative;
+}
+.avatar.civ { border-color:#8a9197; } .avatar.sol { border-color:#c05b40; }
+.avatar.doc { border-color:#5cb8a0; } .avatar.sct { border-color:#5f8fb0; }
+.avatar.brw { border-color:#c9a227; } .avatar.hnt { border-color:#a0713c; }
+.avatar.chf { border-color:#e0703a; }
+.avatar .lvl {
+  position:absolute; bottom:-6px; left:50%; transform:translateX(-50%); background:#1a2015;
+  border:1px solid var(--line2); border-radius:8px; font-size:10px; padding:0 6px; color:var(--yellow);
+}
+.hpbar { height:8px; background:#1a2015; border-radius:4px; overflow:hidden; border:1px solid var(--line); }
+.hpbar > div { height:100%; background:linear-gradient(90deg,#4a8a3a,#7db355); transition:width .3s; }
+.hpbar.low > div { background:linear-gradient(90deg,#a04a30,#d06a45); }
+.stbar { height:6px; margin-top:3px; background:#1a2015; border-radius:3px; overflow:hidden; border:1px solid var(--line); }
+.stbar > div { height:100%; background:linear-gradient(90deg,#3a6a9a,#5f9fcf); transition:width .3s; }
+
+.attr-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:6px; margin-top:8px; }
+.attr-cell {
+  background:rgba(20,26,14,.5); border:1px solid var(--line); border-radius:6px;
+  padding:5px 4px; text-align:center; font-size:11px;
+}
+.attr-cell b { display:block; font-size:13px; color:var(--txt); }
+.attr-cell span { color:var(--dim); font-size:10px; }
+
+/* ============ 招募 ============ */
+.recruit-card { position:relative; }
+.recruit-card .price { position:absolute; top:10px; right:10px; }
+.cand-actions { display:flex; gap:8px; margin-top:8px; }
+
+/* ============ 探险区域卡 ============ */
+.zone-card {
+  display:flex; align-items:center; gap:12px; padding:14px; margin-bottom:10px; border-radius:12px;
+  background:linear-gradient(180deg,var(--panel2),var(--panel)); border:1px solid var(--line2);
+  transition:transform .08s;
+}
+.zone-card:active { transform:scale(.98); }
+.zone-card .zic {
+  width:52px; height:52px; border-radius:12px; font-size:26px; display:flex; align-items:center; justify-content:center;
+  background:rgba(212,167,44,.1); border:1px solid var(--line2); flex-shrink:0;
+}
+.zone-card .zt { font-size:15px; font-weight:bold; }
+.zone-card .zd { font-size:11px; color:var(--txt2); }
+.danger-stars { color:var(--red2); font-size:12px; letter-spacing:2px; }
+
+/* ============ 战斗界面 ============ */
+#scr-battle { background:#10140c; }
+.b-top {
+  flex-shrink:0; display:flex; align-items:center; gap:6px; padding:8px 10px;
+  background:rgba(18,22,14,.95); border-bottom:1px solid var(--line);
+}
+.b-top .turn-num { background:var(--panel2); border:1px solid var(--line2); border-radius:8px; padding:5px 10px; font-weight:bold; font-size:13px; }
+.b-top .b-weather { font-size:13px; color:var(--txt2); flex:1; }
+.b-top .phase { padding:5px 12px; border-radius:8px; font-weight:bold; font-size:13px; letter-spacing:1px; }
+.b-top .phase.player { background:rgba(92,184,92,.2); border:1px solid var(--ally); color:#a8e0a8; }
+.b-top .phase.enemy  { background:rgba(217,83,79,.2); border:1px solid var(--enemy); color:#f0a8a5; }
+.b-top .flee { padding:5px 12px; border-radius:8px; background:var(--panel2); border:1px solid var(--line2); font-size:13px; }
+
+.side-panels { flex-shrink:0; display:flex; gap:6px; padding:6px 10px; background:rgba(18,22,14,.85); }
+.side-panel {
+  flex:1; background:var(--panel); border:1px solid var(--line); border-radius:8px;
+  padding:5px 8px; font-size:11px; line-height:1.7;
+}
+.side-panel .pt { font-weight:bold; margin-bottom:2px; display:flex; justify-content:space-between; }
+.side-panel.enemy .pt { color:var(--red2); } .side-panel.ally .pt { color:#8fd08f; }
+.side-panel .stat-line { color:var(--txt2); display:flex; align-items:center; gap:4px; flex-wrap:wrap; }
+.side-panel .mini-bar { flex:1; height:6px; background:#14180f; border-radius:3px; overflow:hidden; min-width:30px; }
+.side-panel .mini-bar > div { height:100%; transition:width .3s; }
+.side-panel.enemy .mini-bar > div { background:var(--enemy); }
+.side-panel.ally .mini-bar > div { background:var(--ally); }
+
+.map-wrap { flex:1; overflow:auto; display:flex; align-items:center; justify-content:center; padding:6px; -webkit-overflow-scrolling:touch; }
+#battle-map {
+  display:grid; gap:2px; background:rgba(0,0,0,.25); padding:4px; border-radius:8px;
+  border:1px solid var(--line); touch-action:manipulation;
+}
+.cell {
+  position:relative; width:var(--cs,40px); height:var(--cs,40px);
+  border-radius:4px; background:#2c3323; display:flex; align-items:center; justify-content:center;
+  font-size:18px; transition:background .12s, box-shadow .12s;
+}
+.cell.walk { background:#333d28; }
+.cell.water { background:#26404d; }
+.cell.rubble { background:#3b3222; }
+.cell.ruin { background:#443c2c; }
+.cell .terr { position:absolute; font-size:16px; opacity:.85; pointer-events:none; }
+.cell.moveable { box-shadow:inset 0 0 0 2px rgba(125,180,80,.85); background:rgba(100,140,60,.45); cursor:pointer; }
+.cell.attackable { box-shadow:inset 0 0 0 2px rgba(220,90,60,.9); background:rgba(170,60,40,.4); cursor:pointer; }
+.cell.healable { box-shadow:inset 0 0 0 2px rgba(80,200,160,.9); background:rgba(60,150,120,.4); cursor:pointer; }
+.cell.pickable { box-shadow:inset 0 0 0 2px rgba(230,190,70,.9); background:rgba(180,140,50,.4); cursor:pointer; }
+.cell.path-hint { box-shadow:inset 0 0 0 2px rgba(120,160,220,.7); }
+.unit {
+  width:82%; height:82%; border-radius:50%; display:flex; align-items:center; justify-content:center;
+  font-size:20px; position:relative; z-index:2; border:2px solid var(--line2);
+  transition:transform .15s;
+}
+.unit.ally  { background:linear-gradient(180deg,#3a4a35,#2a3526); border-color:var(--ally); }
+.unit.enemy { background:linear-gradient(180deg,#4a2f2a,#331f1a); border-color:var(--enemy); }
+.unit.defending::after { content:'🛡'; position:absolute; top:-8px; right:-6px; font-size:11px; }
+.unit.acted { filter:grayscale(.75) brightness(.6); }
+.unit.selected-unit { animation:selPulse 1s infinite; }
+@keyframes selPulse { 0%,100%{box-shadow:0 0 0 2px var(--sel);} 50%{box-shadow:0 0 10px 3px var(--sel);} }
+.unit .uhp {
+  position:absolute; bottom:-7px; left:50%; transform:translateX(-50%); width:88%; height:5px;
+  background:#14180f; border-radius:3px; overflow:hidden; border:1px solid rgba(0,0,0,.6);
+}
+.unit .uhp > div { height:100%; background:#6fbf5f; transition:width .25s; }
+.unit.enemy .uhp > div { background:#e06550; }
+.unit .hit-flash { animation:hitFlash .35s; }
+@keyframes hitFlash { 0%,100%{transform:translateX(0);} 25%{transform:translateX(-4px);} 50%{transform:translateX(4px);} 75%{transform:translateX(-2px);} }
+.dmg-float {
+  position:absolute; font-weight:bold; font-size:14px; pointer-events:none; z-index:10;
+  animation:dmgFloat .8s forwards; text-shadow:0 1px 3px #000;
+}
+@keyframes dmgFloat { 0%{opacity:1; transform:translateY(0);} 100%{opacity:0; transform:translateY(-22px);} }
+
+.b-unitinfo {
+  flex-shrink:0; margin:0 10px; padding:7px 12px; border-radius:10px;
+  background:linear-gradient(180deg,var(--panel2),var(--panel)); border:1px solid var(--line);
+  min-height:52px;
+}
+.b-unitinfo .u-name { display:flex; align-items:center; gap:8px; font-weight:bold; }
+.b-unitinfo .u-name .cls { font-size:11px; }
+.b-unitinfo .u-stats { display:flex; gap:10px; flex-wrap:wrap; font-size:12px; color:var(--txt2); margin-top:3px; }
+.b-unitinfo .u-stats b { color:var(--txt); font-weight:normal; }
+.b-unitinfo .hint { color:var(--dim); font-size:12px; }
+
+.b-actions { flex-shrink:0; display:flex; gap:6px; padding:5px 10px; }
+.b-actions button {
+  flex:1; padding:6px 0; border-radius:8px; font-size:13px; font-weight:bold; letter-spacing:1px;
+  border:1px solid var(--line2); background:var(--panel2); transition:transform .08s;
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+}
+.b-actions button:active { transform:scale(.94); }
+.b-actions .a-move  { color:#9fc6e8; border-color:#3e5a74; background:linear-gradient(180deg,#2c3e50,#243440); }
+.b-actions .a-atk   { color:#f0b3a8; border-color:#7a3e30; background:linear-gradient(180deg,#502c22,#3e231b); }
+.b-actions .a-skill { color:#c9a8ec; border-color:#5a3e74; background:linear-gradient(180deg,#382c50,#2c2340); }
+.b-actions .a-def   { color:#e8d49f; border-color:#74603e; background:linear-gradient(180deg,#50432c,#403523); }
+.b-actions .a-cancel{ color:var(--txt2); }
+
+/* 技能选择列表（弹窗） */
+.skill-row { padding:10px 12px; border:1px solid var(--line2); border-radius:8px; margin-bottom:8px; background:rgba(20,26,14,.5); cursor:pointer; }
+.skill-row:active { transform:scale(.98); }
+.skill-row.off { opacity:.5; cursor:not-allowed; }
+.skill-row .skill-name { font-weight:bold; color:#c9a8ec; font-size:14px; display:flex; justify-content:space-between; align-items:center; }
+.skill-row .skill-cost { color:var(--yellow); font-weight:normal; font-size:12px; }
+.skill-row .skill-st { font-size:11px; margin-top:2px; color:var(--green2); }
+.skill-row .skill-st.off { color:var(--red2); }
+.skill-row .skill-desc { font-size:12px; color:var(--txt2); margin-top:4px; }
+.b-foot { flex-shrink:0; display:flex; gap:6px; padding:6px 10px 10px; background:rgba(18,22,14,.95); border-top:1px solid var(--line); }
+.b-foot button { flex:1; padding:7px 0; border-radius:8px; font-size:13px; background:var(--panel2); border:1px solid var(--line2); }
+.b-foot .end { background:linear-gradient(180deg,#a04434,#823626); border-color:#c0604a; color:#fce8e0; font-weight:bold; }
+
+/* 战斗记录 */
+.log-entry { margin-bottom:8px; }
+.log-turn { color:var(--yellow); font-weight:bold; font-size:12px; }
+.log-msg { color:var(--txt2); font-size:12px; padding-left:8px; }
+.log-msg.crit { color:#ffb84d; } .log-msg.kill { color:#e07a55; } .log-msg.good { color:#8fd08f; } .log-msg.bad { color:#e08080; }
+
+/* 结算面板 */
+.result-title { text-align:center; font-size:22px; font-weight:bold; letter-spacing:4px; margin:8px 0 4px; }
+.result-title.win { color:var(--green2); } .result-title.lose { color:var(--red2); } .result-title.flee { color:var(--yellow); }
+.loot-line { display:flex; justify-content:space-between; padding:5px 2px; font-size:13px; border-bottom:1px dashed var(--line); }
+.loot-line b { color:var(--yellow); }
+
+/* 百科 */
+.wiki-tabs { display:flex; gap:6px; overflow-x:auto; padding-bottom:8px; margin-bottom:12px; -webkit-overflow-scrolling:touch; scrollbar-width:none; }
+.wiki-tabs::-webkit-scrollbar { display:none; }
+.wiki-tab {
+  flex-shrink:0; padding:7px 14px; border-radius:18px; font-size:13px; white-space:nowrap;
+  background:var(--panel); border:1px solid var(--line); color:var(--txt2); transition:transform .08s;
+}
+.wiki-tab:active { transform:scale(.94); }
+.wiki-tab.active {
+  background:linear-gradient(180deg,#5c7d2e,#486522); border-color:#7a9a44;
+  color:#eef3dd; font-weight:bold;
+}
+.wiki-sec { margin-bottom:14px; }
+.wiki-sec h4 { color:var(--green2); margin-bottom:6px; font-size:14px; }
+.wiki-table { width:100%; border-collapse:collapse; font-size:12px; }
+.wiki-table th,.wiki-table td { border:1px solid var(--line); padding:5px 6px; text-align:left; }
+.wiki-table th { background:rgba(125,163,69,.12); color:var(--yellow); font-weight:normal; }
+.wiki-table td { color:var(--txt2); }
+.wiki-table td b { color:var(--txt); }
+.wiki-p { font-size:12px; color:var(--txt2); line-height:1.8; }
+.wiki-p b { color:var(--txt); }
+
+/* 存档槽 */
+.save-slot {
+  display:flex; align-items:center; gap:10px; padding:12px; border-radius:10px; margin-bottom:10px;
+  background:var(--panel2); border:1px solid var(--line2);
+}
+.save-slot .info { flex:1; }
+.save-slot .info .st { font-weight:bold; }
+.save-slot .info .sd { font-size:11px; color:var(--txt2); }
+.save-slot .ops { display:flex; flex-direction:column; gap:5px; }
+.save-slot.empty { opacity:.65; }
+
+/* 出战编队 */
+.team-limit { text-align:center; color:var(--txt2); font-size:12px; margin-bottom:8px; }
+.stamina-warning { background:rgba(192,91,64,.15); border:1px solid var(--red); color:var(--red2); border-radius:8px; padding:8px 10px; font-size:12px; margin-bottom:8px; }
+
+/* 里程碑事件 */
+.milestone-choice { display:block; width:100%; text-align:left; margin-top:8px; padding:12px; border-radius:10px;
+  background:var(--panel2); border:1px solid var(--line2); color:var(--txt); transition:transform .08s; }
+.milestone-choice:active { transform:scale(.97); }
+.milestone-choice .mc-t { font-weight:bold; color:var(--yellow); }
+.milestone-choice .mc-d { font-size:12px; color:var(--txt2); margin-top:3px; }
+
+@media (max-height:700px) {
+  .base-scene { height:104px; }
+  .func-btn { padding:10px; } .func-btn .ic { width:38px; height:38px; font-size:19px; }
+}
+</style>
+</head>
+<body>
+<div id="app">
+
+  <!-- ============ 主界面 ============ -->
+  <div class="screen active" id="scr-home">
+    <div class="home-top">
+      <div class="home-title">
+        <h1>末日围城</h1>
+        <span class="day" id="home-day">第 1 天</span>
+        <span class="weather" id="home-weather">☀️ 晴朗</span>
+      </div>
+      <div class="res-bar">
+        <div class="res-item"><span class="ic">💰</span><span id="res-gold">0</span><small>金币</small></div>
+        <div class="res-item"><span class="ic">💊</span><span id="res-med">0</span><small>药物</small></div>
+        <div class="res-item"><span class="ic">⚙️</span><span id="res-metal">0</span><small>金属</small></div>
+        <div class="res-item"><span class="ic">🍞</span><span id="res-food">0</span><small>食物</small></div>
+      </div>
+    </div>
+    <div class="base-scene">
+      <div class="sky-sun" id="scene-sun"></div>
+      <div class="day-label" id="scene-label">幸存者营地 · 安全区</div>
+      <div class="ground"></div>
+      <div class="emoji" style="bottom:44px;left:8%;">🏕️</div>
+      <div class="emoji" style="bottom:40px;left:28%;">⛺</div>
+      <div class="emoji campfire" style="bottom:16px;left:48%;">🔥</div>
+      <div class="emoji" style="bottom:42px;right:22%;">🧱</div>
+      <div class="emoji" style="bottom:14px;right:6%;">🚧</div>
+      <div class="emoji" style="bottom:12px;left:22%;">🛡️</div>
+    </div>
+    <div class="func-grid">
+      <div class="func-btn" onclick="UI.openChars()"><div class="ic">🧍</div><div><div class="t">人物信息</div><div class="d" id="fb-chars">查看幸存者队伍</div></div><span class="badge" id="badge-injured"></span></div>
+      <div class="func-btn" onclick="UI.openRecruit()"><div class="ic">📡</div><div><div class="t">招募广播</div><div class="d">寻找幸存者加入</div></div></div>
+      <div class="func-btn" onclick="UI.openZones()"><div class="ic">🧭</div><div><div class="t">外出探险</div><div class="d">搜索物资区域</div></div></div>
+      <div class="func-btn" onclick="UI.openInv()"><div class="ic">📦</div><div><div class="t">物资仓库</div><div class="d">管理四类物资</div></div></div>
+      <div class="func-btn" onclick="UI.openWiki()"><div class="ic">📚</div><div><div class="t">游戏百科</div><div class="d">图鉴与规则说明</div></div></div>
+      <div class="func-btn" onclick="UI.openSaves()"><div class="ic">💾</div><div><div class="t">存档管理</div><div class="d">保存 / 读取进度</div></div></div>
+      <div class="func-btn wide" onclick="UI.openBuild()"><div class="ic">🏠</div><div><div class="t">营地建筑</div><div class="d" id="fb-build">建造与升级营地设施</div></div></div>
+    </div>
+    <div class="home-foot">
+      <button class="btn warn" style="width:100%" onclick="Game.restDay()">🛌 原地休整（度过一天）</button>
+      <div class="home-tip" id="home-tip">提示：每次探险或休整都会消耗食物并推进天数</div>
+    </div>
+  </div>
+
+  <!-- ============ 营地建筑 ============ -->
+  <div class="screen" id="scr-build">
+    <div class="topbar">
+      <button class="back" onclick="Game.renderHome();UI.showScreen('scr-home')">←</button>
+      <h2>营地建筑</h2>
+      <span class="tag yellow" id="build-gold" style="font-size:13px;padding:4px 10px;flex-shrink:0"></span>
+    </div>
+    <div class="page" id="build-page"></div>
+  </div>
+
+  <!-- ============ 人物信息 ============ -->
+  <div class="screen" id="scr-chars">
+    <div class="topbar"><button class="back" onclick="UI.backHome()">←</button><h2>人物信息</h2></div>
+    <div class="page" id="char-list"></div>
+  </div>
+
+  <!-- ============ 招募广播 ============ -->
+  <div class="screen" id="scr-recruit">
+    <div class="topbar"><button class="back" onclick="UI.backHome()">←</button><h2>招募广播</h2><div class="spacer"></div><button class="btn small" onclick="Recruit.refreshCandidates()">📡 播报 (20💰)</button></div>
+    <div class="page">
+      <div class="panel"><h3>📡 广播站</h3><div class="wiki-p">向无线电频道发出幸存者招募信号，回应者职业与能力各异。选中候选者后花费金币将其招募入队。每次播报刷新 3 名候选者。</div></div>
+      <div id="recruit-list"></div>
+    </div>
+  </div>
+
+  <!-- ============ 探险区域 ============ -->
+  <div class="screen" id="scr-zones">
+    <div class="topbar"><button class="back" onclick="UI.backHome()">←</button><h2>外出探险</h2></div>
+    <div class="page">
+      <div class="panel"><h3>🧭 选择探险区域</h3><div class="wiki-p">不同区域产出不同物资，危险度越高丧尸越多越强。探险需消耗体力（每人 15 ⚡），胜利或撤离均可保留已拾取的物资。</div></div>
+      <div id="zone-list"></div>
+    </div>
+  </div>
+
+  <!-- ============ 出战编队 ============ -->
+  <div class="screen" id="scr-team">
+    <div class="topbar"><button class="back" onclick="UI.showScreen('scr-zones')">←</button><h2 id="team-zone-name">出战编队</h2></div>
+    <div class="page">
+      <div class="team-limit" id="team-limit"></div>
+      <div class="stamina-warning" id="team-stamina-warn" style="display:none"></div>
+      <div id="team-list"></div>
+      <button class="btn primary" style="width:100%;margin-top:6px;padding:14px" onclick="Game.startExpedition()">🚗 出发探险</button>
+    </div>
+  </div>
+
+  <!-- ============ 物资仓库 ============ -->
+  <div class="screen" id="scr-inv">
+    <div class="topbar"><button class="back" onclick="UI.backHome()">←</button><h2>物资仓库</h2></div>
+    <div class="page" id="inv-list"></div>
+  </div>
+
+  <!-- ============ 游戏百科 ============ -->
+  <div class="screen" id="scr-wiki">
+    <div class="topbar"><button class="back" onclick="UI.backHome()">←</button><h2>游戏百科</h2></div>
+    <div class="page" id="wiki-content"></div>
+  </div>
+
+  <!-- ============ 存档管理 ============ -->
+  <div class="screen" id="scr-saves">
+    <div class="topbar"><button class="back" onclick="UI.backHome()">←</button><h2>存档管理</h2></div>
+    <div class="page" id="save-list"></div>
+  </div>
+
+  <!-- ============ 战斗界面 ============ -->
+  <div class="screen" id="scr-battle">
+    <div class="b-top">
+      <div class="turn-num">回合 <span id="b-turn">1</span></div>
+      <div class="b-weather" id="b-weather">☀️ 晴朗</div>
+      <div class="phase player" id="b-phase">玩家回合</div>
+      <button class="flee" onclick="Battle.confirmFlee()">撤离</button>
+    </div>
+    <div class="side-panels">
+      <div class="side-panel enemy" id="panel-enemy"></div>
+      <div class="side-panel ally" id="panel-ally"></div>
+    </div>
+    <div class="map-wrap"><div id="battle-map"></div></div>
+    <div class="b-unitinfo" id="b-unitinfo"><div class="hint">点击你的角色开始行动</div></div>
+    <div class="b-actions">
+      <button class="a-move" onclick="Battle.cmdMove()">移动</button>
+      <button class="a-atk" onclick="Battle.cmdAttack()">攻击</button>
+      <button class="a-skill" id="btn-skill" onclick="Battle.cmdSkill()">技能</button>
+      <button class="a-def" onclick="Battle.cmdDefend()">防御</button>
+      <button class="a-cancel" onclick="Battle.cmdCancel()">取消</button>
+    </div>
+    <div class="b-foot">
+      <button onclick="Battle.showLog()">战斗记录</button>
+      <button id="btn-speed" onclick="Battle.toggleSpeed()">加速 x1</button>
+      <button class="end" onclick="Battle.endPlayerTurn()">结束行动</button>
+    </div>
+    <div id="battle-subtitle"></div>
+  </div>
+
+  <!-- 通用弹窗 -->
+  <div class="modal-mask" id="modal-mask"><div class="modal" id="modal-body"></div></div>
+  <div id="toast"></div>
+</div>
+
+<script>
+"use strict";
+/* =====================================================
+ *  《末日围城》 生存战棋 · 单文件游戏
+ *  模块：DATA(数据) → Game(状态/存档) → UI(界面) →
+ *        Recruit(招募) → Battle(战棋战斗) → 里程碑
+ * ===================================================== */
+
+/* ============ 数据常量 ============ */
+const DATA = {};
+
+/* 职业：基础值即为最终值（无百分比加成层），upgrade每级=基础值+10% */
+DATA.CLASSES = {
+  civilian: {
+    name:'平民', icon:'🧍', color:'civ', desc:'普通幸存者，属性平平，胜在便宜且吃得少。',
+    avatars:['🧍','🧑‍🌾','🧑‍🎨','🧑‍🔧','🧑‍💼','👷','🧑‍🏭','👩‍🌾'],
+    food:1,
+    skill:{ name:'奋力一击', desc:'消耗20体力，对1格内一名敌人造成 160% 攻击力的伤害。', cost:20, cd:3, type:'attack', shape:'target', mult:1.6, range:1 },
+    base:{ maxHp:200, maxStamina:100, atk:40, def:5, range:1, move:3, critRate:5, critDmg:150 },
+    price:100
+  },
+  soldier: {
+    name:'军人', icon:'🪖', color:'sol', desc:'受过正规训练的老兵，生命与攻击冠绝全队，还能远距离火力压制——但饭量也是全队最大的。',
+    avatars:['🪖','💂','🧑‍✈️','🎖️','🦺','👨‍🚒'],
+    food:3,
+    skill:{ name:'火力压制', desc:'消耗25体力，对3格内一名敌人造成 160% 攻击力的伤害（可跨地形远程打击）。', cost:25, cd:3, type:'attack', shape:'target', mult:1.6, range:3 },
+    base:{ maxHp:300, maxStamina:150, atk:50, def:10, range:1, move:3, critRate:10, critDmg:160 },
+    price:200
+  },
+  doctor: {
+    name:'医生', icon:'⚕️', color:'doc', desc:'战地医疗专家，可以治疗友方；队中有医生时，治疗重伤所需药物减半。',
+    avatars:['⚕️','🧑‍⚕️','👨‍⚕️','👩‍⚕️','💉','🩺','🚑'],
+    food:2,
+    skill:{ name:'急救', desc:'消耗20体力，治疗2格内一名友方（回复 10 + 1×攻击力 的生命）。', cost:20, cd:3, type:'heal', shape:'target', flatHeal:10, mult:1, range:2 },
+    base:{ maxHp:250, maxStamina:110, atk:30, def:10, range:1, move:3, critRate:5, critDmg:150 },
+    price:200
+  },
+  scout: {
+    name:'侦察兵', icon:'🔭', color:'sct', desc:'行动敏捷的神枪手，移速与暴击出色，可远程射击。擅长从暗中发动偷袭。',
+    avatars:['🔭','🕵️','🧗','🏃','🧭','🤸'],
+    food:2,
+    skill:{ name:'暗中偷袭', desc:'消耗25体力，对2格内一名敌人造成 160% 攻击力的伤害。', cost:25, cd:3, type:'attack', shape:'target', mult:1.6, range:2 },
+    base:{ maxHp:200, maxStamina:120, atk:40, def:5, range:2, move:4, critRate:17, critDmg:150 },
+    price:200
+  },
+  brawler: {
+    name:'格斗家', icon:'🥊', color:'brw', desc:'赤手空拳的近战好手，暴击出色、攻击凶悍；就算被丧尸围住，一记「横扫千军」也能同时重创周围所有敌人。',
+    avatars:['🥊','🤼','💪','🤜','👊','🦾'],
+    food:2,
+    skill:{ name:'横扫千军', desc:'消耗25体力，对相邻所有敌人各造成 100% 攻击力的伤害。', cost:25, cd:3, type:'attack', shape:'sweep', area:1, mult:1.0 },
+    base:{ maxHp:260, maxStamina:120, atk:50, def:10, range:1, move:3, critRate:15, critDmg:150 },
+    price:160
+  },
+  hunter: {
+    name:'猎人', icon:'🏹', color:'hnt', desc:'百步穿杨的老猎人，射程全队最远；一箭「百步穿杨」能贯穿直线上的所有丧尸，敌人排得越齐越赚。',
+    avatars:['🏹','🦅','🎯','🪃','🐗','🦌'],
+    food:2,
+    skill:{ name:'百步穿杨', desc:'消耗25体力，选择一个方向，对路径上最多 3 格内的所有敌人造成 80% 攻击力的穿刺伤害。', cost:25, cd:3, type:'attack', shape:'line', lineLen:3, mult:0.8 },
+    base:{ maxHp:250, maxStamina:110, atk:50, def:5, range:3, move:3, critRate:10, critDmg:150 },
+    price:180
+  },
+  chef: {
+    name:'厨师', icon:'🍳', color:'chf', desc:'末日里最稀缺的手艺人，一手热汤让丧尸也领教「滚烫」的滋味。「泼火锅汤」能泼向一个方向，烫伤 1×3 范围内的所有敌人。',
+    avatars:['👨‍🍳','🍳','🥘','🍲','🍜','🥢'],
+    food:2,
+    skill:{ name:'泼火锅汤', desc:'消耗30体力，选择一个方向，泼出滚烫汤水，对 1×3 范围内所有敌人造成 70% 攻击力的伤害。', cost:30, cd:3, type:'attack', shape:'line', lineLen:3, mult:0.7 },
+    base:{ maxHp:250, maxStamina:110, atk:30, def:10, range:1, move:2, critRate:5, critDmg:150 },
+    price:150
+  }
+};
+
+/* 丧尸图鉴：基础值同步角色加强；等级成长 = HP+30 / ATK+6 / DEF+3 每级（每8天丧尸等级+1） */
+DATA.ZOMBIES = {
+  walker:  { name:'游荡丧尸', icon:'🧟', desc:'最常见的丧尸，行动迟缓但成群出没。',
+             base:{ maxHp:200, atk:30, def:5, range:1, move:2, critRate:5, critDmg:150 }, weight:40 },
+  runner:  { name:'丧尸犬', icon:'🐕', desc:'变异的猎犬，皮薄但撕咬凶狠，移动速度极快，威胁后排。',
+             base:{ maxHp:150, atk:50, def:5, range:1, move:4, critRate:5, critDmg:150 }, weight:25 },
+  brute:   { name:'肥胖丧尸', icon:'🧟‍♀️', desc:'臃肿膨胀的变异体，皮糙肉厚，是移动的肉盾。',
+             base:{ maxHp:300, atk:40, def:20, range:1, move:2, critRate:5, critDmg:150 }, weight:20 },
+  licker:  { name:'长舌丧尸', icon:'👹', desc:'舌头肌肉化的猎手，可以从远处突袭猎物。',
+             base:{ maxHp:220, atk:40, def:5, range:3, move:3, critRate:5, critDmg:150 }, weight:15 },
+  savage:  { name:'凶猛丧尸', icon:'🧟‍♂️', desc:'肌肉极度发达的变异体，凶残嗜血，攻击性极强。',
+             base:{ maxHp:250, atk:55, def:10, range:1, move:4, critRate:5, critDmg:150 }, weight:12 },
+  behemoth:{ name:'暴君变异体', icon:'😈', desc:'区域霸主级变异体，见识过它的人类寥寥无几。',
+             base:{ maxHp:510, atk:43, def:19, range:2, move:3, critRate:5, critDmg:150 }, weight:0, boss:true }
+};
+
+/* 探险区域 */
+DATA.ZONES = [
+  { id:'market',  name:'废弃超市', icon:'🛒', danger:1, desc:'货架上还残留着末日前的物资。',
+    main:{food:[8,14]}, sub:{gold:[4,8]}, enemies:['walker','walker','walker','runner'], boss:false },
+  { id:'hospital',name:'市中心医院', icon:'🏥', danger:2, desc:'药房或许还有没被搜刮的药品。',
+    main:{med:[4,7]}, sub:{food:[3,6]}, enemies:['walker','walker','runner','runner','licker'], boss:false },
+  { id:'factory', name:'旧钢铁工厂', icon:'🏭', danger:3, desc:'废墟中散落着大量可用的金属材料。',
+    main:{metal:[5,9]}, sub:{gold:[8,15]}, enemies:['walker','brute','brute','runner','licker'], boss:false },
+  { id:'street',  name:'商业街废墟', icon:'🏙️', danger:3, desc:'银行的保险柜还没有被完全搬空。',
+    main:{gold:[35,60]}, sub:{metal:[3,6]}, enemies:['runner','runner','brute','licker','licker'], boss:false },
+  { id:'base',    name:'军事基地', icon:'🎖️', danger:4, desc:'武装到牙齿，但驻守的已不是人类。有大变异体坐镇。',
+    main:{metal:[7,11]}, sub:{med:[2,4],gold:[15,25]}, enemies:['brute','licker','runner','runner','brute','licker'], boss:true },
+];
+
+/* 天赋：招募角色随机获得1~3个（最多3个，互不重复；等概率；作用于基础值，随升级同步成长） */
+DATA.TALENTS = [
+  { id:'strong',   name:'强壮',   desc:'生命上限 +15%', apply:c=>c.baseMaxHp=Math.round(c.baseMaxHp*1.15), good:true },
+  { id:'immortal', name:'不灭',   desc:'生命上限 +25% 且防御 +50%', apply:c=>{c.baseMaxHp=Math.round(c.baseMaxHp*1.25); c.baseDef=Math.round(c.baseDef*1.5);}, good:true },
+  { id:'ironwall', name:'铁壁',   desc:'防御 +20%', apply:c=>c.baseDef=Math.round(c.baseDef*1.2), good:true },
+  { id:'hunter',   name:'猎人',   desc:'暴击率 +8%', apply:c=>c.critRate+=8, good:true },
+  { id:'sniper',   name:'神射手', desc:'攻击范围 +1', apply:c=>c.range+=1, good:true },
+  { id:'tough',    name:'耐磨',   desc:'体力上限 +25', apply:c=>c.baseMaxStamina+=25, good:true },
+  { id:'athlete',  name:'健将',   desc:'移速 +1 且体力上限 +25%', apply:c=>{c.move+=1; c.baseMaxStamina=Math.round(c.baseMaxStamina*1.25);}, good:true },
+  { id:'brave',    name:'勇猛',   desc:'攻击力 +15%', apply:c=>c.baseAtk=Math.round(c.baseAtk*1.15), good:true },
+  { id:'eagle',    name:'鹰眼',   desc:'暴击伤害 +30%', apply:c=>c.critDmg+=30, good:true },
+  { id:'frugal',   name:'节俭',   desc:'每天少消耗 1 份食物', apply:c=>{c.frugalTalent=true}, good:true },
+  { id:'sick',     name:'病弱',   desc:'生命上限 -12%（负面）', apply:c=>c.baseMaxHp=Math.round(c.baseMaxHp*.88), good:false },
+  { id:'glutton',  name:'贪吃',   desc:'每天额外消耗 1 份食物（负面）', apply:c=>{c.gluttonTalent=true}, good:false },
+  { id:'frail',    name:'柔弱',   desc:'攻击力 -20%（负面）', apply:c=>c.baseAtk=Math.round(c.baseAtk*.8), good:false },
+  { id:'dull',     name:'迟钝',   desc:'防御 -15%（负面）', apply:c=>c.baseDef=Math.round(c.baseDef*.85), good:false },
+];
+
+/* 天气 */
+DATA.WEATHERS = [
+  { id:'sunny', name:'☀️ 晴朗', desc:'视野良好，无额外影响。' },
+  { id:'rain',  name:'🌧️ 下雨', desc:'雨水浸透泥泞，战斗中所有丧尸移速 -1。' },
+  { id:'fog',   name:'🌫️ 浓雾', desc:'能见度极低，战斗中所有单位攻击范围 -1（最低为1）。' },
+];
+
+/* 地形 */
+DATA.TERRAIN = {
+  plain:  { name:'空地',  icon:'',  moveCost:1, walk:true },
+  water:  { name:'积水',  icon:'🌊', moveCost:0, walk:false, desc:'不可通行' },
+  rubble: { name:'石头',  icon:'🪨', moveCost:2, walk:false, desc:'不可通行的障碍物，双方都无法进入；用攻击可将其清除开路（1次攻击）' },
+  ruin:   { name:'废墟',  icon:'🧱', moveCost:0, walk:false, desc:'阻挡通行' },
+  crate:  { name:'物资箱', icon:'🧰', moveCost:1, walk:true,  desc:'走上即拾取随机物资' },
+};
+
+/* 里程碑事件（每10天触发，2选1） */
+DATA.MILESTONES = [
+  { t:'流浪商人', d:'一名背着大包的流浪商人敲响了营地大门，他愿意做一笔交易。',
+    a:{t:'用 40 金币换 6 食物 + 2 药物', f:g=>{ if(g.res.gold<40){UI.toast('金币不足，商人摇了摇头离开了');return;} g.res.gold-=40; g.res.food+=6; g.res.med+=2; UI.toast('交易完成，商人远去'); }},
+    b:{t:'用 1 药物换 25 金币', f:g=>{ if(g.res.med<1){UI.toast('没有药物，商人摇了摇头离开了');return;} g.res.med-=1; g.res.gold+=25; UI.toast('交易完成，商人远去'); }} },
+  { t:'军方空投', d:'远处传来运输机的轰鸣，一只补给箱的降落伞缓缓落在附近。',
+    a:{t:'前去搜寻（获得 4 金属 + 3 食物）', f:g=>{ g.res.metal+=4; g.res.food+=3; UI.toast('找到了完好的补给箱！'); }},
+    b:{t:'不去冒险（获得 10 金币捡漏）', f:g=>{ g.res.gold+=10; UI.toast('你把消息卖给了其他幸存者'); }} },
+  { t:'丧尸潮预警', d:'无线电传来断续的警告：一大群丧尸正在向这片城区移动！',
+    a:{t:'加固营地（消耗 5 金属，全员最大生命 +10）', f:g=>{ if(g.res.metal<5){UI.toast('金属不足，只能听天由命');Game.hordeWarning=true;return;} g.res.metal-=5; g.chars.forEach(c=>{ if(!c.dead) c.baseMaxHp+=10; }); Game.recalcAll(); UI.toast('营地加固完成，士气大振'); }},
+    b:{t:'被动防御（下一场探险丧尸 +2，但奖励翻倍）', f:g=>{ Game.hordeWarning=true; UI.toast('你做好了苦战的准备…'); }} },
+  { t:'迷路的孩童', d:'哨兵发现一个在废墟中迷路的孩子，他已经几天没吃东西了。',
+    a:{t:'收留（消耗 2 食物，第二天随机一名成员经验 +80）', f:g=>{ if(g.res.food<2){UI.toast('食物太少，只能给他指了指安全区的方向');return;} g.res.food-=2; const alive=g.chars.filter(c=>!c.dead); if(alive.length){const c=alive[Math.floor(Math.random()*alive.length)]; c.exp+=80; UI.toast(c.name+' 带 孩子 熟悉了营地，获得经验');} }},
+    b:{t:'给点食物送走（消耗 1 食物，获得 15 金币感谢）', f:g=>{ if(g.res.food<1){UI.toast('你连自己都喂不饱…孩子失望地离开了');return;} g.res.food-=1; g.res.gold+=15; UI.toast('孩子的家人用金币感谢了你'); }} },
+  { t:'Old Friend 老友的来信', d:'一名旧识通过无线电联系上你，他的小队急需药物救治伤员。',
+    a:{t:'援助 2 药物（获得 30 金币 + 1 名随机幸存者投奔）', f:g=>{ if(g.res.med<2){UI.toast('没有多余的药物，你只能拒绝');return;} g.res.med-=2; g.res.gold+=30; Game.addRecruitJoin(); UI.toast('几天后，他带着一名幸存者前来投奔'); }},
+    b:{t:'婉拒（无事发生）', f:g=>{ UI.toast('你沉默地关掉了无线电'); }} },
+];
+
+/* 幸存者随机名（60 个，招募时不会与在队成员重名） */
+DATA.NAMES = [
+  '老陈','阿芳','大伟','小满','铁柱','秀兰','阿凯','老周','小蝶','大刘',
+  '阿豪','春妮','建国','淑芬','志强','翠花','子轩','一鸣','雨薇','昊天',
+  '老葛','阿蓉','大山','小北','铁蛋','秀英','阿杰','老魏','小柔','大鹏',
+  '阿丽','建军','玉芬','卫东','招娣','文博','天佑','慧琳','皓宇','老蔡',
+  '阿香','大勇','小柯','老韩','翠平','志刚','雅婷','俊杰','小虎','老聂',
+  '春生','阿福','大妮','志明','淑仪','家豪','雪梅','老汤','阿豹','小鹿'
+];
+
+/* 营地建筑 */
+DATA.KITCHEN = {
+  name:'厨房', icon:'🍳',
+  buildCost:200, upgradeCost:200, maxLv:5,
+  out:lv=>lv*3,            // 每级产出 3/6/9/12/15
+  workCost:30,             // 当值厨师每天消耗的体力
+};
+
+/* =====================================================
+ *  游戏状态与存档
+ * ===================================================== */
+const SAVE_PREFIX = 'doomcity_save_';
+let uidCounter = 1;
+
+function uid(){ return 'c' + (uidCounter++) + '_' + Date.now().toString(36); }
+function rnd(a,b){ return a + Math.floor(Math.random()*(b-a+1)); }
+function pick(arr){ return arr[Math.floor(Math.random()*arr.length)]; }
+function clone(o){ return JSON.parse(JSON.stringify(o)); }
+
+const Game = {
+  g: null,          // 当前游戏状态
+  currentSlot: 0,   // 当前存档槽
+
+  /* 创建全新游戏状态 */
+  newGame() {
+    uidCounter = 1;
+    const g = {
+      day: 1,
+      weather: 'sunny',
+      res: { gold: 200, med: 3, metal: 10, food: 16 },
+      chars: [],
+      seenMilestones: [],
+      hordeWarning: false,
+      kitchenLv: 0,
+      kitchenChef: null,
+      tutorial: true,
+    };
+    // 初始两名角色：军人 + 平民
+    g.chars.push(Game.createChar('soldier', '林队'));
+    g.chars.push(Game.createChar('civilian', '小满'));
+    Game.recalcAll(g);
+    return g;
+  },
+
+  /* 生成角色（随机 1~3 个天赋，互不重复） */
+  createChar(cls, name, withTalent=true) {
+    const C = DATA.CLASSES[cls];
+    const c = {
+      id: uid(), name: name || pick(DATA.NAMES), cls,
+      level: 1, exp: 0,
+      baseMaxHp: C.base.maxHp, baseAtk: C.base.atk, baseDef: C.base.def, baseMaxStamina: C.base.maxStamina,
+      range: C.base.range, move: C.base.move,
+      critRate: C.base.critRate, critDmg: C.base.critDmg,
+      stamina: 0,
+      injured: false, dead: false,
+      talents: [],          // 天赋id数组（最多3个）
+      gluttonTalent: false, frugalTalent: false,
+      av: C.avatars[Math.floor(Math.random()*C.avatars.length)],  // 职业头像池随机
+    };
+    if (withTalent) Game.rollTalents(c);
+    Game.recalc(c);
+    c.stamina = c.maxStamina;
+    c.hp = c.maxHp;
+    return c;
+  },
+
+  /* 随机天赋数量：1个60% / 2个30% / 3个10%，互不重复 */
+  rollTalents(c) {
+    const r = Math.random();
+    const n = r < 0.6 ? 1 : (r < 0.9 ? 2 : 3);
+    const ids = [];
+    for (let i=0; i<n; i++) {
+      const t = Game.rollTalent(ids);
+      if (!t) break;
+      ids.push(t.id);
+    }
+    c.talents = ids;
+    Game.applyTalents(c);
+  },
+
+  rollTalent(excludeIds=[]) {
+    const pool = DATA.TALENTS.filter(t=>!excludeIds.includes(t.id));
+    if (!pool.length) return null;
+    return pool[Math.floor(Math.random()*pool.length)];  // 等概率
+  },
+
+  /* 重置到职业标准值 → 依次应用所有天赋 → 由 recalc 计算最终值（天赋随升级同步放大） */
+  applyTalents(c) {
+    const C = DATA.CLASSES[c.cls];
+    c.baseMaxHp = C.base.maxHp; c.baseAtk = C.base.atk; c.baseDef = C.base.def;
+    c.baseMaxStamina = C.base.maxStamina;
+    c.range = C.base.range; c.move = C.base.move;
+    c.critRate = C.base.critRate; c.critDmg = C.base.critDmg;
+    c.gluttonTalent = false; c.frugalTalent = false;
+    (c.talents||[]).forEach(id=>{
+      const t = DATA.TALENTS.find(t=>t.id===id);
+      if (t) t.apply(c);
+    });
+  },
+
+  /* 计算角色最终属性：每级 = 基础值 × (1 + 10% × (等级-1))，生命/攻击/防御/体力四项成长 */
+  recalc(c) {
+    const grow = 1 + 0.1 * (c.level - 1);
+    c.maxHp = Math.round(c.baseMaxHp * grow);
+    c.atk = Math.round(c.baseAtk * grow);
+    c.def = Math.round(c.baseDef * grow);
+    c.maxStamina = Math.round(c.baseMaxStamina * grow);
+    // 射程/移速/暴击不随等级成长（天赋直接作用于这些字段）
+  },
+
+  recalcAll(g) {
+    (g||Game.g).chars.forEach(c=>{ if(!c.dead) Game.recalc(c); });
+  },
+
+  /* 经验与升级：升级时生命/体力随上限提升而回复 */
+  expNeed(level){ return level * 100; },
+  gainExp(c, amount) {
+    if (c.dead) return {lv:false};
+    c.exp += amount;
+    let leveled = false;
+    while (c.exp >= Game.expNeed(c.level) && c.level < 30) {
+      c.exp -= Game.expNeed(c.level);
+      c.level++;
+      leveled = true;
+      const dHp = Math.round(c.baseMaxHp * 0.1), dSt = Math.round(c.baseMaxStamina * 0.1);
+      Game.recalc(c);
+      c.hp = Math.min(c.maxHp, c.hp + dHp);
+      c.stamina = Math.min(c.maxStamina, c.stamina + dSt);
+    }
+    return {lv:leveled};
+  },
+
+  /* ---- 资源 ---- */
+  addRes(key, n){ Game.g.res[key] = Math.max(0, Game.g.res[key] + n); },
+
+  /* 渲染主界面（代理到 UI） */
+  renderHome(){ UI.renderHome(); },
+
+  /* 发起探险（桥接到战斗系统） */
+  startExpedition() {
+    if (!UI.teamZone) return;
+    if (!UI.teamSelected.length) { UI.toast('请至少选择 1 名成员出战'); return; }
+    Battle.start(UI.teamZone);
+  },
+
+  /* 里程碑事件：随机幸存者投奔 */
+  addRecruitJoin() {
+    const g = Game.g;
+    if (g.chars.filter(c=>!c.dead).length >= 8) { g.res.gold += 50; UI.toast('队伍已满，对方留下 50 金币表示感谢后离去'); return; }
+    const c = Game.createChar(pick(Object.keys(DATA.CLASSES)));
+    g.chars.push(c);
+    UI.toast(`🎉 ${c.name}（${DATA.CLASSES[c.cls].name}）加入了队伍！`);
+  },
+
+  /* ---- 天数推进：厨房产出 / 晚餐分配 / 恢复 / 天气 ---- */
+  /* 角色每天的食物消耗（职业基准 + 贪吃 +1 / 节俭 -1） */
+  foodCost(c) {
+    return Math.max(0, (DATA.CLASSES[c.cls].food||1) + (c.gluttonTalent?1:0) - (c.frugalTalent?1:0));
+  },
+  /* ateIds：食物不足时玩家手动分配的用餐名单；不传则自动结算（够分全员吃，不够返回待分配） */
+  nextDay(ateIds) {
+    const g = Game.g;
+    const alive = g.chars.filter(c=>!c.dead);
+    // 厨房白天工作（暂存产出，确认过夜时才结算，保证弹窗前不产生副作用）
+    let kitchen = null;
+    if (g.kitchenLv > 0) {
+      const kc = alive.find(c=>c.id===g.kitchenChef);
+      if (!kc) kitchen = { blocked:'nochef' };
+      else if (kc.stamina < DATA.KITCHEN.workCost) kitchen = { blocked:'stamina', chef:kc.name };
+      else kitchen = { pending:DATA.KITCHEN.out(g.kitchenLv), chef:kc.name };
+    }
+    const pending = kitchen && kitchen.pending ? kitchen.pending : 0;
+    // 晚餐：可分配食物 = 存粮 + 厨房今晚产出；够全营需求则自动全员开饭
+    const demand = alive.reduce((s,c)=>s+Game.foodCost(c), 0);
+    const available = g.res.food + pending;
+    let ate = null;
+    if (available >= demand) ate = alive.map(c=>c.id);
+    else if (!ateIds) return { shortage:true, food:g.res.food, pending, demand, kitchen };
+    else ate = ateIds.filter(id=>alive.some(c=>c.id===id));
+    // —— 确认过夜，正式结算 ——
+    g.day++;
+    if (kitchen && kitchen.pending) {
+      g.res.food += kitchen.pending;
+      const kc = alive.find(c=>c.id===g.kitchenChef);
+      if (kc) kc.stamina -= DATA.KITCHEN.workCost;
+      kitchen = { produced:kitchen.pending, chef:kitchen.chef };
+    }
+    const set = new Set(ate);
+    const cost = alive.filter(c=>set.has(c.id)).reduce((s,c)=>s+Game.foodCost(c),0);
+    g.res.food = Math.max(0, g.res.food - cost);
+    // 恢复：吃到的 +50 体力 +50 生命（重伤者回满自愈）；没吃到的什么都不发生——不会掉血、不会饿死
+    alive.forEach(c=>{
+      if (!set.has(c.id)) return;
+      c.stamina = Math.min(c.maxStamina, c.stamina + 50);
+      c.hp = Math.min(c.maxHp, c.hp + 50);
+      if (c.injured && c.hp >= c.maxHp) c.injured = false;
+    });
+    // 天气
+    const wroll = Math.random();
+    g.weather = wroll<0.5 ? 'sunny' : (wroll<0.75 ? 'rain' : 'fog');
+    Game.renderHome();
+    const hungry = alive.filter(c=>!set.has(c.id)).map(c=>c.name);
+    return { shortage:false, ate, hungry, cost, kitchen, starved: hungry.length>0 };
+  },
+  /* 生成一日结算的提示文本（休整 toast / 分配弹窗回调共用） */
+  mealMsg(r) {
+    let msg;
+    if (r.shortage) return '';
+    if (r.starved && r.hungry && r.hungry.length) msg = '⚠️ 粮食不足：' + r.hungry.join('、') + ' 饿着肚子过夜（不掉血，但也不恢复）';
+    else msg = '🛌 全员用餐（-' + r.cost + ' 食物），体力+50 / 生命+50';
+    if (r.kitchen && r.kitchen.produced) msg += '；🍳 ' + r.kitchen.chef + '当值产出 ' + r.kitchen.produced + ' 食物';
+    else if (r.kitchen && r.kitchen.blocked==='nochef') msg += '；⚠️ 厨房未指派厨师，今日无产出';
+    else if (r.kitchen && r.kitchen.blocked==='stamina') msg += '；⚠️ ' + r.kitchen.chef + '体力不足，厨房今日停产';
+    return msg;
+  },
+
+  /* 原地休整：过一天（与探险后回家共用 nextDay 逻辑） */
+  restDay() {
+    const r = Game.nextDay();
+    if (r.shortage) {
+      UI.showFoodAlloc(r, r2=>{
+        Game.saveToSlot(Game.currentSlot, true);
+        UI.toast(Game.mealMsg(r2) || '过夜完成');
+        UI.checkMilestone();
+      });
+      return;
+    }
+    Game.saveToSlot(Game.currentSlot, true);
+    UI.toast(Game.mealMsg(r));
+    UI.checkMilestone();
+  },
+
+  /* ---- 营地建筑 ---- */
+  buildKitchen() {
+    const g = Game.g, K = DATA.KITCHEN;
+    if (g.kitchenLv > 0) return;
+    if (g.res.gold < K.buildCost) { UI.toast('💰 金币不足，建造厨房需要 ' + K.buildCost + ' 金币'); return; }
+    g.res.gold -= K.buildCost;
+    g.kitchenLv = 1;
+    Game.saveToSlot(Game.currentSlot, true);
+    UI.toast('🍳 厨房建造完成！指派厨师当值后开始产出食物');
+    UI.renderBuild(); Game.renderHome();
+  },
+  upgradeKitchen() {
+    const g = Game.g, K = DATA.KITCHEN;
+    if (g.kitchenLv <= 0 || g.kitchenLv >= K.maxLv) return;
+    if (g.res.gold < K.upgradeCost) { UI.toast('💰 金币不足，升级需要 ' + K.upgradeCost + ' 金币'); return; }
+    g.res.gold -= K.upgradeCost;
+    g.kitchenLv++;
+    Game.saveToSlot(Game.currentSlot, true);
+    UI.toast(`🍳 厨房升级到 Lv.${g.kitchenLv}，每日产出提升到 ${K.out(g.kitchenLv)} 份食物`);
+    UI.renderBuild(); Game.renderHome();
+  },
+  assignKitchen(cid) {
+    const g = Game.g;
+    const c = g.chars.find(c=>c.id===cid);
+    if (!c || c.dead || c.cls!=='chef') return;
+    g.kitchenChef = cid;
+    Game.saveToSlot(Game.currentSlot, true);
+    UI.toast(`👨‍🍳 ${c.name} 开始在厨房当值（每天 -30⚡，不能出战）`);
+    UI.renderBuild();
+  },
+  unassignKitchen() {
+    const g = Game.g;
+    const c = g.chars.find(c=>c.id===g.kitchenChef);
+    g.kitchenChef = null;
+    Game.saveToSlot(Game.currentSlot, true);
+    if (c) UI.toast(`${c.name} 已撤出厨房，恢复自由行动`);
+    UI.renderBuild();
+  },
+
+  /* ---- 存档 ---- */
+  serialize() {
+    return JSON.stringify({ v:1, ts:Date.now(), day:Game.g.day, state:Game.g, uid:uidCounter });
+  },
+  saveToSlot(slot, silent) {
+    try {
+      localStorage.setItem(SAVE_PREFIX + slot, Game.serialize());
+      if (!silent) UI.toast('💾 已保存到存档槽 ' + slot);
+      return true;
+    } catch(e) { UI.toast('存档失败：浏览器存储不可用'); return false; }
+  },
+  loadFromSlot(slot) {
+    const raw = localStorage.getItem(SAVE_PREFIX + slot);
+    if (!raw) return null;
+    try {
+      const data = JSON.parse(raw);
+      return data;
+    } catch(e) { return null; }
+  },
+  applySave(data, slot) {
+    Game.g = data.state;
+    Game.currentSlot = slot;
+    uidCounter = data.uid || 1000;
+    // 旧存档迁移到新数值体系（角色基础值重置为职业当前标准）
+    Game.g.chars.forEach(c=>Game.migrateChar(c));
+    // 旧档迁移营地建筑字段
+    if (typeof Game.g.kitchenLv !== 'number') Game.g.kitchenLv = 0;
+    if (Game.g.kitchenChef === undefined) Game.g.kitchenChef = null;
+    Game.renderHome();
+  },
+
+  /* 旧档迁移：兼容旧版单天赋字段(talent) → 转为 talents 数组 → 全字段重置重放天赋（幂等） */
+  migrateChar(c) {
+    const C = DATA.CLASSES[c.cls];
+    if (!C) return;
+    if (!c.av) c.av = C.avatars[Math.floor(Math.random()*C.avatars.length)];
+    if (c.talent && (!c.talents || !c.talents.length)) c.talents = [c.talent];
+    if (!c.talents) c.talents = [];
+    delete c.talent;
+    Game.applyTalents(c);
+    const oldMax = c.maxHp || c.baseMaxHp;
+    Game.recalc(c);
+    c.hp = Math.max(1, Math.round(c.hp / oldMax * c.maxHp));
+    c.stamina = Math.min(c.maxStamina, c.stamina||0);
+  },
+  deleteSlot(slot) { localStorage.removeItem(SAVE_PREFIX + slot); },
+  exportCode() {
+    return btoa(unescape(encodeURIComponent(Game.serialize())));
+  },
+  importCode(code) {
+    try {
+      const data = JSON.parse(decodeURIComponent(escape(atob(code.trim()))));
+      if (!data.state || !data.state.chars) throw 0;
+      return data;
+    } catch(e) { return null; }
+  },
+};
+
+/* =====================================================
+ *  UI 界面管理
+ * ===================================================== */
+const UI = {
+  toastTimer: null,
+  showScreen(id) {
+    document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+    document.getElementById(id).classList.add('active');
+  },
+  backHome() { Game.renderHome(); UI.showScreen('scr-home'); },
+  toast(msg) {
+    const t = document.getElementById('toast');
+    t.textContent = msg; t.style.display = 'block';
+    clearTimeout(UI.toastTimer);
+    UI.toastTimer = setTimeout(()=>{ t.style.display='none'; }, 2200);
+  },
+  modal(html) {
+    const m = document.getElementById('modal-body');
+    m.innerHTML = html;
+    document.getElementById('modal-mask').classList.add('show');
+  },
+  closeModal() { document.getElementById('modal-mask').classList.remove('show'); },
+
+  weatherInfo() { return DATA.WEATHERS.find(w=>w.id===Game.g.weather) || DATA.WEATHERS[0]; },
+
+  /* 角色天赋标签（通用） */
+  talentTags(c, withDesc=false) {
+    return (c.talents||[]).map(id=>{
+      const t = DATA.TALENTS.find(t=>t.id===id);
+      if (!t) return '';
+      return `<span class="tag ${t.good?'':'red'}" ${withDesc?`title="${t.desc}"`:''}>${t.name}${withDesc?'：'+t.desc:''}</span>`;
+    }).join(' ') || '<span class="tag">无天赋</span>';
+  },
+
+  /* ---- 主界面 ---- */
+  renderHome() {
+    const g = Game.g; if (!g) return;
+    document.getElementById('home-day').textContent = `第 ${g.day} 天`;
+    document.getElementById('home-weather').textContent = UI.weatherInfo().name;
+    document.getElementById('res-gold').textContent = g.res.gold;
+    document.getElementById('res-med').textContent = g.res.med;
+    document.getElementById('res-metal').textContent = g.res.metal;
+    document.getElementById('res-food').textContent = g.res.food;
+    const injured = g.chars.filter(c=>c.injured&&!c.dead).length;
+    const badge = document.getElementById('badge-injured');
+    badge.style.display = injured ? 'flex' : 'none';
+    badge.textContent = injured;
+    document.getElementById('fb-chars').textContent = `${g.chars.filter(c=>!c.dead).length} 名幸存者` + (injured?` / ${injured} 人重伤`:'');
+    // 场景：雨天遮罩
+    const scene = document.querySelector('.base-scene');
+    scene.style.filter = g.weather==='rain' ? 'brightness(.72) saturate(.8)' : (g.weather==='fog' ? 'brightness(.8) contrast(.85)' : '');
+    document.getElementById('scene-label').textContent = `幸存者营地 · 第${g.day}天 · ${UI.weatherInfo().name}`;
+    const warn = g.chars.some(c=>c.injured&&!c.dead) || g.res.food < g.chars.filter(c=>!c.dead).length;
+    document.getElementById('home-tip').textContent = warn
+      ? '⚠️ 注意：有成员重伤或食物储备不足，请及时处理'
+      : '提示：每次探险或休整都会消耗食物并推进天数';
+  },
+
+  /* ---- 人物信息 ---- */
+  openChars() { UI.renderChars(); UI.showScreen('scr-chars'); },
+
+  /* ---- 营地建筑 ---- */
+  openBuild() { UI.renderBuild(); UI.showScreen('scr-build'); },
+  renderBuild() {
+    const g = Game.g; if (!g) return;
+    const K = DATA.KITCHEN;
+    document.getElementById('build-gold').textContent = '💰 ' + g.res.gold;
+    const lv = g.kitchenLv;
+    const chef = g.kitchenChef ? g.chars.find(c=>c.id===g.kitchenChef && !c.dead) : null;
+    let html = `<div class="panel"><h3>🍳 厨房 ${lv>0 ? 'Lv.'+lv : '（未建造）'}</h3>
+      <div class="wiki-p" style="font-size:12px;color:var(--txt2)">
+        指派厨师当值，每天结算时产出食物。当值厨师每天消耗 ${K.workCost}⚡ 体力（体力不足则当天停产），且<b>不能参与探险出战</b>。<br>
+        产出：Lv.1→3 · Lv.2→6 · Lv.3→9 · Lv.4→12 · Lv.5→15 份/天
+      </div>`;
+    if (lv === 0) {
+      html += `<div class="row" style="margin-top:10px">
+        <button class="btn primary" ${g.res.gold<K.buildCost?'disabled':''} onclick="Game.buildKitchen()">🔨 建造厨房（${K.buildCost} 💰）</button>
+      </div>`;
+    } else {
+      html += `<div class="row" style="margin-top:10px;flex-wrap:wrap">
+        <span class="tag yellow">每日产出 ${K.out(lv)} 🍞</span>
+        ${lv < K.maxLv
+          ? `<button class="btn primary small" ${g.res.gold<K.upgradeCost?'disabled':''} onclick="Game.upgradeKitchen()">⬆️ 升级到 Lv.${lv+1}（${K.upgradeCost} 💰）</button>`
+          : '<span class="tag">已满级</span>'}
+      </div>`;
+      if (chef) {
+        html += `<div class="char-card" style="margin-top:10px;align-items:center">
+          <div class="avatar ${chef.cls.slice(0,3)}" style="width:44px;height:44px;font-size:20px">${DATA.CLASSES[chef.cls].icon}</div>
+          <div style="flex:1">
+            <b>${chef.name}</b> <span class="tag">当值厨师</span><br>
+            <span style="font-size:12px;color:var(--txt2)">⚡ ${chef.stamina}/${chef.maxStamina}（体力 &lt;30 时停产）</span>
+          </div>
+          <button class="btn warn small" onclick="Game.unassignKitchen()">撤职</button>
+        </div>`;
+      } else {
+        html += `<div class="wiki-p" style="color:var(--red2);margin-top:8px">⚠️ 未指派厨师，厨房空转没有产出。从下方名单指派，或去招募广播找一位厨师（150 💰）。</div>`;
+      }
+    }
+    html += `</div>`;
+
+    // 厨师名单
+    const chefs = g.chars.filter(c=>c.cls==='chef' && !c.dead);
+    html += `<div class="panel"><h3>👨‍🍳 队内厨师（${chefs.length}）</h3>`;
+    if (!chefs.length) {
+      html += `<div class="wiki-p">队里还没有厨师。招募广播里厨师只需 150 💰，是全队性价比最高的口粮保障。</div>`;
+    } else {
+      chefs.forEach(c=>{
+        const on = g.kitchenChef === c.id;
+        const canWork = c.stamina >= K.workCost;
+        html += `<div class="char-card" style="align-items:center">
+          <div class="avatar ${c.cls.slice(0,3)}" style="width:44px;height:44px;font-size:20px">${DATA.CLASSES[c.cls].icon}</div>
+          <div style="flex:1">
+            <b>${c.name}</b> <span class="tag">Lv.${c.level}</span> ${c.injured?'<span class="tag red">重伤</span>':''}<br>
+            <span style="font-size:12px;color:${canWork?'var(--txt2)':'var(--red2)'}">⚡ ${c.stamina}/${c.maxStamina}${canWork?'（可当值）':'（体力不足）'}</span>
+          </div>
+          ${on
+            ? '<span class="tag blue">当值中</span>'
+            : `<button class="btn primary small" onclick="Game.assignKitchen('${c.id}')">指派</button>`}
+        </div>`;
+      });
+    }
+    html += `</div>`;
+    document.getElementById('build-page').innerHTML = html;
+  },
+
+  /* ---- 晚餐分配弹窗（粮食不足时） ---- */
+  foodAllocInfo: null,
+  foodOnDone: null,
+  foodSel: new Set(),
+  showFoodAlloc(info, onDone) {
+    const g = Game.g;
+    UI.foodAllocInfo = info;
+    UI.foodOnDone = onDone || null;
+    const avail = info.food + (info.pending||0);
+    UI.modal(`<h3>⚠️ 晚餐分配</h3>
+      <div class="wiki-p">存粮 ${info.food} 份${info.pending?`，厨房今晚还将产出 ${info.pending} 份`:''}，全营需求 ${info.demand} 份——<b>粮食不够所有人吃</b>。请勾选今晚用餐的成员：吃到的人恢复 50 体力 + 50 生命（重伤者回满自愈）；没吃到的人<b>不会掉血、不会饿死</b>，但当天也不恢复。</div>
+      <div id="food-rows"></div>
+      <div class="row" style="margin-top:12px"><button class="btn primary" style="flex:1" onclick="UI.confirmFoodAlloc()">确认开饭</button></div>`);
+    UI.renderFoodRows();
+  },
+  renderFoodRows() {
+    const g = Game.g;
+    const alive = g.chars.filter(c=>!c.dead);
+    const info = UI.foodAllocInfo;
+    const avail = info.food + (info.pending||0);
+    const rows = alive.map(c=>{
+      const on = UI.foodSel.has(c.id);
+      return `<div class="char-card ${on?'selected':''}" style="padding:8px 10px;margin-bottom:6px;align-items:center" onclick="UI.toggleFood('${c.id}')">
+        <div class="avatar ${DATA.CLASSES[c.cls].color}" style="width:40px;height:40px;font-size:18px">${c.av||DATA.CLASSES[c.cls].icon}</div>
+        <div style="flex:1">
+          <div><b>${c.name}</b> <span class="tag">${DATA.CLASSES[c.cls].name}</span>${c.injured?'<span class="tag red">重伤</span>':''}</div>
+          <div style="font-size:11px;color:var(--txt2)">需求 ${Game.foodCost(c)} 份 · ❤️${c.hp}/${c.maxHp}　⚡${c.stamina}/${c.maxStamina}</div>
+        </div>
+        <div style="color:${on?'var(--sel)':'var(--dim)'};font-size:13px">${on?'✔ 用餐':'＋'}</div>
+      </div>`;
+    }).join('');
+    const used = alive.filter(c=>UI.foodSel.has(c.id)).reduce((s,c)=>s+Game.foodCost(c),0);
+    document.getElementById('food-rows').innerHTML = rows +
+      `<div class="row" style="justify-content:space-between;font-size:12px;color:${avail-used>=0?'var(--txt2)':'var(--red2)'};margin-top:4px">
+        <span>已分配 ${used} 份 / 可用 ${avail} 份</span><span>剩余 ${avail-used} 份</span></div>`;
+  },
+  toggleFood(id) {
+    const g = Game.g;
+    const c = g.chars.find(c=>c.id===id); if (!c) return;
+    if (UI.foodSel.has(id)) { UI.foodSel.delete(id); }
+    else {
+      const alive = g.chars.filter(c=>!c.dead);
+      const info = UI.foodAllocInfo;
+      const avail = info.food + (info.pending||0);
+      const used = alive.filter(x=>UI.foodSel.has(x.id)).reduce((s,x)=>s+Game.foodCost(x),0);
+      if (used + Game.foodCost(c) > avail) { UI.toast('🍞 存粮不够了，先取消一些人的用餐'); return; }
+      UI.foodSel.add(id);
+    }
+    UI.renderFoodRows();
+  },
+  confirmFoodAlloc() {
+    const r2 = Game.nextDay([...UI.foodSel]);
+    UI.closeModal();
+    const cb = UI.foodOnDone;
+    UI.foodOnDone = null; UI.foodAllocInfo = null; UI.foodSel = new Set();
+    if (cb) cb(r2);
+  },
+
+  renderChars() {
+    const g = Game.g;
+    const el = document.getElementById('char-list');
+    if (!g.chars.some(c=>!c.dead)) { el.innerHTML = '<div class="panel">所有成员都牺牲了…通过招募广播寻找新的幸存者吧。</div>'; return; }
+    el.innerHTML = g.chars.filter(c=>!c.dead).map(c=>{
+      const C = DATA.CLASSES[c.cls];
+      const hpPct = Math.round(c.hp/c.maxHp*100), stPct = Math.round(c.stamina/c.maxStamina*100);
+      const skillHtml = C.skill
+        ? `<div class="wiki-p" style="margin-top:6px"><span class="tag blue">技能 · ${C.skill.name}</span> ${C.skill.desc}</div>`
+        : '<div class="wiki-p" style="margin-top:6px"><span class="tag">无主动技能</span></div>';
+      const inj = c.injured ? '<span class="tag red">重伤</span>' : (c.hp<c.maxHp? '<span class="tag yellow">受伤</span>':'');
+      const healBtn = c.injured
+        ? `<button class="btn small warn" onclick="UI.healInjured('${c.id}')">💊 治疗 (2药物)</button>`
+        : (!c.injured && c.hp<c.maxHp ? `<button class="btn small" onclick="UI.useMed('${c.id}')">💊 使用药物 (1)</button>` : '');
+      return `<div class="char-card ${c.injured?'disabled':''}">
+        <div class="avatar ${C.color}">${c.av||C.icon}<span class="lvl">Lv.${c.level}</span></div>
+        <div style="flex:1;min-width:0">
+          <div class="row"><b>${c.name}</b><span class="tag">${C.name}</span>${inj}</div>
+          <div class="row" style="flex-wrap:wrap;margin-top:3px">${UI.talentTags(c, true)}</div>
+          <div class="hpbar ${hpPct<35?'low':''}"><div style="width:${hpPct}%"></div></div>
+          <div class="stbar"><div style="width:${stPct}%"></div></div>
+          <div class="wiki-p" style="margin-top:4px">❤️ ${c.hp}/${c.maxHp}　⚡ ${c.stamina}/${c.maxStamina}　📈 经验 ${c.exp}/${Game.expNeed(c.level)}</div>
+          <div class="attr-grid">
+            <div class="attr-cell"><b>🗡️ ${c.atk}</b><span>攻击</span></div>
+            <div class="attr-cell"><b>🛡️ ${c.def}</b><span>防御</span></div>
+            <div class="attr-cell"><b>🎯 ${c.range}</b><span>射程</span></div>
+            <div class="attr-cell"><b>👟 ${c.move}</b><span>移速</span></div>
+            <div class="attr-cell"><b>✨ ${c.critRate}%</b><span>暴击率</span></div>
+            <div class="attr-cell"><b>💥 ${c.critDmg}%</b><span>暴伤</span></div>
+            <div class="attr-cell" style="grid-column:span 2"><b>${c.stamina>=15?'可出战':'体力不足'}</b><span>状态</span></div>
+          </div>
+          ${skillHtml}
+          <div class="row" style="margin-top:8px">${healBtn}</div>
+        </div>
+      </div>`;
+    }).join('');
+  },
+  useMed(id) {
+    const c = Game.g.chars.find(x=>x.id===id);
+    if (!c || Game.g.res.med<1) { UI.toast('药物不足'); return; }
+    Game.g.res.med--;
+    c.hp = Math.min(c.maxHp, c.hp + 60);
+    UI.toast(`🧪 ${c.name} 使用了药物，恢复 60 生命`);
+    Game.saveToSlot(Game.currentSlot, true);
+    UI.renderChars();
+  },
+  healInjured(id) {
+    const c = Game.g.chars.find(x=>x.id===id);
+    if (!c || Game.g.res.med<2) { UI.toast('治疗重伤需要 2 份药物'); return; }
+    Game.g.res.med -= 2;
+    c.injured = false;
+    c.hp = Math.max(c.hp, Math.round(c.maxHp*0.4));
+    UI.toast(`💉 ${c.name} 的伤势已治愈，恢复了战斗能力`);
+    Game.saveToSlot(Game.currentSlot, true);
+    UI.renderChars();
+  },
+
+  /* ---- 招募广播 ---- */
+  openRecruit() { Recruit.ensureCandidates(); UI.renderRecruit(); UI.showScreen('scr-recruit'); },
+  renderRecruit() {
+    const g = Game.g;
+    const el = document.getElementById('recruit-list');
+    if (g.chars.filter(c=>!c.dead).length >= 8) {
+      el.innerHTML = '<div class="panel">⚠️ 队伍已满（上限 8 人）。已有足够多的人手，除非有人牺牲，否则无法继续招募。</div>';
+      return;
+    }
+    el.innerHTML = Recruit.candidates.map((c,i)=>{
+      const C = DATA.CLASSES[c.cls];
+      const tdesc = (c.talents||[]).map(id=>{ const t=DATA.TALENTS.find(x=>x.id===id); return t?t.desc:''; }).filter(Boolean).join('、');
+      return `<div class="char-card recruit-card">
+        <div class="avatar ${C.color}">${c.av||C.icon}<span class="lvl">Lv.1</span></div>
+        <div style="flex:1;min-width:0">
+          <div class="row" style="flex-wrap:wrap"><b>${c.name}</b><span class="tag">${C.name}</span>${UI.talentTags(c)}</div>
+          <div class="wiki-p" style="margin-top:2px">❤️${c.maxHp} 🗡️${c.atk} 🛡️${c.def} 🎯${c.range} 👟${c.move} ✨${c.critRate}%${tdesc?' ｜ 天赋：'+tdesc:''}</div>
+          <div class="cand-actions">
+            <button class="btn primary small" onclick="Recruit.hire(${i})">招募（${C.price} 💰）</button>
+            <button class="btn small" onclick="Recruit.preview(${i})">详情</button>
+          </div>
+        </div>
+      </div>`;
+    }).join('') || '<div class="panel">暂无候选者，请点击右上角"播报"。</div>';
+  },
+
+  /* ---- 探险区域 ---- */
+  openZones() {
+    const el = document.getElementById('zone-list');
+    el.innerHTML = DATA.ZONES.map(z=>{
+      const mainStr = Object.entries(z.main).map(([k,v])=>`${UI.resIcon(k)} ${v[0]}-${v[1]}`).join('　');
+      const subStr = Object.entries(z.sub).map(([k,v])=>`${UI.resIcon(k)} ${v[0]}-${v[1]}`).join('　');
+      return `<div class="zone-card" onclick="UI.openTeam('${z.id}')">
+        <div class="zic">${z.icon}</div>
+        <div style="flex:1">
+          <div class="zt">${z.name} <span class="danger-stars">${'★'.repeat(z.danger)}</span></div>
+          <div class="zd">${z.desc}</div>
+          <div class="zd" style="margin-top:4px"><b style="color:var(--txt)">主要产出：</b>${mainStr}<br><b style="color:var(--txt)">次要产出：</b>${subStr}　＋ 战斗中拾取物资箱</div>
+        </div>
+        <div style="color:var(--green2)">›</div>
+      </div>`;
+    }).join('');
+    UI.showScreen('scr-zones');
+  },
+  resIcon(k){ return {gold:'💰',med:'💊',metal:'⚙️',food:'🍞'}[k]||k; },
+
+  /* ---- 出战编队 ---- */
+  teamZone: null, teamSelected: [],
+  openTeam(zoneId) {
+    UI.teamZone = DATA.ZONES.find(z=>z.id===zoneId);
+    UI.teamSelected = [];
+    document.getElementById('team-zone-name').textContent = `出战 · ${UI.teamZone.name}`;
+    UI.renderTeam();
+    UI.showScreen('scr-team');
+  },
+  renderTeam() {
+    const g = Game.g, z = UI.teamZone;
+    const lim = 6;
+    document.getElementById('team-limit').textContent = `目标区域：${z.icon} ${z.name}（危险度 ${'★'.repeat(z.danger)}）｜ 最多 ${lim} 人出战 ｜ 每人消耗 15 ⚡体力`;
+    const chefId = g.kitchenChef;
+    const available = g.chars.filter(c=>!c.dead && !c.injured && c.stamina>=15 && c.id!==chefId);
+    const warn = document.getElementById('team-stamina-warn');
+    if (available.length===0) {
+      warn.style.display='block';
+      warn.textContent = chefId
+        ? '没有可出战的成员：需要体力 ≥15 且未重伤的幸存者（厨房当值的厨师不能出战）。可以先休整恢复体力，或治疗重伤成员。'
+        : '没有可出战的成员：需要体力 ≥15 且未重伤的幸存者。可以先休整恢复体力，或治疗重伤成员。';
+    } else warn.style.display='none';
+    document.getElementById('team-list').innerHTML = g.chars.filter(c=>!c.dead).map(c=>{
+      const C = DATA.CLASSES[c.cls];
+      const onDuty = c.id===chefId;
+      const ok = !c.injured && c.stamina>=15 && !onDuty;
+      const sel = UI.teamSelected.includes(c.id);
+      return `<div class="char-card ${sel?'selected':''} ${ok?'':'disabled'}" onclick="${ok?`UI.toggleTeam('${c.id}')`:''}">
+        <div class="avatar ${C.color}">${c.av||C.icon}<span class="lvl">Lv.${c.level}</span></div>
+        <div style="flex:1">
+          <div class="row"><b>${c.name}</b><span class="tag">${C.name}</span>${onDuty?'<span class="tag yellow">🏠 厨房当值</span>':''}${c.injured?'<span class="tag red">重伤</span>':''}</div>
+          <div class="wiki-p">❤️ ${c.hp}/${c.maxHp}　⚡ ${c.stamina}/${c.maxStamina}　🗡️${c.atk} 🛡️${c.def} 🎯${c.range} 👟${c.move}　✨${c.critRate}% 💥${c.critDmg}%</div>
+          ${C.skill?`<div class="wiki-p"><span class="tag blue">${C.skill.name}</span>${C.skill.range!==undefined&&C.skill.range!==c.range?`<span class="tag yellow">技能射程 ${C.skill.range}</span>`:''}</div>`:''}
+          <div class="row" style="flex-wrap:wrap;margin-top:3px">${UI.talentTags(c)}</div>
+        </div>
+        <div style="color:${sel?'var(--sel)':'var(--dim)'};font-size:18px">${onDuty?'🍳':(sel?'✔':'＋')}</div>
+      </div>`;
+    }).join('');
+  },
+  toggleTeam(id) {
+    const i = UI.teamSelected.indexOf(id);
+    if (i>=0) UI.teamSelected.splice(i,1);
+    else {
+      if (UI.teamSelected.length>=6) { UI.toast('最多选择 6 人出战'); return; }
+      UI.teamSelected.push(id);
+    }
+    UI.renderTeam();
+  },
+
+  /* ---- 物资仓库 ---- */
+  openInv() { UI.renderInv(); UI.showScreen('scr-inv'); },
+  renderInv() {
+    const g = Game.g;
+    const medNote = g.chars.some(c=>c.cls==='doctor'&&!c.dead) ? '<span class="tag blue">队内有医生 · 治疗消耗减半优惠已激活</span>' : '';
+    document.getElementById('inv-list').innerHTML = `
+      <div class="panel"><h3>📦 当前物资</h3>${medNote}
+        <div class="attr-grid" style="grid-template-columns:repeat(2,1fr);margin-top:8px">
+          <div class="attr-cell"><b>💰 ${g.res.gold}</b><span>金币</span></div>
+          <div class="attr-cell"><b>💊 ${g.res.med}</b><span>药物</span></div>
+          <div class="attr-cell"><b>⚙️ ${g.res.metal}</b><span>金属</span></div>
+          <div class="attr-cell"><b>🍞 ${g.res.food}</b><span>食物</span></div>
+        </div>
+      </div>
+      <div class="panel"><h3>💊 药物使用说明</h3>
+        <div class="wiki-p">· 在<b>人物信息</b>页对受伤成员使用：1 份药物恢复 60 生命${g.chars.some(c=>c.cls==='doctor'&&!c.dead)?'（队内有医生：<b>1 份药物可治疗重伤</b>）':''}<br>· 治疗重伤成员：需要 ${g.chars.some(c=>c.cls==='doctor'&&!c.dead)?'1':'2'} 份药物<br>· 药物主要在<b>市中心医院</b>区域获得</div>
+      </div>
+      <div class="panel"><h3>🍞 食物消耗</h3>
+        <div class="wiki-p">每天结束时每名幸存者按职业消耗食物：<b>平民 1 / 格斗家 2 / 猎人 2 / 医生 2 / 侦察兵 2 / 厨师 2 / 军人 3</b>（节俭 −1，贪吃 +1）。断粮时全员损失生命且无法恢复体力。食物主要在<b>废弃超市</b>区域获得。</div>
+      </div>
+      <div class="panel"><h3>⚙️ 金属 / 💰 金币用途</h3>
+        <div class="wiki-p">· <b>金币</b>：招募幸存者、刷新招募广播、里程碑交易<br>· <b>金属</b>：里程碑事件中的营地加固等用途<br>（物资主要通过外出探险获得）</div>
+      </div>`;
+  },
+
+  /* ---- 游戏百科 ---- */
+  openWiki() {
+    const el = document.getElementById('wiki-content');
+    const clsRows = Object.entries(DATA.CLASSES).map(([k,C])=>{
+      const b = C.base;
+      return `<tr><td><b>${C.icon} ${C.name}</b></td><td>${b.maxHp}</td><td>${b.atk}</td><td>${b.def}</td><td>${b.range}</td><td>${b.move}</td><td>${b.critRate}%</td><td>${b.maxStamina}</td><td>${C.price}💰</td></tr>`;
+    }).join('');
+    const skillRows = Object.entries(DATA.CLASSES).map(([k,C])=>{
+      const sk = C.skill;
+      return `<tr><td><b>${C.icon} ${C.name}</b></td><td>${C.food} 份/天</td><td>${sk?sk.name+'：'+sk.desc:'无'}</td></tr>`;
+    }).join('');
+    const zomRows = Object.entries(DATA.ZOMBIES).map(([k,Z])=>{
+      const b = Z.base;
+      return `<tr><td><b>${Z.icon} ${Z.name}</b></td><td>${b.maxHp}</td><td>${b.atk}</td><td>${b.def}</td><td>${b.move}</td><td>${b.range}</td><td>✨${b.critRate}% / 💥${b.critDmg}%</td><td>${Z.desc}</td></tr>`;
+    }).join('');
+    const terRows = Object.entries(DATA.TERRAIN).filter(([k,t])=>t.desc||k==='plain').map(([k,t])=>
+      `<tr><td><b>${t.icon||'⬜'} ${t.name}</b></td><td>${t.desc||'无特殊效果'}</td></tr>`).join('');
+    const talentRows = DATA.TALENTS.map(t=>
+      `<tr><td><b>${t.name}</b>${t.good?'':' <span class="tag red">负面</span>'}</td><td>${t.desc}</td></tr>`).join('');
+    const secGoal = `
+      <div class="wiki-sec panel"><h4>🎯 游戏目标</h4>
+        <div class="wiki-p">你是一支幸存者小队的领袖。在丧尸横行的城市中<b>收集物资、招募队员、生存下去</b>。游戏没有固定结局——天数越深丧尸越强，每 10 天会触发一次<b>里程碑事件</b>，看你能否带领队伍走得比谁都远。</div>
+      </div>`;
+    const secLoop = `
+      <div class="wiki-sec panel"><h4>🔄 生存循环</h4>
+        <div class="wiki-p">
+        · <b>体力</b>：外出探险每人消耗 15 点；吃到晚饭时恢复 50 点<br>
+        · <b>生命恢复</b>：吃到晚饭时每天 +50 生命（重伤者回满后<b>自动解除重伤</b>，药物则可立即治愈）<br>
+        · <b>食物</b>：每天每名成员按职业消耗食物——<b>平民 1 / 厨师·格斗家·猎人·医生·侦察兵 2 / 军人 3</b>（贪吃天赋额外 +1，节俭天赋 −1）；<b>粮食不够全营吃时，会弹出晚餐分配让你勾选谁吃</b>——吃到的人恢复 50 体力+50 生命，没吃到的人不会掉血、不会饿死，但当天什么都不恢复<br>
+        · <b>药物</b>：治疗受伤 / 重伤成员（立即回满并解除重伤）<br>
+        · <b>天数</b>：每次探险归来或原地休整都会推进 1 天，同时刷新天气与丧尸强度
+        </div>
+      </div>`;
+    const secBuild = `
+      <div class="wiki-sec panel"><h4>🏠 营地建筑</h4>
+        <div class="wiki-p">
+        · <b>厨房</b>：200 💰 建造，之后每 200 💰 升一级，最高 Lv.5<br>
+        · 产出：Lv.1→3 / Lv.2→6 / Lv.3→9 / Lv.4→12 / Lv.5→15 份食物，每日结算时入账<br>
+        · 必须指派<b>厨师职业</b>当值才产出；当值厨师每天消耗 30 ⚡ 体力，体力不足则当天停产<br>
+        · 当值厨师不能参与探险出战；换人 / 撤职随时免费
+        </div>
+      </div>`;
+    const secSave = `
+      <div class="wiki-sec panel"><h4>💾 存档说明</h4>
+        <div class="wiki-p">游戏进度自动保存在当前存档槽；也可在存档管理中手动保存 / 读取 / 删除，或导出文本存档码跨设备备份。</div>
+      </div>`;
+    const secCls = `
+      <div class="wiki-sec panel"><h4>🧍 职业基础属性（Lv.1）</h4>
+        <table class="wiki-table"><tr><th>职业</th><th>生命</th><th>攻击</th><th>防御</th><th>射程</th><th>移速</th><th>暴击率</th><th>体力</th><th>招募价</th></tr>${clsRows}</table>
+        <div class="wiki-p" style="margin-top:6px">每次升级：<b>生命 / 攻击 / 防御 / 体力</b> 提升各自基础值的 <b>10%</b>（射程、移速、暴击不变）。招募角色还会随机获得 1~3 个天赋（互不重复，最多 3 个，可能为负面）。</div>
+      </div>`;
+    const secSkill = `
+      <div class="wiki-sec panel"><h4>⚗️ 食物消耗与专属技能</h4>
+        <table class="wiki-table"><tr><th>职业</th><th>日耗食物</th><th>专属技能（冷却3回合）</th></tr>${skillRows}</table>
+        <div class="wiki-p" style="margin-top:6px">技能在战斗中使用，消耗体力并有 3 回合冷却。医生「急救」治疗友方；军人的「火力压制」可以打到 3 格外的敌人；格斗家的「横扫千军」能同时打击相邻的所有敌人；猎人的「百步穿杨」可贯穿一条直线上的所有敌人。</div>
+      </div>`;
+    const secTalent = `
+      <div class="wiki-sec panel"><h4>🍀 天赋一览</h4>
+        <table class="wiki-table"><tr><th>天赋</th><th>效果</th></tr>${talentRows}</table>
+        <div class="wiki-p" style="margin-top:6px">招募时每人随机获得 1~3 个天赋（等概率、互不重复、最多 3 个，可能为负面）。数值类天赋作用于基础值，随升级同步放大。</div>
+      </div>`;
+    const secFight = `
+      <div class="wiki-sec panel"><h4>⚔️ 战斗规则</h4>
+        <div class="wiki-p">
+        · 经典双方回合制：<b>玩家回合</b>内每名角色可移动 + 攻击各一次（顺序自由），全员行动后进入丧尸回合<br>
+        · 伤害公式：<b>攻击力 − 目标防御</b>，最低为 1；暴击时 × 暴击伤害倍率<br>
+        · <b>防御姿态</b>：本回合受到的伤害减半，并恢复 8 点体力<br>
+        · <b>技能</b>：消耗体力，有冷却回合，详见职业图鉴<br>
+        · 天气影响：🌧️ 雨天丧尸移速 −1；🌫️ 雾天所有单位射程 −1（最低 1）<br>
+        · <b>撤离</b>：随时可以撤离，保留已拾取物资但无通关奖励<br>
+        · 角色血量归零后变为<b>重伤</b>（不真正死亡），回基地后用药物治愈才能再次出战<br>
+        · 全队重伤 = 探险失败，已拾取物资损失一半
+        </div>
+      </div>`;
+    const secTerrain = `
+      <div class="wiki-sec panel"><h4>🗺️ 地形说明</h4>
+        <table class="wiki-table"><tr><th>地形</th><th>效果</th></tr>${terRows}</table>
+        <div class="wiki-p" style="margin-top:6px">🧰 <b>物资箱</b>：走上即拾取随机物资。战斗结算时保留全部已拾取物资。</div>
+      </div>`;
+    const secZombie = `
+      <div class="wiki-sec panel"><h4>🧟 丧尸图鉴</h4>
+        <table class="wiki-table"><tr><th>类型</th><th>生命</th><th>攻击</th><th>防御</th><th>移速</th><th>射程</th><th>暴击率/暴伤</th><th>特性</th></tr>${zomRows}</table>
+        <div class="wiki-p" style="margin-top:6px">丧尸强度随生存天数提升（每 8 天等级 +1：生命 +30 / 攻击 +6 / 防御 +3）。军事基地有<b>暴君变异体</b>坐镇。</div>
+      </div>`;
+    const TABS = [
+      { id:'play',   name:'📖 玩法' },
+      { id:'cls',    name:'🧍 职业' },
+      { id:'fight',  name:'⚔️ 战斗' },
+      { id:'enemy',  name:'🧟 敌人' },
+    ];
+    const groups = {
+      play:   secGoal + secLoop + secBuild + secTalent + secSave,
+      cls:    secCls + secSkill,
+      fight:  secFight + secTerrain,
+      enemy:  secZombie,
+    };
+    const tab = UI.wikiTab || 'play';
+    el.innerHTML = `
+      <div class="wiki-tabs">${TABS.map(t=>`<button class="wiki-tab${t.id===tab?' active':''}" onclick="UI.wikiTab='${t.id}';UI.openWiki()">${t.name}</button>`).join('')}</div>
+      ${groups[tab]}`;
+    UI.showScreen('scr-wiki');
+    el.scrollTop = 0;
+  },
+
+  /* ---- 存档管理 ---- */
+  openSaves() { UI.renderSaves(); UI.showScreen('scr-saves'); },
+  renderSaves() {
+    let html = '';
+    for (let s=1; s<=3; s++) {
+      const d = Game.loadFromSlot(s);
+      const cur = Game.currentSlot===s && Game.g;
+      if (d) {
+        const st = d.state;
+        html += `<div class="save-slot ${cur?'':''}">
+          <div style="font-size:26px">💾</div>
+          <div class="info">
+            <div class="st">存档槽 ${s} ${cur?'<span class="tag">当前</span>':''}</div>
+            <div class="sd">第 ${st.day} 天 ｜ ${st.chars.filter(c=>!c.dead).length} 名幸存者 ｜ 💰${st.res.gold} 🍞${st.res.food} ｜ ${new Date(d.ts).toLocaleString('zh-CN')}</div>
+          </div>
+          <div class="ops">
+            <button class="btn small primary" onclick="UI.saveSlot(${s})">保存</button>
+            <button class="btn small" onclick="UI.loadSlot(${s})">读取</button>
+            <button class="btn small danger" onclick="UI.deleteSlotAsk(${s})">删除</button>
+          </div>
+        </div>`;
+      } else {
+        html += `<div class="save-slot empty">
+          <div style="font-size:26px">💾</div>
+          <div class="info"><div class="st">存档槽 ${s}</div><div class="sd">空槽位</div></div>
+          <div class="ops"><button class="btn small primary" onclick="UI.saveSlot(${s})">保存</button></div>
+        </div>`;
+      }
+    }
+    html += `<div class="panel" style="margin-top:14px"><h3>📤 导出 / 导入存档码</h3>
+      <div class="wiki-p">存档码是一段文本，可复制到记事本保存，或在其他设备上导入恢复进度。</div>
+      <div class="row" style="margin-top:8px;flex-wrap:wrap">
+        <button class="btn small" onclick="UI.doExport()">导出当前进度</button>
+        <button class="btn small" onclick="UI.doImport()">从存档码导入</button>
+      </div>
+      <textarea id="save-code" placeholder="导出后存档码会显示在这里；导入时将存档码粘贴到这里" style="width:100%;margin-top:8px;height:70px;background:#14180f;border:1px solid var(--line);border-radius:8px;color:var(--txt);padding:8px;font-size:11px;resize:vertical"></textarea>
+    </div>
+    <div class="panel"><h3>🆕 新游戏</h3><div class="wiki-p">放弃当前进度，从第 1 天重新开始（需选择存档槽保存）。</div>
+      <button class="btn danger small" style="margin-top:8px" onclick="UI.newGameAsk()">开始新游戏</button>
+    </div>`;
+    document.getElementById('save-list').innerHTML = html;
+  },
+  saveSlot(s) {
+    if (!Game.g) { UI.toast('当前没有进行中的游戏'); return; }
+    Game.currentSlot = s;
+    Game.saveToSlot(s);
+    UI.renderSaves();
+  },
+  loadSlot(s) {
+    const d = Game.loadFromSlot(s);
+    if (!d) { UI.toast('该槽位没有存档'); return; }
+    Game.applySave(d, s);
+    UI.toast(`📂 已读取存档槽 ${s}（第 ${d.state.day} 天）`);
+    UI.backHome();
+  },
+  deleteSlotAsk(s) {
+    UI.modal(`<h3>删除存档</h3><div class="wiki-p">确定删除存档槽 ${s} 的进度？此操作不可恢复。</div>
+      <div class="row" style="margin-top:12px"><button class="btn danger" onclick="Game.deleteSlot(${s});UI.closeModal();UI.renderSaves()">确认删除</button><button class="btn" onclick="UI.closeModal()">取消</button></div>`);
+  },
+  doExport() {
+    if (!Game.g) { UI.toast('当前没有进行中的游戏'); return; }
+    document.getElementById('save-code').value = Game.exportCode();
+    document.getElementById('save-code').select();
+    UI.toast('存档码已生成，请复制保存');
+  },
+  doImport() {
+    const code = document.getElementById('save-code').value;
+    if (!code.trim()) { UI.toast('请先粘贴存档码'); return; }
+    const d = Game.importCode(code);
+    if (!d) { UI.toast('存档码无效或已损坏'); return; }
+    UI.modal(`<h3>导入存档</h3><div class="wiki-p">存档内容：第 ${d.state.day} 天，${d.state.chars.filter(c=>!c.dead).length} 名幸存者。确认导入到当前进度？（可用下方存档槽先备份）</div>
+      <div class="row" style="margin-top:12px"><button class="btn primary" onclick="Game.applySave(UI._pendingImport, Game.currentSlot);UI._pendingImport=null;UI.closeModal();UI.backHome();UI.toast('📂 存档已导入')">确认导入</button><button class="btn" onclick="UI.closeModal()">取消</button></div>`);
+    UI._pendingImport = d;
+  },
+  newGameAsk() {
+    UI.modal(`<h3>开始新游戏</h3><div class="wiki-p">选择一个存档槽开始新的生存之旅：</div>
+      <div class="row" style="margin-top:12px">
+        <button class="btn primary" onclick="UI.doNewGame(1)">槽 1</button>
+        <button class="btn primary" onclick="UI.doNewGame(2)">槽 2</button>
+        <button class="btn primary" onclick="UI.doNewGame(3)">槽 3</button>
+        <button class="btn" onclick="UI.closeModal()">取消</button>
+      </div>`);
+  },
+  doNewGame(slot) {
+    Game.g = Game.newGame();
+    Game.currentSlot = slot;
+    Game.saveToSlot(slot, true);
+    UI.closeModal();
+    UI.backHome();
+    UI.toast('🆕 新游戏开始！你带着两名幸存者在城中落脚了');
+  },
+
+  /* ---- 里程碑事件 ---- */
+  checkMilestone() {
+    const g = Game.g;
+    if (g.day % 10 !== 0) return;
+    const pool = DATA.MILESTONES.filter(m=>!g.seenMilestones.includes(m.t));
+    const ev = pick(pool.length?pool:DATA.MILESTONES);
+    UI.modal(`<h3>📅 第 ${g.day} 天 · 里程碑事件</h3>
+      <div class="wiki-p" style="margin-bottom:6px"><b style="color:var(--yellow)">${ev.t}</b></div>
+      <div class="wiki-p">${ev.d}</div>
+      <button class="milestone-choice" onclick="UI.pickMilestone(0)"><div class="mc-t">A. ${ev.a.t}</div></button>
+      <button class="milestone-choice" onclick="UI.pickMilestone(1)"><div class="mc-t">B. ${ev.b.t}</div></button>`);
+    UI._milestone = ev;
+    if (!g.seenMilestones.includes(ev.t)) g.seenMilestones.push(ev.t);
+    Game.saveToSlot(Game.currentSlot, true);
+  },
+  pickMilestone(which) {
+    const ev = UI._milestone;
+    if (!ev) return;
+    (which===0 ? ev.a : ev.b).f(Game.g);
+    UI._milestone = null;
+    UI.closeModal();
+    Game.renderHome();
+    Game.saveToSlot(Game.currentSlot, true);
+  },
+};
+
+/* =====================================================
+ *  招募广播
+ * ===================================================== */
+const Recruit = {
+  candidates: [],
+  ensureCandidates() {
+    if (!Recruit.candidates.length) Recruit.rollCandidates();
+  },
+  rollCandidates() {
+    Recruit.candidates = [];
+    const clsPool = Object.keys(DATA.CLASSES);
+    // 名字不与在队成员重复，且同一批 3 人内也互不重复
+    const used = new Set(Game.g ? Game.g.chars.filter(c=>!c.dead).map(c=>c.name) : []);
+    const pool = DATA.NAMES.filter(n=>!used.has(n));
+    const names = [];
+    while (names.length < 3 && pool.length) names.push(pool.splice(rnd(0,pool.length-1),1)[0]);
+    while (names.length < 3) names.push(pick(DATA.NAMES));
+    for (let i=0;i<3;i++) Recruit.candidates.push(Game.createChar(pick(clsPool), names[i]));
+  },
+  refreshCandidates() {
+    const g = Game.g;
+    if (g.chars.filter(c=>!c.dead).length >= 8) { UI.toast('队伍已满，无法招募'); return; }
+    if (g.res.gold < 20) { UI.toast('金币不足（需要 20 金币发布广播）'); return; }
+    g.res.gold -= 20;
+    Recruit.rollCandidates();
+    UI.renderRecruit(); Game.renderHome();
+    UI.toast('📡 广播已发布，收到了新的回应…');
+    Game.saveToSlot(Game.currentSlot, true);
+  },
+  hire(i) {
+    const g = Game.g, c = Recruit.candidates[i];
+    if (!c) return;
+    if (g.chars.filter(x=>!x.dead).length >= 8) { UI.toast('队伍已满（上限8人）'); return; }
+    const price = DATA.CLASSES[c.cls].price;
+    if (g.res.gold < price) { UI.toast(`金币不足，招募 ${DATA.CLASSES[c.cls].name} 需要 ${price} 金币`); return; }
+    g.res.gold -= price;
+    c.stamina = Math.max(c.stamina, 50);
+    g.chars.push(c);
+    Recruit.candidates.splice(i,1);
+    if (!Recruit.candidates.length) Recruit.rollCandidates();
+    UI.renderRecruit(); Game.renderHome();
+    UI.toast(`🎉 ${c.name}（${DATA.CLASSES[c.cls].name}）加入了队伍！`);
+    Game.saveToSlot(Game.currentSlot, true);
+  },
+  preview(i) {
+    const c = Recruit.candidates[i]; if (!c) return;
+    const C = DATA.CLASSES[c.cls];
+    const talentDescs = (c.talents||[]).map(id=>{ const t=DATA.TALENTS.find(x=>x.id===id); return t?`<div class="wiki-p" style="margin-top:6px"><span class="tag ${t.good?'':'red'}">天赋 · ${t.name}</span> ${t.desc}</div>`:''; }).join('') || '<div class="wiki-p" style="margin-top:6px"><span class="tag">天赋 · 无</span> 此人没有觉醒任何天赋</div>';
+    UI.modal(`<h3>${c.name} · ${c.av||C.icon} ${C.name}</h3>
+      <div class="wiki-p">${C.desc}</div>
+      <div class="attr-grid" style="grid-template-columns:repeat(4,1fr)">
+        <div class="attr-cell"><b>${c.maxHp}</b><span>生命</span></div>
+        <div class="attr-cell"><b>${c.atk}</b><span>攻击</span></div>
+        <div class="attr-cell"><b>${c.def}</b><span>防御</span></div>
+        <div class="attr-cell"><b>${c.range}</b><span>射程</span></div>
+        <div class="attr-cell"><b>${c.move}</b><span>移速</span></div>
+        <div class="attr-cell"><b>${c.critRate}%</b><span>暴击率</span></div>
+        <div class="attr-cell"><b>${c.critDmg}%</b><span>暴伤</span></div>
+        <div class="attr-cell"><b>${c.maxStamina}</b><span>体力</span></div>
+      </div>
+      ${C.skill?`<div class="wiki-p" style="margin-top:8px"><span class="tag blue">技能 · ${C.skill.name}</span> ${C.skill.desc}</div>`:''}
+      ${talentDescs}
+      <div class="row" style="margin-top:12px"><button class="btn primary" onclick="Recruit.hire(${i});UI.closeModal()">招募（${C.price} 💰）</button><button class="btn" onclick="UI.closeModal()">关闭</button></div>`);
+  },
+};
+
+/* =====================================================
+ *  战棋战斗系统
+ * ===================================================== */
+const Battle = {
+  ROWS: 13, COLS: 11,
+  b: null,
+  sleep(ms) { return new Promise(r=>setTimeout(r, ms / Battle.b.speed)); },
+
+  /* ---------- 开战准备 ---------- */
+  start(zone) {
+    const g = Game.g;
+    const team = UI.teamSelected.map(id=>g.chars.find(c=>c.id===id)).filter(Boolean);
+    if (!team.length) { UI.toast('请先选择出战成员'); return; }
+
+    // 出战消耗体力
+    team.forEach(c=>{ c.stamina = Math.max(0, c.stamina - 15); });
+
+    const zLevel = 1 + Math.floor((g.day-1)/8);
+    const extra = g.hordeWarning ? 2 : 0;
+    g.hordeWarning = false;   // 丧尸潮为一次性效果，应用后消费
+
+    const b = Battle.b = {
+      zone, zLevel, speed:1, turn:1, phase:'player',
+      units: [], terrain: [], ruins: {}, loot: {gold:0,med:0,metal:0,food:0},
+      stats: {},   // 战报统计：uid -> {name,icon,side,dmg,heal,kill}
+      lootBase: null, mode: null, moveSet: null, targetSet: null, targetMode: null,
+      selected: null, log: [], over: false, expPool: 0,
+      doubledReward: extra > 0,
+    };
+
+    // 地图生成
+    for (let r=0;r<Battle.ROWS;r++) {
+      b.terrain[r] = [];
+      for (let c=0;c<Battle.COLS;c++) b.terrain[r][c] = 'plain';
+    }
+    const scatter = (type, count) => {
+      let placed = 0, guard = 0;
+      while (placed < count && guard++ < 300) {
+        const r = rnd(0,Battle.ROWS-1), c = rnd(0,Battle.COLS-1);
+        if (b.terrain[r][c]==='plain') { b.terrain[r][c]=type; placed++; }
+      }
+    };
+    scatter('water', 8); scatter('rubble', 11); scatter('ruin', 9); scatter('crate', 5);
+
+    // 我方出生（底部）：必须落在可通行且无人的格子，否则就近寻找
+    const walkableFree = (r,c) => {
+      if (r<0||c<0||r>=Battle.ROWS||c>=Battle.COLS) return false;
+      if (!DATA.TERRAIN[b.terrain[r][c]].walk) return false;
+      return !Battle.unitAt(r,c);
+    };
+    const nearSpawn = (r0,c0) => {
+      for (let rad=0; rad<8; rad++)
+        for (let r=r0-rad; r<=r0+rad; r++)
+          for (let c=c0-rad; c<=c0+rad; c++)
+            if (Math.max(Math.abs(r-r0),Math.abs(c-c0))===rad && walkableFree(r,c)) return {r,c};
+      return null;
+    };
+    const spawnCols = [4,6,3,7];
+    team.forEach((c,i)=>{
+      const r0 = 11 + (i>1?1:0), c0 = spawnCols[i]!==undefined?spawnCols[i]:5+i;
+      const pos = nearSpawn(r0,c0) || {r:r0,c:c0};
+      b.units.push(Battle.mkAlly(c, pos.r, pos.c));
+    });
+
+    // 敌方生成（顶部）
+    const enemies = zone.enemies.slice();
+    for (let i=0;i<extra;i++) enemies.push('walker');
+    let er = 0, ec = 0;
+    enemies.forEach((zt,i)=>{
+      // 找空位
+      let pos = null, guard = 0;
+      while (!pos && guard++ < 200) {
+        const r = rnd(0,3), c = rnd(0,Battle.COLS-1);
+        if (walkableFree(r,c)) pos = {r,c};
+      }
+      if (pos) b.units.push(Battle.mkZombie(zt, pos.r, pos.c, zLevel));
+    });
+    if (zone.boss) {
+      let pos = null, guard=0;
+      while (!pos && guard++<200) {
+        const r = rnd(0,2), c = rnd(0,Battle.COLS-1);
+        if (walkableFree(r,c)) pos={r,c};
+      }
+      if (pos) b.units.push(Battle.mkZombie('behemoth', pos.r, pos.c, zLevel));
+    }
+    b.expPool = b.units.filter(u=>u.side==='enemy').length * 25 + (zone.boss?60:0);
+
+    UI.showScreen('scr-battle');
+    document.getElementById('btn-speed').textContent = '加速 x1';
+    Battle.log(`── 进入 ${zone.name}（丧尸等级 Lv.${zLevel}）──`);
+    if (extra) Battle.log('⚠️ 丧尸潮来袭！本次区域丧尸增多，奖励翻倍', 'bad');
+    Battle.renderMap(); Battle.cellSize(); Battle.renderPanels(); Battle.renderInfo(null);
+    UI.toast(`🧭 抵达 ${zone.name}，击溃所有丧尸或撤离即可结束探险`);
+  },
+
+  mkAlly(c, r, col) {
+    const C = DATA.CLASSES[c.cls];
+    return {
+      uid:'u'+uidCounter++, side:'ally', ref:c, name:c.name, icon:c.av||C.icon, clsTag:C.name, level:c.level,
+      hp:Math.max(1,c.hp), maxHp:c.maxHp, atk:c.atk, def:c.def, range:c.range, move:c.move,
+      critRate:c.critRate, critDmg:c.critDmg, stamina:c.stamina, maxStamina:c.maxStamina,
+      skill:C.skill, cds:{},
+      row:r, col, hasMoved:false, hasAttacked:false, isDefending:false,
+    };
+  },
+  mkZombie(zt, row, col, lv) {
+    const Z = DATA.ZOMBIES[zt];
+    const lvf = lv-1;
+    return {
+      uid:'z'+uidCounter++, side:'enemy', zombieType:zt, name:Z.name+(Z.boss?' ·BOSS':''), icon:Z.icon, clsTag:Z.boss?'变异体':'丧尸', level:lv,
+      hp:Z.base.maxHp+30*lvf, maxHp:Z.base.maxHp+30*lvf,
+      atk:Z.base.atk+6*lvf, def:Z.base.def+3*lvf, range:Z.base.range, move:Z.base.move,
+      critRate:Z.base.critRate, critDmg:Z.base.critDmg,
+      row, col, isDefending:false,
+    };
+  },
+
+  /* ---------- 查询工具 ---------- */
+  unitAt(r,c){ return Battle.b.units.find(u=>u.hp>0 && u.row===r && u.col===c); },
+  isPassable(r,c){
+    if (r<0||c<0||r>=Battle.ROWS||c>=Battle.COLS) return false;
+    const t = Battle.b.terrain[r][c];
+    return DATA.TERRAIN[t].walk;
+  },
+  moveCost(r,c){ return DATA.TERRAIN[Battle.b.terrain[r][c]].moveCost; },
+  effRange(u, rgOverride) {
+    let rg = rgOverride !== undefined ? rgOverride : u.range;
+    if (Game.g.weather==='fog') rg -= 1;
+    return Math.max(1, rg);
+  },
+  effMove(u){
+    let m = u.move;
+    if (u.side==='enemy' && Game.g.weather==='rain') m = Math.max(1, m-1);
+    return m;
+  },
+  manhattan(a,b){ return Math.abs(a.row-b.row)+Math.abs(a.col-b.col); },
+
+  /* 移动范围：BFS（不可通行地形自动排除） */
+  reachable(u) {
+    const budget = Battle.effMove(u);
+    const dist = {}; dist[u.row+','+u.col] = 0;
+    const q = [[u.row,u.col]];
+    while (q.length) {
+      const [r,c] = q.shift();
+      const d = dist[r+','+c];
+      if (d >= budget) continue;
+      [[r-1,c],[r+1,c],[r,c-1],[r,c+1]].forEach(([nr,nc])=>{
+        const k = nr+','+nc;
+        if (!Battle.isPassable(nr,nc)) return;
+        if (Battle.unitAt(nr,nc)) return;             // 不能穿越单位
+        const cost = Battle.moveCost(nr,nc);
+        const nd = d + cost;
+        if (dist[k]===undefined || nd < dist[k]) { dist[k]=nd; q.push([nr,nc]); }
+      });
+    }
+    return dist;
+  },
+  /* 攻击范围内格子（rgOverride：技能射程覆盖） */
+  inMap(r,c) { return r>=0 && c>=0 && r<Battle.ROWS && c<Battle.COLS; },
+
+  /* 菱形范围格（含中心）：AOE/横扫共用 */
+  cellsAround(r, c, rad) {
+    const out = [];
+    for (let dr=-rad; dr<=rad; dr++) for (let dc=-rad; dc<=rad; dc++) {
+      if (Math.abs(dr)+Math.abs(dc) > rad) continue;
+      const rr=r+dr, cc=c+dc;
+      if (Battle.inMap(rr,cc)) out.push([rr,cc]);
+    }
+    return out;
+  },
+
+  /* 直线格：直线技能用，dr/dc ∈ {-1,0,1} */
+  lineCells(r, c, dr, dc, len) {
+    const out = [];
+    for (let i=1;i<=len;i++) {
+      const rr=r+dr*i, cc=c+dc*i;
+      if (!Battle.inMap(rr,cc)) break;
+      out.push([rr,cc]);
+    }
+    return out;
+  },
+
+  attackCells(u, rgOverride) {
+    const rg = Battle.effRange(u, rgOverride), out = [];
+    for (let r=0;r<Battle.ROWS;r++) for (let c=0;c<Battle.COLS;c++)
+      if (Math.abs(r-u.row)+Math.abs(c-u.col) <= rg && !(r===u.row&&c===u.col)) out.push([r,c]);
+    return out;
+  },
+
+  /* ---------- 渲染 ---------- */
+  renderMap() {
+    const b = Battle.b;
+    const map = document.getElementById('battle-map');
+    map.style.gridTemplateColumns = `repeat(${Battle.COLS}, var(--cs, 40px))`;
+    let html = '';
+    for (let r=0;r<Battle.ROWS;r++) for (let c=0;c<Battle.COLS;c++) {
+      const t = b.terrain[r][c], T = DATA.TERRAIN[t];
+      const u = Battle.unitAt(r,c);
+      let cls = 'cell';
+      if (t==='water') cls+=' water'; else if (t==='rubble') cls+=' rubble';
+      else if (t==='ruin') cls+=' ruin'; else if (t==='crate') cls+=' walk';
+      else cls+=' walk';
+      const mk = b.moveSet && b.moveSet[r+','+c]!==undefined && !(u && u.side==='ally' && u===b.selected);
+      const mkSelf = b.moveSet && b.moveSet[r+','+c]!==undefined && b.selected && u===b.selected;
+      const atk = b.targetSet && b.targetSet.some(([tr,tc])=>tr===r&&tc===c);
+      if (mk) cls+=' moveable';
+      if (atk) cls += (b.mode==='skill'&&b.targetMode==='heal') ? ' healable' : (b.mode==='pickcrate' ? ' pickable' : ' attackable');
+      let inner = '';
+      if (t==='water') inner += '<span class="terr">🌊</span>';
+      if (t==='rubble') inner += '<span class="terr">🪨</span>';
+      if (t==='ruin') inner += `<span class="terr">🧱${b.ruins[r+','+c]!==undefined?'<i style="font-size:9px;color:#e0a080;font-style:normal">'+b.ruins[r+','+c]+'</i>':''}</span>`;
+      if (t==='crate') inner += '<span class="terr">🧰</span>';
+      if (u) {
+        inner += `<div class="unit ${u.side} ${u===b.selected?'selected-unit':''} ${u.isDefending?'defending':''} ${(u.side==='ally'&&u.hasMoved&&u.hasAttacked)?'acted':''}" onclick="Battle.cellClick(${r},${c})">
+          ${u.icon}<div class="uhp"><div style="width:${Math.max(0,Math.round(u.hp/u.maxHp*100))}%"></div></div>
+        </div>`;
+      } else {
+        inner += `<div style="position:absolute;inset:0" onclick="Battle.cellClick(${r},${c})"></div>`;
+      }
+      html += `<div class="${cls}" data-r="${r}" data-c="${c}">${inner}</div>`;
+    }
+    map.innerHTML = html;
+  },
+  cellSize() {
+    const wrap = document.querySelector('.map-wrap');
+    if (!wrap) return;
+    const w = wrap.clientWidth - 24, h = wrap.clientHeight - 24;
+    const cs = Math.max(26, Math.min(44, Math.floor(Math.min(w/Battle.COLS, h/Battle.ROWS))));
+    document.getElementById('battle-map').style.setProperty('--cs', cs+'px');
+  },
+  renderPanels() {
+    const b = Battle.b;
+    const es = b.units.filter(u=>u.side==='enemy'&&u.hp>0);
+    const as = b.units.filter(u=>u.side==='ally'&&u.hp>0);
+    const ehp = es.reduce((s,u)=>s+u.hp,0), eMax = es.reduce((s,u)=>s+u.maxHp,0);
+    const ahp = as.reduce((s,u)=>s+u.hp,0), aMax = as.reduce((s,u)=>s+u.maxHp,0);
+    document.getElementById('panel-enemy').innerHTML =
+      `<div class="pt"><span>💀 敌方</span><span>${es.length} 只</span></div>
+       <div class="stat-line"><span>总血量</span><div class="mini-bar"><div style="width:${eMax?Math.round(ehp/eMax*100):0}%"></div></div><span>${ehp}</span></div>`;
+    document.getElementById('panel-ally').innerHTML =
+      `<div class="pt"><span>🧍 我方</span><span>${as.length} 人</span></div>
+       <div class="stat-line"><span>总血量</span><div class="mini-bar"><div style="width:${aMax?Math.round(ahp/aMax*100):0}%"></div></div><span>${ahp}</span></div>
+       <div class="stat-line"><span>🧰 已拾取</span><span style="color:var(--yellow)">${UI.resIcon('gold')}${b.loot.gold} ${UI.resIcon('med')}${b.loot.med} ${UI.resIcon('metal')}${b.loot.metal} ${UI.resIcon('food')}${b.loot.food}</span></div>`;
+    document.getElementById('b-turn').textContent = b.turn;
+    const ph = document.getElementById('b-phase');
+    ph.textContent = b.phase==='player' ? '玩家回合' : '丧尸回合';
+    ph.className = 'phase ' + b.phase;
+    document.getElementById('b-weather').textContent = UI.weatherInfo().name;
+  },
+  renderInfo(u) {
+    const el = document.getElementById('b-unitinfo');
+    if (!u) { el.innerHTML = '<div class="hint">点击你的角色开始行动；全员行动后按「结束行动」</div>'; return; }
+    const skillBtn = document.getElementById('btn-skill');
+    skillBtn.textContent = '技能';
+    skillBtn.disabled = !(u.side==='ally' && Battle.unitSkills(u).length);
+    const acted = u.hasMoved&&u.hasAttacked ? ' <span class="tag">已行动完毕</span>' : '';
+    el.innerHTML = `<div class="u-name">${u.icon} <b>${u.name}</b> <span class="tag ${u.side==='enemy'?'red':''}">${u.clsTag} Lv.${u.level}</span>${u.isDefending?'<span class="tag yellow">🛡 防御中</span>':''}${acted}</div>
+      <div class="u-stats">
+        <span>❤️<b>${u.hp}/${u.maxHp}</b></span>
+        ${u.side==='ally'?`<span>⚡<b>${u.stamina}/${u.maxStamina}</b></span>`:''}
+        <span>🗡️<b>${u.atk}</b></span><span>🛡️<b>${u.def}</b></span>
+        <span>👟<b>${Battle.effMove(u)}</b></span><span>🎯<b>${Battle.effRange(u)}</b></span>
+      </div>`;
+  },
+
+  /* ---------- 日志与字幕 ---------- */
+  log(msg, cls) {
+    const b = Battle.b;
+    let entry = b.log.find(e=>e.turn===b.turn);
+    if (!entry) { entry = {turn:b.turn, msgs:[]}; b.log.push(entry); }
+    entry.msgs.push({m:msg, c:cls||''});
+  },
+  showLog() {
+    const b = Battle.b;
+    const html = b.log.map(e=>`<div class="log-entry"><div class="log-turn">回合 ${e.turn}</div>${e.msgs.map(x=>`<div class="log-msg ${x.c}">· ${x.m}</div>`).join('')}</div>`).join('')
+      || '<div class="wiki-p">暂无战斗记录</div>';
+    UI.modal(`<h3>📜 战斗记录</h3>${html}<div class="row" style="margin-top:10px"><button class="btn" onclick="UI.closeModal()">关闭</button></div>`);
+  },
+  subtitle(text) {
+    const el = document.getElementById('battle-subtitle');
+    el.textContent = text;
+    el.classList.remove('show'); void el.offsetWidth;
+    el.classList.add('show');
+    clearTimeout(Battle._subT);
+    Battle._subT = setTimeout(()=>el.classList.remove('show'), 1200);
+  },
+  floatDmg(row, col, text, color) {
+    const map = document.getElementById('battle-map');
+    const cells = map.children;
+    const idx = row*Battle.COLS + col;
+    const cell = cells[idx]; if (!cell) return;
+    const d = document.createElement('div');
+    d.className = 'dmg-float';
+    d.style.cssText = `top:0;left:50%;transform:translateX(-50%);color:${color||'#ff8a70'}`;
+    d.textContent = text;
+    cell.appendChild(d);
+    setTimeout(()=>d.remove(), 850);
+  },
+  toggleSpeed() {
+    const b = Battle.b;
+    b.speed = b.speed===1?2:(b.speed===2?3:1);
+    document.getElementById('btn-speed').textContent = '加速 x'+b.speed;
+  },
+
+  /* ---------- 玩家指令 ---------- */
+  selectUnit(u) {
+    const b = Battle.b;
+    b.selected = u; b.mode = null; b.moveSet = null; b.targetSet = null; b.targetMode = null;
+    Battle.renderMap(); Battle.renderInfo(u);
+  },
+  cmdMove() {
+    const b = Battle.b, u = b.selected;
+    if (!u || u.side!=='ally' || b.phase!=='player') return;
+    if (u.hasMoved) { UI.toast('该角色本回合已移动过'); return; }
+    b.mode='move'; b.moveSet = Battle.reachable(u); b.targetSet = null;
+    Battle.renderMap();
+  },
+  cmdAttack() {
+    const b = Battle.b, u = b.selected;
+    if (!u || u.side!=='ally' || b.phase!=='player') return;
+    if (u.hasAttacked) { UI.toast('该角色本回合已攻击过'); return; }
+    b.mode='attack';
+    b.targetSet = Battle.attackCells(u).filter(([r,c])=>{
+      const t = Battle.unitAt(r,c);
+      if (t && t.side==='enemy') return true;
+      if (!t && b.terrain[r][c]==='rubble') return true;   // 可清除瓦砾
+      return false;
+    });
+    if (!b.targetSet.length) { UI.toast('攻击范围内没有丧尸或瓦砾'); b.mode=null; return; }
+    b.moveSet=null; Battle.renderMap();
+  },
+  unitSkills(u) {
+    return Array.isArray(u.skills) && u.skills.length ? u.skills : (u.skill ? [u.skill] : []);
+  },
+  skCd(u, sk) { return (u.cds && u.cds[sk.name]) || 0; },
+  cmdSkill() {
+    const b = Battle.b, u = b.selected;
+    if (!u || u.side!=='ally' || b.phase!=='player') return;
+    const list = Battle.unitSkills(u);
+    if (!list.length) { UI.toast('该角色没有可用技能'); return; }
+    if (u.hasAttacked) { UI.toast('本回合已攻击过'); return; }
+    const rows = list.map((sk,i)=>{
+      const cd = Battle.skCd(u, sk);
+      const noSt = u.stamina < sk.cost;
+      const off = cd>0 || noSt;
+      const st = cd>0 ? `冷却中 · 剩 ${cd} 回合` : (noSt ? `体力不足（需 ${sk.cost}⚡）` : `消耗 ${sk.cost}⚡ · 可用`);
+      return `<div class="skill-row${off?' off':''}" ${off?'':`onclick="UI.closeModal();Battle.pickSkill(${i})"`}>
+        <div class="skill-name">${sk.name}<span class="skill-cost">${sk.cost}⚡</span></div>
+        <div class="skill-st${off?' off':''}">${st}</div>
+        <div class="skill-desc">${sk.desc||''}</div>
+      </div>`;
+    }).join('');
+    UI.modal(`<h3>✨ ${u.name} · 技能列表</h3>${rows}<div class="row" style="margin-top:10px"><button class="btn" onclick="UI.closeModal()">关闭</button></div>`);
+  },
+  pickSkill(i) {
+    const b = Battle.b, u = b.selected;
+    if (!u || u.side!=='ally' || b.phase!=='player') return;
+    const sk = Battle.unitSkills(u)[i];
+    if (!sk) return;
+    if (u.hasAttacked) { UI.toast('本回合已攻击过'); return; }
+    if (Battle.skCd(u, sk) > 0) { UI.toast(`${sk.name} 冷却中（还需 ${Battle.skCd(u,sk)} 回合）`); return; }
+    if (u.stamina < sk.cost) { UI.toast(`体力不足（需要 ${sk.cost} ⚡）`); return; }
+    b.pendingSkill = sk;
+    b.moveSet = null;
+    /* 统一技能调度：按 shape 分发 —— sweep直接结算 / aoe选落点 / line选方向 / target选目标 / heal选友方 */
+    if (sk.shape==='sweep') {
+      const victims = Battle.cellsAround(u.row, u.col, sk.area||1)
+        .map(([r,c])=>Battle.unitAt(r,c))
+        .filter(t=>t&&t.side==='enemy'&&t.hp>0);
+      if (!victims.length) { UI.toast('相邻格没有丧尸'); return; }
+      return Battle.execSkill(u, { sk, targets:victims });
+    }
+    const skRange = sk.range || u.range;
+    if (sk.type==='heal') {
+      b.mode='skill'; b.targetMode='heal';
+      b.targetSet = Battle.attackCells(u, skRange).filter(([r,c])=>{ const t=Battle.unitAt(r,c); return t && t.side==='ally' && t.hp<t.maxHp; });
+      if (!b.targetSet.length) { UI.toast('射程内没有需要治疗的友方'); b.mode=null; b.targetMode=null; return; }
+    } else if (sk.shape==='aoe') {
+      // 选择落点（空地或敌人均可），对落点周围 area 格内所有敌人造成伤害
+      b.mode='skill'; b.targetMode='aoe';
+      b.targetSet = Battle.attackCells(u, skRange);
+    } else if (sk.shape==='line') {
+      // 选择方向：点击直线上的任意一格，贯穿该方向所有敌人
+      b.mode='skill'; b.targetMode='line';
+      b.targetSet = [[1,0],[-1,0],[0,1],[0,-1]].flatMap(([dr,dc])=>Battle.lineCells(u.row, u.col, dr, dc, sk.lineLen||3));
+      if (!b.targetSet.length) { UI.toast('没有可用的直线方向'); b.mode=null; b.targetMode=null; return; }
+    } else {
+      // 单体指定：选择射程内一名敌人
+      b.mode='skill'; b.targetMode='target';
+      b.targetSet = Battle.attackCells(u, skRange).filter(([r,c])=>{ const t=Battle.unitAt(r,c); return t && t.side==='enemy'; });
+      if (!b.targetSet.length) { UI.toast(`技能射程（${Battle.effRange(u,skRange)}格）内没有丧尸`); b.mode=null; b.targetMode=null; return; }
+    }
+    Battle.renderMap();
+  },
+  cmdDefend() {
+    const b = Battle.b, u = b.selected;
+    if (!u || u.side!=='ally' || b.phase!=='player') return;
+    u.isDefending = true;
+    u.stamina = Math.min(u.maxStamina, u.stamina+8);
+    u.hasMoved = true; u.hasAttacked = true;
+    Battle.log(`${u.name} 进入防御姿态`, 'good');
+    Battle.subtitle('🛡 防御姿态');
+    b.mode=null; b.moveSet=null; b.targetSet=null;
+    Battle.renderMap(); Battle.renderPanels(); Battle.renderInfo(u); Battle.checkAllActed();
+  },
+  cmdCancel() {
+    const b = Battle.b;
+    b.mode=null; b.moveSet=null; b.targetSet=null;
+    Battle.renderMap();
+  },
+  checkAllActed() {
+    const b = Battle.b;
+    const alive = b.units.filter(u=>u.side==='ally'&&u.hp>0);
+    if (alive.length && alive.every(u=>u.hasMoved&&u.hasAttacked)) {
+      UI.toast('全员行动完毕，点击「结束行动」让丧尸行动');
+    }
+  },
+
+  /* 地图点击路由 */
+  async cellClick(r,c) {
+    const b = Battle.b;
+    if (b.over || b.phase!=='player') return;
+    const u = Battle.unitAt(r,c);
+    const mode = b.mode;
+
+    if (mode==='move' && b.selected && !u) {
+      if (b.moveSet && b.moveSet[r+','+c]!==undefined) return Battle.doMove(b.selected, r, c);
+    }
+    if (mode==='attack' && b.selected) {
+      const inSet = b.targetSet && b.targetSet.some(([tr,tc])=>tr===r&&tc===c);
+      if (inSet) {
+        if (b.terrain[r][c]==='rubble' && !u) return Battle.clearRubble(b.selected, r, c);
+        if (u && u.side==='enemy') return Battle.doAttack(b.selected, u);
+      }
+    }
+    if (mode==='skill' && b.selected) {
+      const inSet = b.targetSet && b.targetSet.some(([tr,tc])=>tr===r&&tc===c);
+      if (!inSet) { if (u) return Battle.selectUnit(u); return; }
+      const u0 = b.selected, sk = b.pendingSkill || u0.skill;
+      if (sk.type==='heal') return Battle.doHeal(u0, u);
+      if (sk.shape==='aoe') return Battle.execSkill(u0, { sk, cell:[r,c] });
+      if (sk.shape==='line') return Battle.execSkill(u0, { sk, dir:[r,c] });
+      if (!u || u.side!=='enemy') return;
+      return Battle.execSkill(u0, { sk, target:u });
+    }
+    if (u) return Battle.selectUnit(u);
+  },
+
+  async doMove(u, r, c) {
+    const b = Battle.b;
+    u.row = r; u.col = c; u.hasMoved = true;
+    // 拾取物资箱
+    if (b.terrain[r][c]==='crate') {
+      b.terrain[r][c] = 'plain';
+      const keys = ['gold','med','metal','food'];
+      {
+        const k = pick(keys);
+        const amt = rnd(1, k==='gold'?6:(k==='med'||k==='metal'?2:3));
+        b.loot[k] += amt;
+        Battle.log(`🧰 ${u.name} 拾取物资箱：${UI.resIcon(k)} ${k==='gold'?'金币':k==='med'?'药物':k==='metal'?'金属':'食物'} ×${amt}`, 'good');
+        Battle.subtitle(`🧰 拾获 ${UI.resIcon(k)}×${amt}`);
+      }
+    }
+    b.mode=null; b.moveSet=null;
+    Battle.renderMap(); Battle.renderPanels();
+    // 移动后自动提示可攻击目标
+    if (!u.hasAttacked) {
+      const targets = Battle.attackCells(u).filter(([tr,tc])=>{ const t=Battle.unitAt(tr,tc); return t&&t.side==='enemy'; });
+      if (targets.length) {
+        b.mode='attack'; b.targetSet = targets; Battle.renderMap();
+      }
+    }
+    Battle.renderInfo(u);
+  },
+
+  calcDamage(att, def, mult=1, pierce=0) {
+    const effDef = Math.round(def.def * (1 - Math.min(0.8, Math.max(0, pierce||0))));
+    let dmg = Math.max(1, Math.round((att.atk*(mult||1)) - effDef));
+    let crit = false;
+    if (att.critRate>0 && Math.random()*100 < att.critRate) { crit=true; dmg = Math.round(dmg * att.critDmg/100); }
+    if (def.isDefending) dmg = Math.max(1, Math.round(dmg*0.5));
+    return { dmg, crit };
+  },
+
+  /* 战报统计：按单位累计伤害/治疗/击杀 */
+  stat(u, key, amt) {
+    const b = Battle.b; if (!b || !u) return;
+    const s = b.stats[u.uid] = b.stats[u.uid] || { name:u.name, icon:u.icon, side:u.side, dmg:0, heal:0, kill:0 };
+    s[key] += amt;
+  },
+
+  async applyDamage(att, def, dmg, crit, mult) {
+    const b = Battle.b;
+    const before = def.hp;
+    def.hp -= dmg;
+    Battle.stat(att, 'dmg', Math.min(dmg, before));   // 实际生效的伤害（不超量计算）
+    if (def.hp <= 0) Battle.stat(att, 'kill', 1);
+    Battle.floatDmg(def.row, def.col, '-'+dmg, crit?'#ffd24d':'#ff8a70');
+    Battle.log(`${att.icon}${att.name} ${mult>1?'发动技能，':''}对 ${def.icon}${def.name} 造成 ${dmg} 伤害${crit?'（暴击！）':''}`, crit?'crit':'');
+    if (crit) Battle.subtitle(`💥 暴击 ${dmg}！`);
+    Battle.renderMap(); Battle.renderPanels();
+    // 丧尸死亡
+    if (def.side==='enemy' && def.hp<=0) {
+      Battle.log(`☠️ ${def.name} 被击杀`, 'kill');
+      Battle.subtitle(`☠️ 击杀 ${def.name}`);
+    }
+    // 我方倒下 → 重伤撤离战场
+    if (def.side==='ally' && def.hp<=0) {
+      def.hp = 0;
+      Battle.log(`🩸 ${def.name} 倒下了，将被抬回营地（重伤）`, 'bad');
+      Battle.subtitle(`🩸 ${def.name} 重伤倒地！`);
+    }
+    Battle.renderMap(); Battle.renderPanels();
+    await Battle.sleep(320);
+  },
+
+  async doAttack(att, def) {
+    const b = Battle.b;
+    if (att.side==='ally') {
+      if (att.hasAttacked) { UI.toast('本回合已攻击过'); return; }
+      const r1 = Battle.calcDamage(att, def);
+      await Battle.applyDamage(att, def, r1.dmg, r1.crit, 1);
+      att.hasAttacked = true;
+      Battle.checkExp(att);
+    } else {
+      const r1 = Battle.calcDamage(att, def);
+      await Battle.applyDamage(att, def, r1.dmg, r1.crit, 1);
+    }
+    b.mode=null; b.targetSet=null; b.moveSet=null;
+    Battle.renderMap(); Battle.renderPanels(); Battle.renderInfo(att.side==='ally'?att:b.selected);
+    if (att.side==='ally') Battle.checkAllActed();
+    Battle.checkBattleEnd();
+  },
+
+  /* 清除瓦砾障碍（参考 sangshi：1次攻击直接清除，消耗本回合攻击） */
+  async clearRubble(u, r, c) {
+    const b = Battle.b;
+    if (u.hasAttacked) { UI.toast('本回合已攻击过'); return; }
+    if (b.terrain[r][c] !== 'rubble') return;
+    b.terrain[r][c] = 'plain';
+    u.hasAttacked = true;
+    Battle.floatDmg(r, c, '💥', '#d0c090');
+    Battle.subtitle('🪨 清除障碍');
+    Battle.log(`${u.name} 清除了瓦砾障碍`, 'good');
+    await Battle.sleep(250);
+    b.mode=null; b.targetSet=null; b.moveSet=null;
+    Battle.renderMap(); Battle.renderPanels(); Battle.renderInfo(u);
+    Battle.checkAllActed();
+  },
+
+  /* ============ 统一技能执行函数 ============
+   * 所有职业技能（专属/角色技能）最终都调用 execSkill 结算：
+   *   p.target  : 单体指定（shape:'target'）
+   *   p.targets : 直接给定的目标数组（shape:'sweep'）
+   *   p.cell    : AOE 落点 [r,c]，对落点周围 sk.area 格内敌人结算（shape:'aoe'）
+   *   p.dir     : 直线方向上的选中格 [r,c]，贯穿该方向 sk.lineLen 格（shape:'line'）
+   * 结算统一走 calcDamage（支持 sk.pierce 无视防御比例）+ applyDamage，自动处理暴击/击杀/经验/结束判定 */
+  async execSkill(u, p) {
+    const b = Battle.b;
+    const sk = p.sk || b.pendingSkill || u.skill;
+    if (u.hasAttacked) { UI.toast('本回合已攻击过'); return; }
+    u.stamina -= sk.cost;
+    (u.cds = u.cds||{})[sk.name] = sk.cd;
+    u.hasAttacked = true;
+    Battle.subtitle(`✨ ${sk.name}！`);
+    Battle.log(`${u.name} 使用技能「${sk.name}」`, 'good');
+    let victims = [];
+    if (p.target) victims = [p.target];
+    else if (p.targets) victims = p.targets;
+    else if (p.cell) {
+      victims = Battle.cellsAround(p.cell[0], p.cell[1], sk.area||1)
+        .map(([r,c])=>Battle.unitAt(r,c))
+        .filter(t=>t&&t.side==='enemy'&&t.hp>0);
+    } else if (p.dir) {
+      const dr = Math.sign(p.dir[0]-u.row), dc = Math.sign(p.dir[1]-u.col);
+      victims = Battle.lineCells(u.row, u.col, dr, dc, sk.lineLen||3)
+        .map(([r,c])=>Battle.unitAt(r,c))
+        .filter(t=>t&&t.side==='enemy'&&t.hp>0);
+    }
+    if (victims.length) {
+      for (const t of victims) {
+        const r1 = Battle.calcDamage(u, t, sk.mult||1, sk.pierce||0);
+        await Battle.applyDamage(u, t, r1.dmg, r1.crit, sk.mult||1);
+      }
+    } else {
+      Battle.log('💨 技能没有命中任何敌人', 'bad');
+      Battle.subtitle('💨 未命中');
+    }
+    b.mode=null; b.targetSet=null; b.targetMode=null; b.moveSet=null; b.pendingSkill=null;
+    Battle.renderMap(); Battle.renderPanels(); Battle.renderInfo(u);
+    Battle.checkAllActed();
+    Battle.checkBattleEnd();
+  },
+
+  async doHeal(doc, target) {
+    const b = Battle.b, sk = b.pendingSkill || doc.skill;
+    doc.stamina -= sk.cost;
+    (doc.cds = doc.cds||{})[sk.name] = sk.cd;
+    const heal = (sk.flatHeal||0) + Math.round((sk.mult||0)*doc.atk);
+    Battle.stat(doc, 'heal', heal);
+    target.hp = Math.min(target.maxHp, target.hp + heal);
+    Battle.floatDmg(target.row, target.col, '+'+heal, '#8fd08f');
+    Battle.subtitle(`⚕️ ${sk.name} +${heal}`);
+    Battle.log(`⚕️ ${doc.name} 治疗了 ${target.name}，恢复 ${heal} 生命`, 'good');
+    doc.hasAttacked = true;
+    b.mode=null; b.targetSet=null; b.targetMode=null; b.pendingSkill=null;
+    Battle.renderMap(); Battle.renderPanels(); Battle.renderInfo(doc);
+    await Battle.sleep(300);
+    Battle.checkAllActed();
+  },
+
+  checkExp(u) {
+    // 击杀经验在结算时统一发放，这里仅记录
+  },
+
+  /* ---------- 回合流转 ---------- */
+  async endPlayerTurn() {
+    const b = Battle.b;
+    if (b.over || b.phase!=='player') return;
+    b.phase = 'enemy';
+    b.mode=null; b.moveSet=null; b.targetSet=null; b.selected=null;
+    Battle.renderPanels(); Battle.renderInfo(null); Battle.renderMap();
+    await Battle.sleep(400);
+    // 丧尸依次行动（单只异常不影响整体回合流转）
+    const zombies = b.units.filter(u=>u.side==='enemy'&&u.hp>0);
+    for (const z of zombies) {
+      if (b.over) return;
+      if (z.hp<=0) continue;
+      try {
+        await Battle.zombieAct(z);
+      } catch (err) {
+        Battle.log('⚠️ 一只丧尸行动异常，已跳过', 'bad');
+        console.error('zombieAct error:', err);
+        (window.__errs = window.__errs||[]).push('zombieAct: '+(err && err.message || err));
+      }
+      if (b.over) return;
+      await Battle.sleep(260);
+    }
+    if (b.over) return;
+    // 新回合
+    b.turn++;
+    b.phase = 'player';
+    b.units.forEach(u=>{
+      if (u.side==='ally' && u.hp>0) { u.hasMoved=false; u.hasAttacked=false; u.isDefending=false; for (const k in u.cds) if (u.cds[k]>0) u.cds[k]--; }
+    });
+    Battle.log(`── 回合 ${b.turn} 开始 ──`);
+    Battle.renderPanels(); Battle.renderInfo(null); Battle.renderMap();
+    UI.toast(`回合 ${b.turn}，轮到你了`);
+  },
+
+  async zombieAct(z) {
+    const b = Battle.b;
+    const allies = b.units.filter(u=>u.side==='ally'&&u.hp>0);
+    if (!allies.length) return;
+    const rg = Battle.effRange(z);
+    /* 伤害最大化：在射程内选「承受伤害最大」的目标（参考 calcDamage 期望，含防御/坚守减伤） */
+    const pickMax = () => {
+      let t = null, best = -1;
+      allies.forEach(a=>{
+        if (Battle.manhattan(z,a) <= rg) {
+          const r = Battle.calcDamage(z, a);
+          if (r.dmg > best) { best = r.dmg; t = a; }
+        }
+      });
+      return t;
+    };
+    let atk = pickMax();
+    if (!atk) {
+      // 射程内没有目标：朝最近的我方移动
+      let target = null, best = 1e9;
+      allies.forEach(a=>{ const d = Battle.manhattan(z,a); if (d<best) { best = d; target = a; } });
+      if (!target) return;
+      const dist = Battle.reachable(z);
+      let bestCell = null, bestD = Battle.manhattan(z, target);
+      Object.keys(dist).forEach(k=>{
+        const [r,c] = k.split(',').map(Number);
+        if (Battle.unitAt(r,c)) return;
+        const d = Math.abs(r-target.row)+Math.abs(c-target.col);
+        if (d < bestD) { bestD = d; bestCell = {r,c}; }
+      });
+      if (bestCell) {
+        z.row = bestCell.r; z.col = bestCell.c;
+        Battle.renderMap();
+        await Battle.sleep(220);
+      }
+      atk = pickMax();
+    }
+    if (atk) {
+      const r1 = Battle.calcDamage(z, atk);
+      await Battle.applyDamage(z, atk, r1.dmg, r1.crit, 1);
+      Battle.checkBattleEnd();
+    }
+  },
+
+  /* ---------- 战斗结束判定与结算 ---------- */
+  checkBattleEnd() {
+    const b = Battle.b;
+    if (b.over) return;
+    const enemiesAlive = b.units.some(u=>u.side==='enemy'&&u.hp>0);
+    const alliesAlive = b.units.some(u=>u.side==='ally'&&u.hp>0);
+    if (!enemiesAlive) return Battle.finish('win');
+    if (!alliesAlive) return Battle.finish('lose');
+  },
+  confirmFlee() {
+    const b = Battle.b;
+    if (b.over) return;
+    UI.modal(`<h3>🏃 撤离战斗</h3><div class="wiki-p">确定撤离？已拾取的物资会保留，但无法获得区域通关奖励，本次探险仍会消耗一天。</div>
+      <div class="row" style="margin-top:12px"><button class="btn warn" onclick="Battle.finish('flee')">确认撤离</button><button class="btn" onclick="UI.closeModal()">继续战斗</button></div>`);
+  },
+
+  async finish(result) {
+    const b = Battle.b;
+    if (b.over) return;
+    b.over = true;
+    const g = Game.g;
+    const loot = b.loot;
+    const doubled = b.doubledReward ? 2 : 1;
+
+    // 我方状态回写
+    const downed = [];
+    b.units.filter(u=>u.side==='ally').forEach(u=>{
+      const c = u.ref;
+      if (u.hp<=0) { c.injured = true; c.hp = 1; downed.push(c.name); }
+      else c.hp = u.hp;
+      c.stamina = u.stamina;
+    });
+
+    // 结算经验
+    const expEach = Math.round(b.expPool / Math.max(1, b.units.filter(u=>u.side==='ally').length));
+    const lvNotes = [];
+    b.units.filter(u=>u.side==='ally'&&u.hp>0).forEach(u=>{
+      const r = Game.gainExp(u.ref, expEach);
+      if (r.lv) lvNotes.push(u.ref.name+'→Lv.'+u.ref.level);
+    });
+
+    let rewards = {};
+    if (result==='win') {
+      Object.entries(b.zone.main).forEach(([k,v])=>{ rewards[k]=(rewards[k]||0)+rnd(v[0],v[1]); });
+      Object.entries(b.zone.sub).forEach(([k,v])=>{ rewards[k]=(rewards[k]||0)+rnd(v[0],v[1]); });
+      if (doubled>1) Object.keys(rewards).forEach(k=>rewards[k]*=2);
+    }
+    if (result==='lose') {
+      Object.keys(loot).forEach(k=>loot[k]=Math.floor(loot[k]/2));
+    }
+
+    // 入库
+    Object.entries(loot).forEach(([k,v])=>{ if(v>0) g.res[k]+=v; });
+    Object.entries(rewards).forEach(([k,v])=>{ if(v>0) g.res[k]+=v; });
+
+    // 推进天数（存粮不足时返回待分配状态，不产生任何结算副作用）
+    const dayResult = Game.nextDay();
+    Game.saveToSlot(Game.currentSlot, true);
+    if (dayResult.shortage) UI.foodAllocInfo = dayResult; // 返回基地后触发分配弹窗
+
+    // 结算界面
+    const title = result==='win' ? '<div class="result-title win">🎉 探险成功</div>'
+      : result==='flee' ? '<div class="result-title flee">🏃 成功撤离</div>'
+      : '<div class="result-title lose">💀 探险失败</div>';
+    const lootHtml = Object.entries(loot).filter(([k,v])=>v>0).map(([k,v])=>`<div class="loot-line"><span>🧰 战斗中拾取</span><b>${UI.resIcon(k)} +${v}</b></div>`).join('');
+    const rwHtml = Object.entries(rewards).filter(([k,v])=>v>0).map(([k,v])=>`<div class="loot-line"><span>${result==='win'?'📦 区域搜集'+(doubled>1?'（丧尸潮奖励翻倍）':''):'📦'}</span><b>${UI.resIcon(k)} +${v}</b></div>`).join('');
+    // 战利品合计入仓
+    const totals = {};
+    Object.entries(loot).forEach(([k,v])=>{ if(v>0) totals[k]=(totals[k]||0)+v; });
+    Object.entries(rewards).forEach(([k,v])=>{ if(v>0) totals[k]=(totals[k]||0)+v; });
+    const totalHtml = Object.keys(totals).length
+      ? `<div class="loot-line" style="border-top:1px solid var(--line);padding-top:6px;margin-top:4px"><span>📦 合计入仓</span><b>${Object.entries(totals).map(([k,v])=>UI.resIcon(k)+'+'+v).join('　')}</b></div>`
+      : '';
+    // 战报统计：敌我所有单位的伤害/击杀/治疗
+    const aStats = [], eStats = [];
+    Object.values(b.stats||{}).forEach(s=>{ if (s.dmg || s.heal) (s.side==='ally'?aStats:eStats).push(s); });
+    const dupCnt = {};
+    const statRow = s => {
+      const key = s.side[0] + s.name;
+      dupCnt[key] = (dupCnt[key]||0)+1;
+      const label = s.name + (dupCnt[key]>1 ? ' #'+dupCnt[key] : '');
+      const parts = [];
+      if (s.dmg) parts.push('🗡️'+s.dmg);
+      if (s.kill) parts.push('☠️'+s.kill);
+      if (s.heal) parts.push('⚕️+'+s.heal);
+      return `<div class="loot-line"><span>${s.icon} ${label}</span><b>${parts.join('  ')||'—'}</b></div>`;
+    };
+    const statHtml = (aStats.length || eStats.length) ? `<div class="hr"></div>
+      <div class="wiki-p" style="color:var(--yellow)">📊 战报统计</div>
+      <div class="loot-line" style="color:var(--txt2);font-size:11px"><span>我方</span><b>伤害 / 击杀 / 治疗</b></div>
+      ${aStats.sort((x,y)=>y.dmg-x.dmg).map(statRow).join('') || '<div class="loot-line"><span>我方</span><b>—</b></div>'}
+      <div class="loot-line" style="color:var(--txt2);font-size:11px;margin-top:4px"><span>敌方</span></div>
+      ${eStats.sort((x,y)=>y.dmg-x.dmg).map(statRow).join('') || '<div class="loot-line"><span>敌方</span><b>—</b></div>'}` : '';
+    UI.modal(`${title}
+      <div class="wiki-p" style="text-align:center;margin-bottom:8px">${b.zone.icon} ${b.zone.name} · 历时 ${b.turn} 回合</div>
+      ${downed.length?`<div class="wiki-p" style="color:var(--red2)">🩸 重伤成员：${downed.join('、')}（回基地后用药物治疗）</div>`:''}
+      ${lvNotes.length?`<div class="wiki-p" style="color:var(--green2)">📈 升级：${lvNotes.join('，')}</div>`:''}
+      <div class="wiki-p" style="color:var(--txt2)">每人获得经验 +${expEach}${result==='lose'?'（失败经验减半已计）':''}</div>
+      <div class="hr"></div>
+      ${lootHtml||'<div class="loot-line"><span>🧰 战斗拾取</span><b>无</b></div>'}
+      ${result==='win'?rwHtml:(result==='lose'?'<div class="loot-line"><span>📦 区域搜集</span><b style="color:var(--red2)">探险失败，无奖励</b></div>':'<div class="loot-line"><span>📦 区域搜集</span><b style="color:var(--yellow)">撤离，无通关奖励</b></div>')}
+      ${totalHtml}
+      ${statHtml}
+      ${dayResult.shortage
+        ? '<div class="wiki-p" style="color:var(--yellow);margin-top:6px">⚠️ 存粮不足以让全营用餐！点「返回基地」后将弹出晚餐分配，选择今晚谁吃饭。</div>'
+        : dayResult.starved
+          ? `<div class="wiki-p" style="color:var(--red2);margin-top:6px">⚠️ ${dayResult.hungry.join('、')} 没有吃到晚饭（不掉血，但当天也不恢复）</div>`
+          : `<div class="wiki-p" style="color:var(--txt2);margin-top:6px">🛌 全员用餐（-${dayResult.cost} 食物），体力+50 / 生命+50。</div>`}
+      ${dayResult.kitchen && dayResult.kitchen.produced ? `<div class="wiki-p" style="color:var(--green2);margin-top:4px">🍳 ${dayResult.kitchen.chef}在厨房当值，产出 ${dayResult.kitchen.produced} 份食物</div>` : ''}
+      ${dayResult.kitchen && dayResult.kitchen.pending ? `<div class="wiki-p" style="color:var(--green2);margin-top:4px">🍳 ${dayResult.kitchen.chef}当值中，分配晚餐时将先产出 ${dayResult.kitchen.pending} 份食物</div>` : ''}
+      ${dayResult.kitchen && dayResult.kitchen.blocked==='nochef' ? '<div class="wiki-p" style="color:var(--red2);margin-top:4px">⚠️ 厨房未指派厨师，今晚无产出</div>' : ''}
+      ${dayResult.kitchen && dayResult.kitchen.blocked==='stamina' ? `<div class="wiki-p" style="color:var(--red2);margin-top:4px">⚠️ ${dayResult.kitchen.chef}体力不足，厨房今晚停产</div>` : ''}
+      <div class="row" style="margin-top:14px"><button class="btn primary" style="width:100%" onclick="Battle.backHome()">返回基地</button></div>`);
+
+    Battle.log(result==='win'?'战斗胜利！':(result==='flee'?'撤离战场':'队伍溃败…'));
+  },
+  backHome() {
+    UI.closeModal();
+    Battle.b = null;
+    Game.renderHome();
+    UI.showScreen('scr-home');
+    // 存粮不足：返回基地后弹出晚餐分配
+    const fi = UI.foodAllocInfo;
+    if (fi && fi.shortage) {
+      UI.foodAllocInfo = null;
+      UI.showFoodAlloc(fi, r2=>{
+        Game.saveToSlot(Game.currentSlot, true);
+        UI.toast(Game.mealMsg(r2) || '过夜完成');
+        UI.checkMilestone();
+      });
+      return;
+    }
+    UI.checkMilestone();
+  },
+};
+
+/* =====================================================
+ *  初始化
+ * ===================================================== */
+(function init() {
+  // 尝试读取最近使用的存档；没有则自动创建新游戏
+  let latest = null, latestTs = 0, latestSlot = 1;
+  for (let s=1; s<=3; s++) {
+    const d = Game.loadFromSlot(s);
+    if (d && d.ts > latestTs) { latest = d; latestTs = d.ts; latestSlot = s; }
+  }
+  if (latest) {
+    Game.applySave(latest, latestSlot);
+  } else {
+    Game.g = Game.newGame();
+    Game.currentSlot = 1;
+    Game.saveToSlot(1, true);
+  }
+  Game.renderHome();
+  window.addEventListener('resize', ()=>{ if (Battle.b) Battle.cellSize(); });
+  // 全局错误捕获（无控制台的移动端也能排查）
+  window.addEventListener('error', e=>{ (window.__errs=window.__errs||[]).push('error: '+(e.message||'?')+' @'+(e.lineno||0)); });
+  window.addEventListener('unhandledrejection', e=>{ const r=e.reason; (window.__errs=window.__errs||[]).push('rejection: '+(r&&r.message||r)); });
+})();
+</script>
+</body>
+</html>
